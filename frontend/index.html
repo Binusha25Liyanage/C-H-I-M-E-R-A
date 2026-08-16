@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chimera</title>
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+
+  <div class="app-shell">
+
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img src="assets/chimera-logo.png" alt="Chimera" class="brand-logo">
+        <div>
+          <div class="brand-title">C H I M E R A</div>
+          <div class="brand-subtitle">SFA Automation System</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-view="overview"><span class="nav-icon">&#9638;</span> Overview</button>
+        <button class="nav-btn" data-view="reports"><span class="nav-icon">&#9776;</span> Reports</button>
+        <button class="nav-btn" data-view="visit-state"><span class="nav-icon">&#8644;</span> Visit State Update</button>
+        <button class="nav-btn" data-view="sequence"><span class="nav-icon">&#9776;</span> Sequence Update</button>
+        <button class="nav-btn" data-view="import-data"><span class="nav-icon">&#9729;</span> Import Data</button>
+        <button class="nav-btn" data-view="outlet-master"><span class="nav-icon">&#9634;</span> Outlet Master</button>
+        <button class="nav-btn" data-view="maintenance"><span class="nav-icon">&#9881;</span> Maintenance</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status"><span class="status-dot"></span> System Status: Live</div>
+        <button class="nav-btn nav-btn-muted" data-view="settings"><span class="nav-icon">&#9881;</span> Settings</button>
+        <button class="nav-btn nav-btn-muted" data-view="support"><span class="nav-icon">?</span> Support</button>
+      </div>
+    </aside>
+
+    <div class="main-col">
+
+      <header class="topbar">
+        <h1 id="topbar-title">Dashboard Overview</h1>
+        <div class="topbar-right">
+          <span class="icon-btn" title="Notifications">&#128276;</span>
+          <span class="icon-btn" title="History">&#8635;</span>
+          <span class="icon-btn" title="Help">?</span>
+          <span class="topbar-divider"></span>
+          <span class="support-link">Support</span>
+        </div>
+      </header>
+
+      <main>
+
+        <!-- ============ OVERVIEW ============ -->
+        <section id="view-overview" class="view">
+          <div class="view-heading-row">
+            <div>
+              <h2>System Overview</h2>
+              <p class="hint">Real-time status of export data imports and routing metrics.</p>
+            </div>
+            <div class="heading-actions">
+              <button class="btn-outline" data-goto="visit-state">&#8644; Run Visit State Update</button>
+              <button class="btn-primary" data-goto="reports">&#9638; Generate Combined Report</button>
+            </div>
+          </div>
+
+          <div class="stat-cards">
+            <div class="stat-card">
+              <div class="stat-label">TOTAL OUTLETS</div>
+              <div class="stat-value" id="stat-total-outlets">&mdash;</div>
+              <div class="stat-foot"><span class="live-dot"></span> Live</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">TERRITORIES LOADED</div>
+              <div class="stat-value" id="stat-territories">&mdash;</div>
+              <div class="stat-foot"><span class="live-dot"></span> Live</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">ROUTES LOADED</div>
+              <div class="stat-value" id="stat-routes">&mdash;</div>
+              <div class="stat-foot"><span class="live-dot"></span> Live</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">LAST DATA IMPORT</div>
+              <div class="stat-value stat-value-small" id="stat-last-import">Never</div>
+              <div class="stat-foot stat-foot-warn">No imports recorded yet</div>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <div class="card">
+              <div class="card-header-row">
+                <h3>RECENT ACTIVITY LOG</h3>
+              </div>
+              <p class="hint">Not yet available — Chimera doesn't track an activity history yet. This will populate once report generation and SFA automation runs are logged.</p>
+            </div>
+            <div class="card">
+              <div class="card-header-row">
+                <h3>DATA SOURCE HEALTH</h3>
+              </div>
+              <p class="hint">Not yet available — per-source freshness checks aren't built yet. See the Import Data screen for what has (and hasn't) been imported.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ REPORTS (Combined SKU + Invoice) ============ -->
+        <section id="view-reports" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div>
+              <h2>Combined SKU + Invoice Report</h2>
+              <p class="hint">Route-wise per-outlet report: invoice count merged with product-level SKU breakdown, anchored to the previous visit date.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="form-row">
+              <label>Territory
+                <select id="cr-territory"><option value="">Loading territories...</option></select>
+              </label>
+              <label>Reference Date
+                <input type="date" id="cr-date">
+              </label>
+              <button id="cr-preview-btn" class="btn-outline">Preview</button>
+              <button id="cr-generate-all-btn" class="btn-primary">&#128196; Generate PDFs — All Territories</button>
+            </div>
+
+            <div id="cr-result"></div>
+          </div>
+        </section>
+
+        <!-- ============ VISIT STATE UPDATE (UI shell — backend not built) ============ -->
+        <section id="view-visit-state" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div>
+              <h2>Visit State Update <span class="badge-muted">SFA Automation</span></h2>
+            </div>
+          </div>
+          <div class="banner-warning">
+            <b>Not yet functional.</b> This screen shows the planned layout for bidirectional Visit State automation.
+            The Playwright automation against SFA hasn't been built yet — nothing here will actually connect to SFA or change any data.
+          </div>
+
+          <div class="two-col">
+            <div class="card">
+              <h3>Execution Scope</h3>
+              <div class="form-row">
+                <label>Territory <select disabled><option>All Territories</option></select></label>
+                <label>Route <select disabled><option>All Active Routes</option></select></label>
+              </div>
+              <div class="dry-run-row">
+                <div>
+                  <b>Safety Override: Dry Run Mode</b>
+                  <p class="hint">Simulates the update process without committing changes to SFA.</p>
+                </div>
+                <label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label>
+              </div>
+              <div class="card" style="margin-top:16px;">
+                <h3>Pending Queue</h3>
+                <p class="hint">Queue will populate once territory/route filtering and SFA connectivity are built.</p>
+              </div>
+              <div class="form-row" style="margin-top:16px;">
+                <button class="btn-outline" disabled>Clear</button>
+                <button class="btn-primary" disabled>&#9654; Execute Run</button>
+              </div>
+            </div>
+
+            <div>
+              <div class="stat-cards stat-cards-2">
+                <div class="stat-card"><div class="stat-label">SUCCESS</div><div class="stat-value">&mdash;</div></div>
+                <div class="stat-card"><div class="stat-label">FAILED</div><div class="stat-value">&mdash;</div></div>
+              </div>
+              <div class="card log-console">
+                <h3>Process Log</h3>
+                <p class="hint">Not connected — automation backend not yet built.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ SEQUENCE UPDATE (placeholder) ============ -->
+        <section id="view-sequence" class="view" style="display:none;">
+          <div class="view-heading-row"><h2>Sequence Update <span class="badge-muted">SFA Automation</span></h2></div>
+          <div class="banner-warning"><b>Not yet built.</b> Planned to reuse the same Execution Scope + Dry Run pattern as Visit State Update.</div>
+        </section>
+
+        <!-- ============ IMPORT DATA ============ -->
+        <section id="view-import-data" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div>
+              <h2>Data Synchronization Center</h2>
+              <p class="hint">Upload and process extracts from the SFA system. Ensure all core modules are updated before generating export reports.</p>
+            </div>
+          </div>
+
+          <div class="banner-warning">
+            <b>Not yet functional.</b> Drag-and-drop upload and the raw-SFA-export auto-extraction feature aren't built yet — shown here as planned layout only.
+          </div>
+
+          <div class="card">
+            <h3>Raw SFA Export Extraction</h3>
+            <div class="dropzone">
+              <div class="dropzone-icon">&#8593;</div>
+              <b>Drag and drop SFA export here</b>
+              <p class="hint">or click to browse from your computer</p>
+              <button class="btn-outline" disabled>Select File</button>
+            </div>
+          </div>
+
+          <h3 style="margin-top:24px;">Module Updates</h3>
+          <div id="import-modules" class="module-grid">Loading...</div>
+        </section>
+
+        <!-- ============ OUTLET MASTER (placeholder) ============ -->
+        <section id="view-outlet-master" class="view" style="display:none;">
+          <div class="view-heading-row"><h2>Outlet Master</h2></div>
+          <div class="card"><p class="hint">Not yet built in this rebuild — carried over from the original app's Customers/Outlets tab, to be redesigned next.</p></div>
+        </section>
+
+        <!-- ============ MAINTENANCE (placeholder) ============ -->
+        <section id="view-maintenance" class="view" style="display:none;">
+          <div class="view-heading-row"><h2>Maintenance</h2></div>
+          <div class="card"><p class="hint">Not yet built in this rebuild.</p></div>
+        </section>
+
+        <!-- ============ SETTINGS / SUPPORT (placeholder) ============ -->
+        <section id="view-settings" class="view" style="display:none;">
+          <div class="view-heading-row"><h2>Settings</h2></div>
+          <div class="card"><p class="hint">Not yet built.</p></div>
+        </section>
+        <section id="view-support" class="view" style="display:none;">
+          <div class="view-heading-row"><h2>Support</h2></div>
+          <div class="card"><p class="hint">Not yet built.</p></div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

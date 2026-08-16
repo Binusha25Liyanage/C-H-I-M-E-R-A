@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lakmee Chimera - Data Import</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#5b403d",
+                        "surface-container-high": "#e8e8ea",
+                        "on-secondary-fixed": "#1a1c1d",
+                        "on-tertiary-fixed": "#001c37",
+                        "secondary": "#5d5e60",
+                        "surface-container-highest": "#e2e2e5",
+                        "background": "#f9f9fc",
+                        "on-secondary-container": "#636466",
+                        "on-surface": "#1a1c1e",
+                        "outline": "#906f6c",
+                        "inverse-primary": "#ffb3ac",
+                        "surface-tint": "#bb181e",
+                        "tertiary-fixed": "#d2e4ff",
+                        "primary": "#8c000e",
+                        "on-background": "#1a1c1e",
+                        "on-secondary": "#ffffff",
+                        "inverse-on-surface": "#f0f0f3",
+                        "surface": "#f9f9fc",
+                        "surface-variant": "#e2e2e5",
+                        "tertiary-container": "#005da2",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-container": "#ffc5bf",
+                        "secondary-fixed-dim": "#c6c6c8",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#e2e2e4",
+                        "on-primary-fixed-variant": "#93000f",
+                        "tertiary-fixed-dim": "#a1c9ff",
+                        "surface-bright": "#f9f9fc",
+                        "outline-variant": "#e4beb9",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-container": "#b8d5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#e2e2e4",
+                        "tertiary": "#00457a",
+                        "on-primary-fixed": "#410003",
+                        "surface-container-low": "#f3f3f6",
+                        "primary-fixed": "#ffdad6",
+                        "on-secondary-fixed-variant": "#454749",
+                        "on-tertiary-fixed-variant": "#004880",
+                        "on-primary": "#ffffff",
+                        "primary-fixed-dim": "#ffb3ac",
+                        "surface-dim": "#dadadc",
+                        "surface-container": "#eeeef0",
+                        "primary-container": "#b5121b",
+                        "inverse-surface": "#2f3133"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "section-margin": "32px",
+                        "stack-gap": "8px",
+                        "container-gap": "24px",
+                        "cell-padding-v": "12px",
+                        "cell-padding-h": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "title-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "data-mono": ["13px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Dashboard specific styles */
+        .stat-card {
+            border-left-width: 4px;
+            border-left-color: #8c000e; /* Cherry Red from primary */
+        }
+        .file-drop-area {
+            border: 2px dashed var(--tw-colors-outline-variant);
+            transition: all 0.2s ease-in-out;
+        }
+        .file-drop-area:hover, .file-drop-area.dragover {
+            border-color: var(--tw-colors-primary);
+            background-color: var(--tw-colors-primary-fixed);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col w-sidebar-width h-screen sticky left-0 top-0 bg-inverse-surface border-r border-outline-variant py-6 z-20">
+<div class="px-6 mb-8 flex items-center gap-4">
+<img alt="Lakmee Chimera Logo" class="w-10 h-10 object-contain rounded" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAm4NpDaC-REXCKPmGLZVJWi9XuXes6tjBR6jUQWcZ71Fe-gdi-kz5hpa-yPZ9GD7PlSxiOhWZSvH2rhbbUHgUNDOfnNiRAu2t-IKnzIWUDi-dpTO5dkkAxg8xtdgcU48UYJcZSzMsrtWTIh0kKgiUZg2NdgEXMwOO3u61T2DmpwNMqDhLJbeC02LtEoyOoTN8yCyUKzzcw05Diz6VM4b0aCUHx4Clsgpb9601HTks9MfVqOBa3C3H10A"/>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-primary">Lakmee Chimera</h1>
+<p class="font-body-sm text-body-sm text-on-secondary-fixed-variant">Export Management</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-4 flex flex-col gap-2">
+<!-- Overview -->
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-caps text-label-caps">Overview</span>
+</a>
+<!-- Reports -->
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-caps text-label-caps">Reports</span>
+</a>
+<!-- Visit State Update -->
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="sync_alt">sync_alt</span>
+<span class="font-label-caps text-label-caps">Visit State Update</span>
+</a>
+<!-- Sequence Update -->
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="reorder">reorder</span>
+<span class="font-label-caps text-label-caps">Sequence Update</span>
+</a>
+<!-- Import Data (ACTIVE) -->
+<a class="flex items-center gap-3 px-4 py-3 rounded bg-primary text-on-primary font-bold border-l-4 border-on-primary-fixed cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined fill" data-icon="cloud_upload">cloud_upload</span>
+<span class="font-label-caps text-label-caps">Import Data</span>
+</a>
+<!-- Outlet Master -->
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="font-label-caps text-label-caps">Outlet Master</span>
+</a>
+<!-- Maintenance -->
+<a class="flex items-center gap-3 px-4 py-3 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface cursor-pointer active:scale-95 transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+<span class="font-label-caps text-label-caps">Maintenance</span>
+</a>
+</div>
+<div class="px-6 mt-auto">
+<div class="mb-4">
+<span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1A1C1E] text-on-secondary-fixed-variant font-label-caps text-label-caps border border-outline-variant">
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    System Status: Live
+                </span>
+</div>
+<div class="flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-2 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded text-on-secondary-fixed-variant hover:bg-surface-variant hover:text-on-surface transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="help_outline">help_outline</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-container-gap w-full bg-surface border-b-2 border-surface-container-highest docked full-width top-0 sticky z-10">
+<div class="flex items-center gap-4">
+<!-- Mobile Menu Button -->
+<button class="md:hidden p-2 text-on-surface-variant hover:bg-surface-container-high rounded transition-all">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="font-headline-md text-headline-md font-bold text-primary">Import Data</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-surface-container-lowest border border-outline-variant rounded-full px-4 py-1.5 focus-within:ring-2 focus-within:ring-primary transition-all shadow-sm">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none outline-none text-body-sm font-body-sm text-on-surface placeholder-on-surface-variant w-48 focus:ring-0 p-0" placeholder="Search imports..." type="text"/>
+</div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded transition-all relative">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded transition-all">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<button class="flex items-center gap-2 p-1 pr-3 rounded-full border border-outline-variant hover:bg-surface-container-high transition-all">
+<img alt="User Profile" class="w-8 h-8 rounded-full object-cover" data-alt="A professional headshot of a corporate logistics manager in a modern office setting. The lighting is bright and clean, typical of a professional enterprise software environment. The person appears confident and capable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFEIwI1i8vMrNSzGfkkjsSicLAQJiPgY-r26fDkzOSQW54vBUkI6bJNZNkh70pnB_Q9U3kvd2jxVNCna0ySDzlj-Y9mrOSBDT8FDxNc2MIbeciKJohRInBt-xJI-5pTrigkCtRblZiiheQjbhk5R8kxE9m1Qs19hFmBaIUCWr03R3W1YQELiporo9okb44Ni0And7_Yjh4zv4mnqHN8S-41TuYUptCndbo0HwvONVL3vffd8jse1mIjg"/>
+<span class="font-label-caps text-label-caps text-on-surface hidden md:block">User Profile</span>
+</button>
+</div>
+</header>
+<!-- Scrollable Canvas -->
+<div class="flex-1 overflow-y-auto p-section-margin bg-background">
+<div class="max-w-7xl mx-auto space-y-container-gap">
+<!-- Page Header & Action -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+<div>
+<h2 class="font-display-lg text-display-lg text-on-surface mb-2">Data Synchronization Center</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Upload and process daily extracts from the SFA system. Ensure all core modules are updated before generating export reports.</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-2.5 bg-primary text-on-primary font-title-sm text-title-sm rounded shadow-sm hover:bg-primary-container hover:text-on-primary-container transition-colors active:scale-95">
+<span class="material-symbols-outlined" data-icon="sync">sync</span>
+                        Run All Imports
+                    </button>
+</div>
+<!-- Bulk Extraction Section -->
+<section class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm mb-container-gap">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="archive">archive</span>
+<h3 class="font-title-sm text-title-sm text-on-surface">Raw SFA Export Extraction</h3>
+</div>
+<div class="file-drop-area rounded-lg p-10 flex flex-col items-center justify-center text-center cursor-pointer bg-surface" id="drop-zone">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant mb-4" data-icon="upload_file">upload_file</span>
+<p class="font-title-sm text-title-sm text-on-surface mb-1">Drag and drop SFA .zip extract here</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">or click to browse from your computer (Max size: 500MB)</p>
+<button class="px-4 py-2 border border-outline text-on-surface font-label-caps text-label-caps rounded hover:bg-surface-variant transition-colors">Select File</button>
+</div>
+</section>
+<!-- Granular Import Grid -->
+<section>
+<h3 class="font-title-sm text-title-sm text-on-surface mb-4">Module Updates</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Itinerary -->
+<div class="stat-card bg-surface-container-lowest p-5 rounded-lg shadow-sm border-t border-r border-b border-outline-variant relative group overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="route">route</span>
+<h4 class="font-title-sm text-title-sm text-on-surface">Itinerary</h4>
+</div>
+<span class="material-symbols-outlined text-green-600 text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="mb-4">
+<span class="font-data-mono text-display-lg text-on-surface">4,205</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">rows</span>
+</div>
+<div class="flex justify-between items-end border-t border-surface-variant pt-3 mt-2">
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+                                    Last Imported: <strong class="text-on-surface">Today, 08:30 AM</strong>
+</div>
+<button class="text-primary hover:text-primary-container transition-colors p-1 rounded-full hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+</button>
+</div>
+</div>
+<!-- Territories -->
+<div class="stat-card bg-surface-container-lowest p-5 rounded-lg shadow-sm border-t border-r border-b border-outline-variant relative group overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="map">map</span>
+<h4 class="font-title-sm text-title-sm text-on-surface">Territories</h4>
+</div>
+<span class="material-symbols-outlined text-green-600 text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="mb-4">
+<span class="font-data-mono text-display-lg text-on-surface">128</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">regions</span>
+</div>
+<div class="flex justify-between items-end border-t border-surface-variant pt-3 mt-2">
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+                                    Last Imported: <strong class="text-on-surface">Today, 08:32 AM</strong>
+</div>
+<button class="text-primary hover:text-primary-container transition-colors p-1 rounded-full hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+</button>
+</div>
+</div>
+<!-- Invoices -->
+<div class="stat-card bg-surface-container-lowest p-5 rounded-lg shadow-sm border-t border-r border-b border-outline-variant relative group overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="receipt_long">receipt_long</span>
+<h4 class="font-title-sm text-title-sm text-on-surface">Invoices</h4>
+</div>
+<span class="material-symbols-outlined text-amber-500 text-sm" data-icon="warning">warning</span>
+</div>
+<div class="mb-4">
+<span class="font-data-mono text-display-lg text-on-surface">15,892</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">records</span>
+</div>
+<div class="flex justify-between items-end border-t border-surface-variant pt-3 mt-2">
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+                                    Last Imported: <strong class="text-on-surface">Yesterday, 18:00 PM</strong>
+</div>
+<button class="text-primary hover:text-primary-container transition-colors p-1 rounded-full hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+</button>
+</div>
+</div>
+<!-- Sales Orders -->
+<div class="stat-card bg-surface-container-lowest p-5 rounded-lg shadow-sm border-t border-r border-b border-outline-variant relative group overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="shopping_cart">shopping_cart</span>
+<h4 class="font-title-sm text-title-sm text-on-surface">Sales Orders</h4>
+</div>
+<span class="material-symbols-outlined text-green-600 text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="mb-4">
+<span class="font-data-mono text-display-lg text-on-surface">8,450</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">orders</span>
+</div>
+<div class="flex justify-between items-end border-t border-surface-variant pt-3 mt-2">
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+                                    Last Imported: <strong class="text-on-surface">Today, 09:15 AM</strong>
+</div>
+<button class="text-primary hover:text-primary-container transition-colors p-1 rounded-full hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+</button>
+</div>
+</div>
+<!-- Outlet Master -->
+<div class="stat-card bg-surface-container-lowest p-5 rounded-lg shadow-sm border-t border-r border-b border-outline-variant relative group overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="store">store</span>
+<h4 class="font-title-sm text-title-sm text-on-surface">Outlet Master</h4>
+</div>
+<span class="material-symbols-outlined text-surface-variant text-sm" data-icon="pending">pending</span>
+</div>
+<div class="mb-4">
+<span class="font-data-mono text-display-lg text-on-surface">--</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">pending</span>
+</div>
+<div class="flex justify-between items-end border-t border-surface-variant pt-3 mt-2">
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+                                    Last Imported: <strong class="text-on-surface">Never</strong>
+</div>
+<button class="text-primary hover:text-primary-container transition-colors p-1 rounded-full hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+</button>
+</div>
+</div>
+<!-- SKU Sales -->
+<div class="stat-card bg-surface-container-lowest p-5 rounded-lg shadow-sm border-t border-r border-b border-outline-variant relative group overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="inventory">inventory</span>
+<h4 class="font-title-sm text-title-sm text-on-surface">SKU Sales</h4>
+</div>
+<span class="material-symbols-outlined text-green-600 text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="mb-4">
+<span class="font-data-mono text-display-lg text-on-surface">42,109</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant ml-1">items</span>
+</div>
+<div class="flex justify-between items-end border-t border-surface-variant pt-3 mt-2">
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+                                    Last Imported: <strong class="text-on-surface">Today, 09:20 AM</strong>
+</div>
+<button class="text-primary hover:text-primary-container transition-colors p-1 rounded-full hover:bg-primary-fixed">
+<span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<script>
+        // Simple drag and drop visual feedback
+        const dropZone = document.getElementById('drop-zone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+    </script>
+</body></html>
