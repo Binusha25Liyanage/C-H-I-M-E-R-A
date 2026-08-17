@@ -16,6 +16,7 @@ import webview
 from api import Api
 
 APP_TITLE = "C H I M E R A"
+APP_ICON = "frontend/assets/chimera.ico"
 
 # In a normal dev run, frontend/ sits one folder up from this file. Inside
 # a PyInstaller-built exe, bundled data (added via build.py's --add-data)

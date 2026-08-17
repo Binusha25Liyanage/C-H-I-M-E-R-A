@@ -69,6 +69,23 @@ def test_connection():
             page = browser.new_page()
             page.goto(config["login_url"], wait_until="load", timeout=30000)
 
+            # SFA is a client-side-routed single-page app: the browser's
+            # native "load" event fires once the JS bundle downloads, but
+            # Angular then needs a moment afterward to bootstrap and route
+            # to the actual login view. Acting immediately after "load"
+            # can catch the app mid-transition (looks like a 404/blank
+            # screen even though the real page is a second away) — so we
+            # wait for the password field to actually exist before doing
+            # anything else, rather than trusting the load event alone.
+            form_appeared = False
+            for selector in ["input[type='password']", "#password"]:
+                try:
+                    page.wait_for_selector(selector, timeout=15000)
+                    form_appeared = True
+                    break
+                except Exception:
+                    continue
+
             # Best-effort login form fill — see module docstring. Tries a
             # few common patterns rather than one hardcoded selector, so
             # small markup differences don't immediately break this.
@@ -101,11 +118,14 @@ def test_connection():
             browser.close()
 
         if not (username_filled and password_filled):
+            reason = ("The login form never appeared within 15 seconds of the page loading."
+                      if not form_appeared else
+                      "The login form appeared, but its field selectors didn't match this "
+                      "version's guesses.")
             return {
                 "ok": False,
-                "message": "Could not find the login form fields with the selectors this "
-                            "version knows about. See the screenshot to see what the page "
-                            "actually looked like, and share it so the selectors can be fixed.",
+                "message": f"{reason} See the screenshot to see what the page actually looked "
+                            "like, and share it so this can be fixed.",
                 "screenshot_path": screenshot_path,
                 "note": "This is expected until real Test SFA login selectors are confirmed.",
             }
