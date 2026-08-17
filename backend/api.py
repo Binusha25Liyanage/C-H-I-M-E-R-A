@@ -16,9 +16,12 @@ under the hood.
 """
 
 import os
+import base64
 import db
 import combined_report
 import combined_report_pdf
+import sfa_config
+import sfa_connection
 
 
 class Api:
@@ -79,3 +82,31 @@ class Api:
 
     def get_import_log(self):
         return db.get_import_log()
+
+    # ------------------------------------------------------------
+    # SFA connection settings + test.
+    # ------------------------------------------------------------
+    def get_sfa_config(self):
+        config = sfa_config.load_config()
+        # Never send the password back to the frontend for display —
+        # only report whether one is saved, so the Settings screen can
+        # show "•••• saved" instead of the plaintext value.
+        return {
+            "login_url": config.get("login_url", ""),
+            "username": config.get("username", ""),
+            "has_password": bool(config.get("password")),
+            "browser": config.get("browser", "chrome"),
+        }
+
+    def save_sfa_config(self, login_url, username, password, browser):
+        sfa_config.save_config(login_url, username, password, browser)
+        return {"ok": True}
+
+    def test_sfa_connection(self):
+        result = sfa_connection.test_connection()
+        if result.get("screenshot_path") and os.path.exists(result["screenshot_path"]):
+            with open(result["screenshot_path"], "rb") as f:
+                result["screenshot_base64"] = base64.b64encode(f.read()).decode("ascii")
+        else:
+            result["screenshot_base64"] = None
+        return result

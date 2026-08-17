@@ -224,7 +224,33 @@
         <!-- ============ SETTINGS / SUPPORT (placeholder) ============ -->
         <section id="view-settings" class="view" style="display:none;">
           <div class="view-heading-row"><h2>Settings</h2></div>
-          <div class="card"><p class="hint">Not yet built.</p></div>
+          <div class="banner-warning">
+            <b>Early stage.</b> Login form field selectors haven't been confirmed against a real Test SFA
+            login page yet — "Test Connection" will attempt login and show you a screenshot so you can
+            verify whether it actually worked, rather than trusting a guessed success message.
+          </div>
+          <div class="card">
+            <h3>SFA Connection</h3>
+            <div class="form-row">
+              <label>Login URL <input type="text" id="sfa-login-url" placeholder="https://..." style="min-width:320px;"></label>
+              <label>Browser
+                <select id="sfa-browser">
+                  <option value="chrome">Chrome</option>
+                  <option value="edge">Edge</option>
+                  <option value="firefox">Firefox</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Username <input type="text" id="sfa-username"></label>
+              <label>Password <input type="password" id="sfa-password" placeholder="(unchanged if left blank)"></label>
+            </div>
+            <div class="form-row">
+              <button id="sfa-save-btn" class="btn-outline">Save</button>
+              <button id="sfa-test-btn" class="btn-primary">Test Connection</button>
+            </div>
+            <div id="sfa-result"></div>
+          </div>
         </section>
         <section id="view-support" class="view" style="display:none;">
           <div class="view-heading-row"><h2>Support</h2></div>

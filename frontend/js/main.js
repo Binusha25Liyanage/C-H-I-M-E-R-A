@@ -28,6 +28,7 @@ function switchView(view) {
   });
   document.getElementById("topbar-title").textContent = VIEW_TITLES[view] || "Chimera";
   if (view === "import-data") loadImportLog();
+  if (view === "settings") loadSfaConfig();
 }
 
 document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
@@ -215,4 +216,53 @@ window.addEventListener("pywebviewready", () => {
   loadTerritories();
   const dateInput = document.getElementById("cr-date");
   dateInput.value = new Date().toISOString().slice(0, 10);
+});
+
+// ---------------- Settings (SFA connection) ----------------
+async function loadSfaConfig() {
+  try {
+    const c = await window.pywebview.api.get_sfa_config();
+    document.getElementById("sfa-login-url").value = c.login_url || "";
+    document.getElementById("sfa-username").value = c.username || "";
+    document.getElementById("sfa-browser").value = c.browser || "chrome";
+    document.getElementById("sfa-password").placeholder = c.has_password ? "•••• saved (leave blank to keep)" : "";
+  } catch (err) {
+    console.error("Could not load SFA config:", err);
+  }
+}
+
+document.getElementById("sfa-save-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("sfa-result");
+  const login_url = document.getElementById("sfa-login-url").value.trim();
+  const username = document.getElementById("sfa-username").value.trim();
+  const password = document.getElementById("sfa-password").value;
+  const browser = document.getElementById("sfa-browser").value;
+  if (!login_url || !username) {
+    resultEl.innerHTML = "<p class='hint'>Login URL and username are required.</p>";
+    return;
+  }
+  try {
+    await window.pywebview.api.save_sfa_config(login_url, username, password, browser);
+    resultEl.innerHTML = "<p class='hint'>Saved.</p>";
+    document.getElementById("sfa-password").value = "";
+    loadSfaConfig();
+  } catch (err) {
+    resultEl.innerHTML = "<p class='error'>Error saving: " + err + "</p>";
+  }
+});
+
+document.getElementById("sfa-test-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("sfa-result");
+  resultEl.innerHTML = "<p class='hint'>Launching browser and attempting login — a real browser window will open...</p>";
+  try {
+    const r = await window.pywebview.api.test_sfa_connection();
+    let html = `<p class="${r.ok ? 'hint' : 'error'}">${escapeHtml(r.message)}</p>`;
+    if (r.note) html += `<p class="hint"><b>${escapeHtml(r.note)}</b></p>`;
+    if (r.screenshot_base64) {
+      html += `<img src="data:image/png;base64,${r.screenshot_base64}" style="max-width:100%;border:1px solid #ddd;border-radius:8px;margin-top:10px;">`;
+    }
+    resultEl.innerHTML = html;
+  } catch (err) {
+    resultEl.innerHTML = "<p class='error'>Error: " + err + "</p>";
+  }
 });
