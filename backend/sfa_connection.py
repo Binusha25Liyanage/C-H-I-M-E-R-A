@@ -31,6 +31,62 @@ def _launch_browser(playwright, browser_key):
     return playwright.chromium.launch(headless=False, channel=channel)
 
 
+def _login(page, config):
+    """
+    Navigates to the login page and attempts to log in. Returns
+    (username_filled, password_filled, form_appeared) so callers can
+    tell a timing/selector problem apart from a genuine success.
+    Does NOT confirm login actually succeeded past submission — callers
+    should check the resulting page themselves.
+    """
+    page.goto(config["login_url"], wait_until="load", timeout=30000)
+
+    # SFA is a client-side-routed single-page app: the browser's native
+    # "load" event fires once the JS bundle downloads, but Angular then
+    # needs a moment afterward to bootstrap and route to the actual login
+    # view. Acting immediately after "load" can catch the app
+    # mid-transition — so we wait for the password field to actually
+    # exist before doing anything else.
+    form_appeared = False
+    for selector in ["input[type='password']", "#password"]:
+        try:
+            page.wait_for_selector(selector, timeout=15000)
+            form_appeared = True
+            break
+        except Exception:
+            continue
+
+    username_filled = False
+    for selector in ["input[name='username']", "input[type='text']", "#username"]:
+        try:
+            page.fill(selector, config["username"], timeout=3000)
+            username_filled = True
+            break
+        except Exception:
+            continue
+
+    password_filled = False
+    for selector in ["input[type='password']", "#password"]:
+        try:
+            page.fill(selector, config["password"], timeout=3000)
+            password_filled = True
+            break
+        except Exception:
+            continue
+
+    if username_filled and password_filled:
+        try:
+            page.keyboard.press("Enter")
+            page.wait_for_load_state("load", timeout=15000)
+            # Give the SPA a moment to route to its post-login view too,
+            # same reasoning as the login form itself.
+            page.wait_for_timeout(2000)
+        except Exception:
+            pass
+
+    return username_filled, password_filled, form_appeared
+
+
 def test_connection():
     """
     Loads the saved SFA config, launches the configured browser, attempts
@@ -67,53 +123,7 @@ def test_connection():
         with sync_playwright() as p:
             browser = _launch_browser(p, config.get("browser", "chrome"))
             page = browser.new_page()
-            page.goto(config["login_url"], wait_until="load", timeout=30000)
-
-            # SFA is a client-side-routed single-page app: the browser's
-            # native "load" event fires once the JS bundle downloads, but
-            # Angular then needs a moment afterward to bootstrap and route
-            # to the actual login view. Acting immediately after "load"
-            # can catch the app mid-transition (looks like a 404/blank
-            # screen even though the real page is a second away) — so we
-            # wait for the password field to actually exist before doing
-            # anything else, rather than trusting the load event alone.
-            form_appeared = False
-            for selector in ["input[type='password']", "#password"]:
-                try:
-                    page.wait_for_selector(selector, timeout=15000)
-                    form_appeared = True
-                    break
-                except Exception:
-                    continue
-
-            # Best-effort login form fill — see module docstring. Tries a
-            # few common patterns rather than one hardcoded selector, so
-            # small markup differences don't immediately break this.
-            username_filled = False
-            for selector in ["input[name='username']", "input[type='text']", "#username"]:
-                try:
-                    page.fill(selector, config["username"], timeout=3000)
-                    username_filled = True
-                    break
-                except Exception:
-                    continue
-
-            password_filled = False
-            for selector in ["input[type='password']", "#password"]:
-                try:
-                    page.fill(selector, config["password"], timeout=3000)
-                    password_filled = True
-                    break
-                except Exception:
-                    continue
-
-            if username_filled and password_filled:
-                try:
-                    page.keyboard.press("Enter")
-                    page.wait_for_load_state("load", timeout=15000)
-                except Exception:
-                    pass
-
+            username_filled, password_filled, form_appeared = _login(page, config)
             page.screenshot(path=screenshot_path)
             browser.close()
 
@@ -143,6 +153,79 @@ def test_connection():
         return {
             "ok": False,
             "message": f"Connection attempt failed: {e}",
+            "screenshot_path": screenshot_path if os.path.exists(screenshot_path) else None,
+            "note": "",
+        }
+
+
+def test_navigate_sales_organization():
+    return _test_navigate_menu("Sales Organization", "nav_salesorg")
+
+
+def test_navigate_itinerary():
+    return _test_navigate_menu("Itinerary", "nav_itinerary")
+
+
+def _test_navigate_menu(menu_text, screenshot_prefix):
+    """
+    Logs in, then attempts to click into the given top-level menu item.
+    Shared by test_navigate_sales_organization and test_navigate_itinerary
+    (and any future menu probe) — same best-effort-selectors-plus-
+    screenshot approach that worked for diagnosing the login page.
+    """
+    config = sfa_config.load_config()
+    if not config or not config.get("login_url"):
+        return {"ok": False, "message": "No SFA configuration saved yet.", "screenshot_path": None, "note": ""}
+
+    os.makedirs(SCREENSHOT_DIR, exist_ok=True)
+    screenshot_path = os.path.join(
+        SCREENSHOT_DIR, f"{screenshot_prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    )
+
+    try:
+        with sync_playwright() as p:
+            browser = _launch_browser(p, config.get("browser", "chrome"))
+            page = browser.new_page()
+            username_filled, password_filled, form_appeared = _login(page, config)
+
+            if not (username_filled and password_filled):
+                page.screenshot(path=screenshot_path)
+                browser.close()
+                return {
+                    "ok": False,
+                    "message": "Login itself failed before navigation could be attempted.",
+                    "screenshot_path": screenshot_path,
+                    "note": "Fix login first (see Test Connection).",
+                }
+
+            nav_clicked = False
+            for selector in [f"text={menu_text}", f"a:has-text('{menu_text}')"]:
+                try:
+                    page.click(selector, timeout=8000)
+                    nav_clicked = True
+                    break
+                except Exception:
+                    continue
+
+            if nav_clicked:
+                page.wait_for_timeout(1500)  # let the SPA route/render the submenu
+
+            page.screenshot(path=screenshot_path)
+            browser.close()
+
+        return {
+            "ok": nav_clicked,
+            "message": (f"Clicked {menu_text} — check the screenshot to confirm it shows the "
+                        "right submenu/page." if nav_clicked else
+                        f"Could not find a '{menu_text}' nav item with the selectors tried. "
+                        "Check the screenshot to see the real menu."),
+            "screenshot_path": screenshot_path,
+            "note": "Look for the actual export/download button in this screenshot — that's what we build the automation against next.",
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "message": f"Navigation attempt failed: {e}",
             "screenshot_path": screenshot_path if os.path.exists(screenshot_path) else None,
             "note": "",
         }

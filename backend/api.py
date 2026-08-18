@@ -20,6 +20,7 @@ import base64
 import db
 import combined_report
 import combined_report_pdf
+import last_visit_summary
 import sfa_config
 import sfa_connection
 
@@ -77,6 +78,20 @@ class Api:
         conn.close()
         return names
 
+    # ------------------------------------------------------------
+    # Last Visit Sales Summary Report.
+    # Bulk-by-default: pass [] to cover every Van Selling territory,
+    # or one territory name for single mode — same function either way.
+    # ------------------------------------------------------------
+    def preview_last_visit_summary(self, territory, reference_date):
+        return last_visit_summary.get_last_visit_summary(territory, reference_date)
+
+    def generate_last_visit_summaries(self, territories, reference_date, output_folder):
+        reports = last_visit_summary.get_last_visit_summaries(territories, reference_date)
+        result = combined_report_pdf.build_combined_reports(reports, output_folder)
+        result["reports"] = reports
+        return result
+
     def get_default_export_folder(self):
         return os.path.join(os.path.expanduser("~"), "Chimera", "exports")
 
@@ -104,6 +119,24 @@ class Api:
 
     def test_sfa_connection(self):
         result = sfa_connection.test_connection()
+        if result.get("screenshot_path") and os.path.exists(result["screenshot_path"]):
+            with open(result["screenshot_path"], "rb") as f:
+                result["screenshot_base64"] = base64.b64encode(f.read()).decode("ascii")
+        else:
+            result["screenshot_base64"] = None
+        return result
+
+    def test_sfa_navigate_sales_org(self):
+        result = sfa_connection.test_navigate_sales_organization()
+        if result.get("screenshot_path") and os.path.exists(result["screenshot_path"]):
+            with open(result["screenshot_path"], "rb") as f:
+                result["screenshot_base64"] = base64.b64encode(f.read()).decode("ascii")
+        else:
+            result["screenshot_base64"] = None
+        return result
+
+    def test_sfa_navigate_itinerary(self):
+        result = sfa_connection.test_navigate_itinerary()
         if result.get("screenshot_path") and os.path.exists(result["screenshot_path"]):
             with open(result["screenshot_path"], "rb") as f:
                 result["screenshot_base64"] = base64.b64encode(f.read()).decode("ascii")

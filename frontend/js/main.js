@@ -211,11 +211,48 @@ async function loadImportLog() {
   }).join("");
 }
 
+// ---------------- Last Visit Sales Summary Report ----------------
+document.getElementById("lvs-generate-btn").addEventListener("click", async () => {
+  const date = document.getElementById("lvs-date").value;
+  const resultEl = document.getElementById("lvs-result");
+  if (!date) {
+    resultEl.innerHTML = "<p class='hint'>Pick a date first.</p>";
+    return;
+  }
+  resultEl.innerHTML = "<p class='hint'>Checking every Van Selling territory...</p>";
+  try {
+    const folder = await window.pywebview.api.get_default_export_folder();
+    const result = await window.pywebview.api.generate_last_visit_summaries([], date, folder);
+    const notWorked = result.reports.filter(r => r.worked === false);
+    const otherSkips = result.skipped.filter(s => !notWorked.some(nw => nw.territory === s.territory));
+
+    let html = `<p class="hint"><b>${result.written.length}</b> report(s) generated to <code>${escapeHtml(folder)}</code>.</p>`;
+
+    if (notWorked.length > 0) {
+      html += `<p class="hint"><b>${notWorked.length}</b> territory(ies) — rep did not work the previous visit date:</p><ul>`;
+      html += notWorked.map(r => `<li>${escapeHtml(r.territory)} (${escapeHtml(r.route || '')}) — ${escapeHtml(r.reason)}</li>`).join("");
+      html += `</ul>`;
+    }
+    if (otherSkips.length > 0) {
+      html += `<p class="hint">Skipped for other reasons:</p><ul>`;
+      html += otherSkips.map(s => `<li>${escapeHtml(s.territory)} — ${escapeHtml(s.reason)}</li>`).join("");
+      html += `</ul>`;
+    }
+    resultEl.innerHTML = html;
+  } catch (err) {
+    resultEl.innerHTML = "<p class='error'>Error: " + err + "</p>";
+  }
+});
+
 window.addEventListener("pywebviewready", () => {
   loadDashboard();
   loadTerritories();
   const dateInput = document.getElementById("cr-date");
   dateInput.value = new Date().toISOString().slice(0, 10);
+  const lvsDateInput = document.getElementById("lvs-date");
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  lvsDateInput.value = tomorrow.toISOString().slice(0, 10);
 });
 
 // ---------------- Settings (SFA connection) ----------------
@@ -251,11 +288,11 @@ document.getElementById("sfa-save-btn").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("sfa-test-btn").addEventListener("click", async () => {
+async function runSfaProbe(apiMethod, loadingText) {
   const resultEl = document.getElementById("sfa-result");
-  resultEl.innerHTML = "<p class='hint'>Launching browser and attempting login — a real browser window will open...</p>";
+  resultEl.innerHTML = `<p class="hint">${loadingText}</p>`;
   try {
-    const r = await window.pywebview.api.test_sfa_connection();
+    const r = await window.pywebview.api[apiMethod]();
     let html = `<p class="${r.ok ? 'hint' : 'error'}">${escapeHtml(r.message)}</p>`;
     if (r.note) html += `<p class="hint"><b>${escapeHtml(r.note)}</b></p>`;
     if (r.screenshot_base64) {
@@ -265,4 +302,13 @@ document.getElementById("sfa-test-btn").addEventListener("click", async () => {
   } catch (err) {
     resultEl.innerHTML = "<p class='error'>Error: " + err + "</p>";
   }
-});
+}
+
+document.getElementById("sfa-test-btn").addEventListener("click", () =>
+  runSfaProbe("test_sfa_connection", "Launching browser and attempting login — a real browser window will open..."));
+
+document.getElementById("sfa-test-nav-btn").addEventListener("click", () =>
+  runSfaProbe("test_sfa_navigate_sales_org", "Logging in and attempting to navigate to Sales Organization..."));
+
+document.getElementById("sfa-test-nav-itinerary-btn").addEventListener("click", () =>
+  runSfaProbe("test_sfa_navigate_itinerary", "Logging in and attempting to navigate to Itinerary..."));

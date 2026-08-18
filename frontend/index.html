@@ -14,7 +14,7 @@
         <img src="assets/chimera-logo.png" alt="Chimera" class="brand-logo">
         <div>
           <div class="brand-title">C H I M E R A</div>
-          <div class="brand-subtitle">Sales Force Automated System by CHIMERA INNOVATION</div>
+          <div class="brand-subtitle">Sales Force Automation System by CHIMERA INNOVATIONS</div>
         </div>
       </div>
 
@@ -124,6 +124,20 @@
             </div>
 
             <div id="cr-result"></div>
+          </div>
+
+          <div class="card">
+            <h3>Last Visit Sales Summary Report</h3>
+            <p class="hint">
+              For every Van Selling territory: finds the route scheduled for the chosen date, resolves when
+              it was last actually visited, verifies the sales rep genuinely worked that day (checked against
+              real invoice data — never assumed), and builds the combined report only when confirmed.
+            </p>
+            <div class="form-row">
+              <label>Date <input type="date" id="lvs-date"></label>
+              <button id="lvs-generate-btn" class="btn-primary">&#128196; Generate — All Van Selling Territories</button>
+            </div>
+            <div id="lvs-result"></div>
           </div>
         </section>
 
@@ -248,6 +262,8 @@
             <div class="form-row">
               <button id="sfa-save-btn" class="btn-outline">Save</button>
               <button id="sfa-test-btn" class="btn-primary">Test Connection</button>
+              <button id="sfa-test-nav-btn" class="btn-outline">Test: Navigate to Sales Organization</button>
+              <button id="sfa-test-nav-itinerary-btn" class="btn-outline">Test: Navigate to Itinerary</button>
             </div>
             <div id="sfa-result"></div>
           </div>
