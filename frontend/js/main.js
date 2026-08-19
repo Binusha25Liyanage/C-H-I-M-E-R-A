@@ -195,6 +195,7 @@ async function loadImportLog() {
   grid.innerHTML = MODULES.map(m => {
     const entry = log[m.key];
     const hasData = !!entry;
+    const isSkuSales = m.key === "product_sales";
     return `
       <div class="module-card">
         <div class="module-card-header">
@@ -206,10 +207,51 @@ async function loadImportLog() {
           <span>Last Imported:</span>
           <b>${hasData ? entry.last_imported.replace('T',' ') : 'Never'}</b>
         </div>
+        ${isSkuSales
+          ? `<p class="hint" style="margin-top:10px;">Use the SKU Sales Import form above (needs Sale Model + date).</p>`
+          : `<button class="btn-outline module-import-btn" data-type="${m.key}" style="margin-top:10px;width:100%;">Select File & Import</button>
+             <div class="module-import-result" data-type="${m.key}" style="margin-top:8px;font-size:12px;"></div>`
+        }
       </div>
     `;
   }).join("");
+
+  document.querySelectorAll(".module-import-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const type = btn.dataset.type;
+      const resultEl = document.querySelector(`.module-import-result[data-type="${type}"]`);
+      resultEl.textContent = "Waiting for file selection...";
+      btn.disabled = true;
+      try {
+        const r = await window.pywebview.api.import_module(type);
+        resultEl.innerHTML = `<span class="${r.ok ? 'hint' : 'error'}">${escapeHtml(r.message)}</span>`;
+        if (r.ok) loadImportLog(); // refresh counts/timestamps
+      } catch (err) {
+        resultEl.innerHTML = `<span class="error">Error: ${escapeHtml(String(err))}</span>`;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 }
+
+document.getElementById("sku-import-btn").addEventListener("click", async () => {
+  const saleModel = document.getElementById("sku-sale-model").value;
+  const reportDate = document.getElementById("sku-report-date").value;
+  const resultEl = document.getElementById("sku-import-result");
+  if (!reportDate) {
+    resultEl.innerHTML = "<p class='hint'>Pick the report date first.</p>";
+    return;
+  }
+  resultEl.innerHTML = "<p class='hint'>Waiting for file selection...</p>";
+  try {
+    const r = await window.pywebview.api.import_sku_sales(saleModel, reportDate);
+    resultEl.innerHTML = `<p class="${r.ok ? 'hint' : 'error'}">${escapeHtml(r.message)}</p>`;
+    if (r.ok) loadImportLog();
+  } catch (err) {
+    resultEl.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`;
+  }
+});
 
 // ---------------- Last Visit Sales Summary Report ----------------
 document.getElementById("lvs-generate-btn").addEventListener("click", async () => {

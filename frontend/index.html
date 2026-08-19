@@ -14,7 +14,7 @@
         <img src="assets/chimera-logo.png" alt="Chimera" class="brand-logo">
         <div>
           <div class="brand-title">C H I M E R A</div>
-          <div class="brand-subtitle">Sales Force Automation System by CHIMERA INNOVATIONS</div>
+          <div class="brand-subtitle">SFA Management System</div>
         </div>
       </div>
 
@@ -206,17 +206,22 @@
           </div>
 
           <div class="banner-warning">
-            <b>Not yet functional.</b> Drag-and-drop upload and the raw-SFA-export auto-extraction feature aren't built yet — shown here as planned layout only.
+            <b>Raw SFA export auto-extraction not yet built.</b> Each module below expects the standard
+            cleaned column format for now — upload a raw, unmodified SFA export and it will likely fail
+            with a clear error rather than silently importing wrong data.
           </div>
 
-          <div class="card">
-            <h3>Raw SFA Export Extraction</h3>
-            <div class="dropzone">
-              <div class="dropzone-icon">&#8593;</div>
-              <b>Drag and drop SFA export here</b>
-              <p class="hint">or click to browse from your computer</p>
-              <button class="btn-outline" disabled>Select File</button>
+          <div class="card" id="sku-import-card">
+            <h3>SKU Sales Import</h3>
+            <p class="hint">This file has no date or Sale Model column, so both must be set before uploading — same requirement as the original app.</p>
+            <div class="form-row">
+              <label>Sale Model
+                <select id="sku-sale-model"><option value="Van Selling">Van Selling</option><option value="Pre Selling">Pre Selling</option></select>
+              </label>
+              <label>Report Date <input type="date" id="sku-report-date"></label>
+              <button id="sku-import-btn" class="btn-primary">Select File & Import</button>
             </div>
+            <div id="sku-import-result"></div>
           </div>
 
           <h3 style="margin-top:24px;">Module Updates</h3>

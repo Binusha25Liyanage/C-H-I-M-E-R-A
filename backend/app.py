@@ -48,9 +48,15 @@ def main():
     # this argument isn't supported by your installed pywebview version,
     # it's simply ignored rather than crashing the app.
     try:
-        webview.create_window(APP_TITLE, INDEX_HTML, icon=ICON_PATH, **window_kwargs)
+        window = webview.create_window(APP_TITLE, INDEX_HTML, icon=ICON_PATH, **window_kwargs)
     except TypeError:
-        webview.create_window(APP_TITLE, INDEX_HTML, **window_kwargs)
+        window = webview.create_window(APP_TITLE, INDEX_HTML, **window_kwargs)
+
+    # File-picker dialogs (used by the Import Data screen) need a real
+    # window reference — the Api object doesn't have one until the
+    # window actually exists, so it's attached here rather than in
+    # Api.__init__.
+    api.window = window
 
     webview.start()
 
