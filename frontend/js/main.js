@@ -8,6 +8,7 @@ function escapeHtml(s) {
 
 const VIEW_TITLES = {
   "overview": "Dashboard Overview",
+  "daily": "Daily SFA Reports",
   "reports": "Combined SKU + Invoice Report",
   "visit-state": "Visit State Update",
   "sequence": "Sequence Update",
@@ -28,7 +29,8 @@ function switchView(view) {
   });
   document.getElementById("topbar-title").textContent = VIEW_TITLES[view] || "Chimera";
   if (view === "import-data") loadImportLog();
-  if (view === "settings") loadSfaConfig();
+  if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); }
+  if (view === "daily") { loadDailyStatus(); loadRuns(); }
 }
 
 document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
@@ -354,3 +356,164 @@ document.getElementById("sfa-test-nav-btn").addEventListener("click", () =>
 
 document.getElementById("sfa-test-nav-itinerary-btn").addEventListener("click", () =>
   runSfaProbe("test_sfa_navigate_itinerary", "Logging in and attempting to navigate to Itinerary..."));
+
+
+// ---------------- Daily SFA Reports ----------------
+function localToday() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+function drDate() { return document.getElementById("dr-date").value; }
+function fileName(p) { return String(p || "").split(/[\\/]/).pop(); }
+
+async function loadDailyStatus() {
+  const body = document.getElementById("dr-status-body");
+  try {
+    const st = await window.pywebview.api.get_daily_status(drDate());
+    body.innerHTML = st.datasets.map(d => `
+      <tr>
+        <td><b>${escapeHtml(d.label)}</b>${d.source_file ? `<div class="hint">${escapeHtml(fileName(d.source_file))}</div>` : ""}</td>
+        <td>${d.loaded ? '<span class="chip chip-ok">Loaded</span>' : '<span class="chip chip-missing">Missing</span>'}</td>
+        <td class="right">${d.loaded ? d.rows.toLocaleString() : "—"}</td>
+        <td>${escapeHtml(d.generated_at || (d.loaded ? "imported " + d.imported_at.replace("T", " ") : "—"))}</td>
+        <td>${d.warnings.length ? d.warnings.map(w => `<div class="chip chip-warn" style="margin:2px 0;white-space:normal;">${escapeHtml(w)}</div>`).join("") : ""}</td>
+      </tr>`).join("");
+    if (st.history_bills > 0) {
+      body.innerHTML += `<tr><td colspan="5" class="hint">${st.history_bills} bill(s) for this date come from imported SalesPulse history.</td></tr>`;
+    }
+    if (Object.keys(st.groups).length === 0) {
+      body.innerHTML += `<tr><td colspan="5" class="error">No manager groups set up yet — go to Settings → Manager groups and import them from SalesPulse.</td></tr>`;
+    }
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="5" class="error">Error: ${escapeHtml(String(err))}</td></tr>`;
+  }
+}
+
+document.getElementById("dr-date").addEventListener("change", loadDailyStatus);
+
+document.getElementById("dr-import-btn").addEventListener("click", async () => {
+  const el = document.getElementById("dr-import-result");
+  const btn = document.getElementById("dr-import-btn");
+  el.innerHTML = "<p class='hint'>Waiting for file selection…</p>";
+  btn.disabled = true;
+  try {
+    const r = await window.pywebview.api.import_sfa_exports();
+    if (!r.results || r.results.length === 0) { el.innerHTML = `<p class="hint">${escapeHtml(r.message || "Nothing imported.")}</p>`; return; }
+    el.innerHTML = "<ul class='result-list'>" + r.results.map(x => {
+      if (!x.ok) return `<li><span class="chip chip-missing">Failed</span> ${escapeHtml(fileName(x.file))} — ${escapeHtml(x.message)}</li>`;
+      return x.stored.map(s => `<li><span class="chip chip-ok">OK</span> ${escapeHtml(fileName(x.file))} → <b>${escapeHtml(s.label)}</b> for ${s.date}: ${s.rows} rows
+        ${s.warnings.map(w => `<div class="sub">${escapeHtml(w)}</div>`).join("")}</li>`).join("");
+    }).join("") + "</ul>";
+    // Jump to the imported date if it differs from the one shown.
+    const dates = r.results.filter(x => x.ok).flatMap(x => x.stored.map(s => s.date));
+    if (dates.length && !dates.includes(drDate())) document.getElementById("dr-date").value = dates[0];
+    loadDailyStatus();
+  } catch (err) {
+    el.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function openPathButton(path, label) {
+  return `<button class="link-btn" data-open="${escapeHtml(path)}">${escapeHtml(label)}</button>`;
+}
+document.addEventListener("click", async (e) => {
+  const t = e.target.closest("[data-open]");
+  if (!t) return;
+  const r = await window.pywebview.api.open_path(t.dataset.open);
+  if (!r.ok) alertInline(r.message);
+});
+function alertInline(msg) {
+  const el = document.getElementById("dr-generate-result");
+  if (el) el.insertAdjacentHTML("afterbegin", `<p class="error">${escapeHtml(msg)}</p>`);
+}
+
+document.getElementById("dr-generate-btn").addEventListener("click", async () => {
+  const el = document.getElementById("dr-generate-result");
+  const btn = document.getElementById("dr-generate-btn");
+  const kinds = Array.from(document.querySelectorAll(".dr-kind:checked")).map(c => c.value);
+  if (kinds.length === 0) { el.innerHTML = "<p class='hint'>Tick at least one report.</p>"; return; }
+  el.innerHTML = "<p class='hint'>Generating…</p>";
+  btn.disabled = true;
+  try {
+    const style = document.getElementById("dr-style").value || null;
+    const r = await window.pywebview.api.generate_daily_reports(drDate(), kinds, document.getElementById("dr-images").checked, style);
+    let html = r.warning ? `<p class="error">${escapeHtml(r.warning)}</p>` : "";
+    html += `<p class="${r.ok ? 'hint' : 'error'}">Run #${r.run_id}: <b>${r.status.toUpperCase()}</b>${r.folder ? " — " + openPathButton(r.folder, "Open output folder") : ""}</p><ul class="result-list">`;
+    for (const rep of r.reports) {
+      if (rep.ok) {
+        const pdfLinks = (rep.outputs || [{style: "", pdf: rep.pdf}]).map(o => openPathButton(o.pdf, o.style ? `PDF (${o.style})` : "PDF")).join(" · ");
+        html += `<li><span class="chip chip-ok">OK</span> <b>${escapeHtml(rep.label)}</b> — ${pdfLinks}${rep.images.length ? ` + ${rep.images.length} WhatsApp image(s)` : ""}
+          ${rep.notes.map(n => `<div class="sub">${escapeHtml(n)}</div>`).join("")}</li>`;
+      } else {
+        html += `<li><span class="chip chip-missing">Skipped</span> <b>${escapeHtml(rep.label)}</b> — ${escapeHtml(rep.reason)}</li>`;
+      }
+    }
+    el.innerHTML = html + "</ul>";
+    loadRuns();
+  } catch (err) {
+    el.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function loadRuns() {
+  const el = document.getElementById("dr-runs");
+  try {
+    const runs = await window.pywebview.api.get_report_runs(15);
+    if (runs.length === 0) { el.innerHTML = "<p class='hint'>No runs yet.</p>"; return; }
+    el.innerHTML = `<table class="report-table"><thead><tr><th>#</th><th>Started</th><th>Report date</th><th>Trigger</th><th>Status</th><th>Reports</th><th>Output</th></tr></thead><tbody>` +
+      runs.map(r => {
+        const reps = (r.summary.reports || []).map(x => `${x.ok ? "✓" : "✗"} ${escapeHtml(x.label)}`).join("<br>");
+        const cls = r.status === "success" ? "chip-ok" : (r.status === "partial" ? "chip-warn" : "chip-missing");
+        return `<tr><td>${r.id}</td><td>${escapeHtml(r.started_at.replace("T", " "))}</td><td>${r.report_date}</td><td>${escapeHtml(r.trigger)}</td>
+          <td><span class="chip ${cls}">${escapeHtml(r.status)}</span></td><td>${reps}</td><td>${r.folder ? openPathButton(r.folder, "Open") : "—"}</td></tr>`;
+      }).join("") + "</tbody></table>";
+  } catch (err) {
+    el.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`;
+  }
+}
+document.getElementById("dr-runs-refresh").addEventListener("click", loadRuns);
+
+// ---------------- Settings: report rules + manager groups ----------------
+const RS_KEYS = ["first_bill_time", "gap_red_minutes", "pivot_bill_count", "small_bill_lines", "focus_product",
+  "hourly_start_hour", "hourly_end_hour", "separate_early_bucket",
+  "van_bc_target", "van_sv_target", "pre_bc_target", "pre_sv_target", "output_style"];
+
+async function loadReportSettings() {
+  try {
+    const s = await window.pywebview.api.get_report_settings();
+    RS_KEYS.forEach(k => { const el = document.getElementById("rs-" + k); if (el && s[k] !== undefined) el.value = s[k]; });
+  } catch (err) { console.error(err); }
+}
+document.getElementById("rs-save-btn").addEventListener("click", async () => {
+  const values = {};
+  RS_KEYS.forEach(k => { values[k] = document.getElementById("rs-" + k).value; });
+  const r = await window.pywebview.api.save_report_settings(values);
+  document.getElementById("rs-result").innerHTML = `<p class="${r.ok ? 'hint' : 'error'}">${escapeHtml(r.message)}</p>`;
+  if (r.ok) loadReportSettings();
+});
+
+async function loadManagerGroups() {
+  const el = document.getElementById("mg-groups");
+  try {
+    const st = await window.pywebview.api.get_daily_status(localToday());
+    const names = Object.keys(st.groups);
+    if (names.length === 0) { el.innerHTML = "<p class='hint'>No groups yet.</p>"; return; }
+    el.innerHTML = names.map(g => `<div class="group-card"><b>${escapeHtml(g)}</b>${st.groups[g].map(t =>
+      `${escapeHtml(t.territory)}<span class="model">${t.model}</span>`).join("<br>")}</div>`).join("");
+  } catch (err) { el.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`; }
+}
+document.getElementById("mg-import-btn").addEventListener("click", async () => {
+  const el = document.getElementById("mg-result");
+  el.innerHTML = "<p class='hint'>Waiting for file selection…</p>";
+  const r = await window.pywebview.api.import_salespulse_database(true);
+  el.innerHTML = `<p class="${r.ok ? 'hint' : 'error'}">${escapeHtml(r.message)}</p>`;
+  if (r.ok) { loadManagerGroups(); loadReportSettings(); }
+});
+
+window.addEventListener("pywebviewready", () => {
+  document.getElementById("dr-date").value = localToday();
+});

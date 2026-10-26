@@ -20,6 +20,7 @@
 
       <nav class="sidebar-nav">
         <button class="nav-btn active" data-view="overview"><span class="nav-icon">&#9638;</span> Overview</button>
+        <button class="nav-btn" data-view="daily"><span class="nav-icon">&#9201;</span> Daily SFA Reports</button>
         <button class="nav-btn" data-view="reports"><span class="nav-icon">&#9776;</span> Reports</button>
         <button class="nav-btn" data-view="visit-state"><span class="nav-icon">&#8644;</span> Visit State Update</button>
         <button class="nav-btn" data-view="sequence"><span class="nav-icon">&#9776;</span> Sequence Update</button>
@@ -99,6 +100,63 @@
               </div>
               <p class="hint">Not yet available — per-source freshness checks aren't built yet. See the Import Data screen for what has (and hasn't) been imported.</p>
             </div>
+          </div>
+        </section>
+
+
+        <!-- ============ DAILY SFA REPORTS (SKU / Pivot / Hourly) ============ -->
+        <section id="view-daily" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div>
+              <h2>Daily SFA Reports</h2>
+              <p class="hint">SKU, Pivot and Hourly BC &amp; SV reports built straight from <b>raw, unedited</b> SFA exports &mdash;
+                no manual merging. Each file is identified from its own headers and banner, so you can select them all at once.</p>
+            </div>
+            <div class="heading-actions">
+              <label class="inline-date">Report date <input type="date" id="dr-date"></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-row">
+              <h3>1 &middot; SFA inputs for this date</h3>
+              <button id="dr-import-btn" class="btn-primary">&#8682; Select SFA export files&hellip;</button>
+            </div>
+            <p class="hint">Needed: Invoices (Van selling), Sales Orders (Pending), Outlet Wise SKU &times;2 (Van Selling; Pre Sales Order &ndash; Pending), Unproductive Visits.
+              Importing a newer export for the same date replaces the older one.</p>
+            <div id="dr-import-result"></div>
+            <table class="report-table" style="margin-top:12px;">
+              <thead><tr><th>Input</th><th>Status</th><th class="right">Rows</th><th>SFA generated at</th><th>Notes</th></tr></thead>
+              <tbody id="dr-status-body"><tr><td colspan="5" class="hint">Loading&hellip;</td></tr></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>2 &middot; Generate</h3>
+            <div class="form-row">
+              <label class="check"><input type="checkbox" class="dr-kind" value="sku" checked> SKU Report</label>
+              <label class="check"><input type="checkbox" class="dr-kind" value="pivot" checked> Pivot Report</label>
+              <label class="check"><input type="checkbox" class="dr-kind" value="hourly" checked> Hourly BC &amp; SV</label>
+              <label class="check"><input type="checkbox" id="dr-images" checked> WhatsApp images</label>
+              <label>Output style
+                <select id="dr-style">
+                  <option value="">Default (from Settings)</option>
+                  <option value="classic">Classic (SalesPulse layout)</option>
+                  <option value="professional">Professional (Chimera, B&amp;W logo)</option>
+                  <option value="both">Both</option>
+                </select>
+              </label>
+              <button id="dr-generate-btn" class="btn-primary">&#128196; Generate reports</button>
+            </div>
+            <div id="dr-generate-result"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-row">
+              <h3>Run history</h3>
+              <button id="dr-runs-refresh" class="btn-outline btn-small">Refresh</button>
+            </div>
+            <div id="dr-runs"></div>
           </div>
         </section>
 
@@ -271,6 +329,55 @@
               <button id="sfa-test-nav-itinerary-btn" class="btn-outline">Test: Navigate to Itinerary</button>
             </div>
             <div id="sfa-result"></div>
+          </div>
+
+          <div class="card">
+            <h3>Daily report rules</h3>
+            <p class="hint">Applied to the next generated report. Targets: a territory is highlighted in the Hourly report when it meets BOTH its bill and value target.</p>
+            <div class="form-row">
+              <label>First bill reference time <input type="time" id="rs-first_bill_time"></label>
+              <label>Late gap (minutes) <input type="number" min="1" id="rs-gap_red_minutes"></label>
+              <label>Bills shown in Pivot <input type="number" min="1" max="6" id="rs-pivot_bill_count"></label>
+              <label>Small bill = fewer than N items <input type="number" min="1" id="rs-small_bill_lines"></label>
+              <label>Focus product (SKU report) <input type="text" id="rs-focus_product"></label>
+            </div>
+            <div class="form-row">
+              <label>Default output style
+                <select id="rs-output_style">
+                  <option value="classic">Classic &mdash; same layout as the SalesPulse reports, no logo</option>
+                  <option value="professional">Professional &mdash; Chimera layout, black &amp; white logo</option>
+                  <option value="both">Both</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Hourly from (hour) <input type="number" min="0" max="23" id="rs-hourly_start_hour"></label>
+              <label>Hourly to (hour) <input type="number" min="1" max="24" id="rs-hourly_end_hour"></label>
+              <label>Early records
+                <select id="rs-separate_early_bucket">
+                  <option value="1">Own "Before" column</option>
+                  <option value="0">Merge into first hour (SalesPulse style)</option>
+                </select>
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Van target &ndash; bills <input type="number" min="0" id="rs-van_bc_target"></label>
+              <label>Van target &ndash; value <input type="number" min="0" id="rs-van_sv_target"></label>
+              <label>Pre target &ndash; bills <input type="number" min="0" id="rs-pre_bc_target"></label>
+              <label>Pre target &ndash; value <input type="number" min="0" id="rs-pre_sv_target"></label>
+            </div>
+            <div class="form-row"><button id="rs-save-btn" class="btn-primary">Save rules</button></div>
+            <div id="rs-result"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-row">
+              <h3>Manager groups</h3>
+              <button id="mg-import-btn" class="btn-outline">Import from SalesPulse database&hellip;</button>
+            </div>
+            <p class="hint">Which territories belong to which manager, and whether each is Van or Pre selling. Also updated by the Territories import on the Import Data screen (columns Group, Territory, Sale Model).</p>
+            <div id="mg-result"></div>
+            <div id="mg-groups" class="group-grid"></div>
           </div>
         </section>
         <section id="view-support" class="view" style="display:none;">

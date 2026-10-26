@@ -66,6 +66,12 @@ def main():
         # exe under a "frontend" folder, matching the relative path
         # app.py expects (../frontend from backend/).
         "--add-data", f"{FRONTEND_DIR}{DATA_SEP}frontend",
+        # Backend modules live next to app.py; make sure PyInstaller finds them.
+        "--paths", BACKEND_DIR,
+        # pypdfium2 ships the native PDFium library as package data, which
+        # PyInstaller won't pick up by import analysis alone.
+        "--collect-all", "pypdfium2",
+        "--collect-all", "pypdfium2_raw",
     ]
     args.append("--onedir" if onedir else "--onefile")
 

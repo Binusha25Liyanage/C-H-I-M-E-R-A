@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# PyInstaller output
+build/
+dist/
+*.spec
+
+# Local / editor
+.vscode/
+desktop.ini
+
+# Never commit runtime data or credentials (these live under ~/Chimera,
+# but guard against copies landing in the repo)
+*.db
+sfa_config.json
+screenshots/
+*.xlsx
+*.xls

@@ -25,11 +25,15 @@ import combined_report_pdf
 import last_visit_summary
 import sfa_config
 import sfa_connection
+import sfa_store
+import report_pipeline
 
 
 class Api:
     def __init__(self):
         db.init_db()
+        sfa_store.init_schema()
+        report_pipeline.init_schema()
         self.window = None  # set by app.py after the pywebview window is created
 
     # ------------------------------------------------------------
@@ -102,81 +106,14 @@ class Api:
         return db.get_import_log()
 
     # ------------------------------------------------------------
-    # Real data import — opens a native file picker, parses the file
-    # with excel_import.py, writes it to the database, and records the
-    # import so the Dashboard/Import Data screens reflect what actually
-    # happened rather than a guess.
-    # ------------------------------------------------------------
-    def _pick_excel_file(self):
-        if self.window is None:
-            return None
-        result = self.window.create_file_dialog(
-            webview.OPEN_DIALOG,
-            file_types=("Excel files (*.xlsx;*.xls)", "All files (*.*)"),
-        )
-        if not result:
-            return None
-        return result[0]
-
-    # Maps a data-type key (matching import_log's keys and the frontend's
-    # MODULES list) to its parser + inserter, handled via if/elif below
-    # rather than a lookup table — each parser has a slightly different
-    # return shape (itinerary returns 4 values, others return 2), so a
-    # uniform table would need per-entry unwrapping logic anyway.
-    def import_module(self, data_type):
-        path = self._pick_excel_file()
-        if not path:
-            return {"ok": False, "message": "No file selected."}
-        try:
-            if data_type == "itinerary":
-                rows, _territories, _year_months, warnings = excel_import.parse_itinerary_workbook(path)
-                n = db.insert_itinerary_rows(rows)
-            elif data_type == "territories":
-                rows, warnings = excel_import.parse_territories_workbook(path)
-                n = db.upsert_territories(rows)
-            elif data_type == "invoices":
-                rows, warnings = excel_import.parse_invoices_workbook(path)
-                n = db.insert_van_sales_rows(rows)
-            elif data_type == "sales_orders":
-                rows, warnings = excel_import.parse_sales_orders_workbook(path)
-                n = db.insert_pre_sales_rows(rows)
-            elif data_type == "outlets":
-                rows, warnings = excel_import.parse_outlets_workbook(path)
-                n = db.insert_outlets_rows(rows)
-            else:
-                return {"ok": False, "message": f"Unknown data type '{data_type}'."}
-
-            db.record_import(data_type, n)
-            msg = f"Imported {n} row(s)."
-            if warnings:
-                msg += f" {len(warnings)} warning(s): " + "; ".join(warnings[:3])
-                if len(warnings) > 3:
-                    msg += f" (+{len(warnings) - 3} more)"
-            return {"ok": True, "row_count": n, "message": msg, "warnings": warnings}
-        except Exception as e:
-            return {"ok": False, "message": str(e)}
-
-    def import_sku_sales(self, expected_model, report_date):
-        path = self._pick_excel_file()
-        if not path:
-            return {"ok": False, "message": "No file selected."}
-        try:
-            rows, warnings = excel_import.parse_sku_sales_workbook(path, expected_model, report_date)
-            n = db.insert_product_sales_rows(rows)
-            db.record_import("product_sales", n)
-            msg = f"Imported {n} row(s) for {expected_model} on {report_date}."
-            if warnings:
-                msg += f" {len(warnings)} warning(s): " + "; ".join(warnings[:3])
-                if len(warnings) > 3:
-                    msg += f" (+{len(warnings) - 3} more)"
-            return {"ok": True, "row_count": n, "message": msg, "warnings": warnings}
-        except Exception as e:
-            return {"ok": False, "message": str(e)}
-
-    # ------------------------------------------------------------
     # Real data import: native file picker -> excel_import parser ->
     # db insert -> record_import. This is what the Import Data screen's
     # module cards actually run when clicked.
+    #
+    # Every parser returns a tuple whose FIRST element is the row list
+    # and whose LAST element is the warnings list (itinerary also returns
+    # territories/year_months in between), so we unpack positionally
+    # rather than passing the whole tuple to the inserter.
     # ------------------------------------------------------------
     _MODULE_PARSERS = {
         "itinerary": (excel_import.parse_itinerary_workbook, db.insert_itinerary_rows),
@@ -188,65 +125,77 @@ class Api:
 
     def pick_excel_file(self):
         """Opens a native file picker. Returns the chosen path, or None if cancelled."""
-        result = webview.windows[0].create_file_dialog(
-            webview.OPEN_DIALOG, file_types=("Excel Files (*.xlsx;*.xls)",)
+        window = self.window or (webview.windows[0] if webview.windows else None)
+        if window is None:
+            return None
+        result = window.create_file_dialog(
+            webview.OPEN_DIALOG,
+            file_types=("Excel files (*.xlsx;*.xls)", "All files (*.*)"),
         )
         return result[0] if result else None
+
+    @staticmethod
+    def _format_import_message(row_count, warnings, suffix=""):
+        msg = f"Imported {row_count} row(s){suffix}."
+        if warnings:
+            msg += f" {len(warnings)} warning(s): " + "; ".join(warnings[:3])
+            if len(warnings) > 3:
+                msg += f" (+{len(warnings) - 3} more)"
+        return msg
+
+    def _run_import(self, data_type, parse, insert, log_key, suffix=""):
+        """Shared import path: pick file -> parse -> insert -> log."""
+        path = self.pick_excel_file()
+        if not path:
+            return {"ok": False, "message": "No file selected."}
+
+        try:
+            parsed = parse(path)
+        except Exception as e:
+            return {"ok": False, "message": f"Could not read file: {e}"}
+        rows, warnings = parsed[0], parsed[-1]
+
+        if not rows:
+            msg = "No rows found — check the file matches the expected column format."
+            if warnings:
+                msg += " " + "; ".join(warnings[:3])
+            return {"ok": False, "message": msg, "warnings": warnings}
+
+        try:
+            n = insert(rows)
+        except Exception as e:
+            return {"ok": False, "message": f"Could not save to database: {e}", "warnings": warnings}
+
+        # sqlite's rowcount can be -1 for executemany; fall back to the
+        # number of parsed rows so the log never shows a nonsense count.
+        row_count = n if isinstance(n, int) and n >= 0 else len(rows)
+        db.record_import(log_key, row_count)
+        return {
+            "ok": True,
+            "row_count": row_count,
+            "message": self._format_import_message(row_count, warnings, suffix),
+            "warnings": warnings,
+        }
 
     def import_module(self, data_type):
         """
         Handles Itinerary, Territories, Invoices, Sales Orders, and
-        Outlet Master imports — the 5 module types that don't need extra
-        parameters beyond the file itself. SKU Sales is handled
-        separately by import_sku_sales, since that file needs a Sale
-        Model and date supplied alongside it (the source file has
-        neither column).
+        Outlet Master imports. SKU Sales is handled by import_sku_sales,
+        since that file needs a Sale Model and date supplied alongside it.
         """
         if data_type not in self._MODULE_PARSERS:
             return {"ok": False, "message": f"Unknown data type '{data_type}'."}
-
-        path = self.pick_excel_file()
-        if not path:
-            return {"ok": False, "message": "No file selected."}
-
         parser, inserter = self._MODULE_PARSERS[data_type]
-        try:
-            rows = parser(path)
-        except Exception as e:
-            return {"ok": False, "message": f"Could not read file: {e}"}
-
-        if not rows:
-            return {"ok": False, "message": "No rows found — check the file matches the expected column format."}
-
-        try:
-            n = inserter(rows)
-        except Exception as e:
-            return {"ok": False, "message": f"Could not save to database: {e}"}
-
-        row_count = n if isinstance(n, int) else len(rows)
-        db.record_import(data_type, row_count)
-        return {"ok": True, "message": f"Imported {row_count} rows.", "row_count": row_count}
+        return self._run_import(data_type, parser, inserter, data_type)
 
     def import_sku_sales(self, sale_model, report_date):
-        path = self.pick_excel_file()
-        if not path:
-            return {"ok": False, "message": "No file selected."}
-        try:
-            rows = excel_import.parse_sku_sales_workbook(path, sale_model, report_date)
-        except Exception as e:
-            return {"ok": False, "message": f"Could not read file: {e}"}
-
-        if not rows:
-            return {"ok": False, "message": "No rows found — check the file matches the expected column format."}
-
-        try:
-            n = db.insert_product_sales_rows(rows)
-        except Exception as e:
-            return {"ok": False, "message": f"Could not save to database: {e}"}
-
-        row_count = n if isinstance(n, int) else len(rows)
-        db.record_import("product_sales", row_count)
-        return {"ok": True, "message": f"Imported {row_count} rows.", "row_count": row_count}
+        return self._run_import(
+            "product_sales",
+            lambda path: excel_import.parse_sku_sales_workbook(path, sale_model, report_date),
+            db.insert_product_sales_rows,
+            "product_sales",
+            suffix=f" for {sale_model} on {report_date}",
+        )
 
     # ------------------------------------------------------------
     # SFA connection settings + test.
@@ -293,3 +242,86 @@ class Api:
         else:
             result["screenshot_base64"] = None
         return result
+
+    # ------------------------------------------------------------
+    # Daily SFA Reports (SKU / Pivot / Hourly) — built from RAW SFA
+    # exports. The same report_pipeline.run_reports() is used by the
+    # command line and (next) the scheduler.
+    # ------------------------------------------------------------
+    def _window(self):
+        return self.window or (webview.windows[0] if webview.windows else None)
+
+    def get_daily_status(self, date):
+        status = sfa_store.get_dataset_status(date)
+        groups = sfa_store.get_groups()
+        status["groups"] = {g: [{"territory": t, "model": m} for t, m in v] for g, v in groups.items()}
+        status["output_root"] = report_pipeline.DEFAULT_OUTPUT_ROOT
+        return status
+
+    def import_sfa_exports(self):
+        """Multi-select: pick any number of raw SFA exports; each is detected and imported on its own."""
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(
+            webview.OPEN_DIALOG, allow_multiple=True,
+            file_types=("Excel files (*.xlsx)", "All files (*.*)"))
+        if not paths:
+            return {"ok": False, "message": "No files selected.", "results": []}
+        results = sfa_store.import_files(list(paths))
+        return {"ok": any(r["ok"] for r in results), "results": results}
+
+    def generate_daily_reports(self, date, kinds, images=True, style=None):
+        kinds = [k for k in kinds if k in report_pipeline.REPORT_KINDS] or list(report_pipeline.REPORT_KINDS)
+        if style not in sfa_store.OUTPUT_STYLES:
+            style = None  # fall back to the saved setting
+        result = report_pipeline.run_reports(date, kinds=kinds, images=images, trigger="manual", style=style)
+        for r in result["reports"]:
+            r.pop("trace", None)
+        return result
+
+    def preview_daily_report(self, kind, date):
+        try:
+            return report_pipeline.build_report(kind, date)
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    def get_report_runs(self, limit=15):
+        return report_pipeline.get_runs(limit)
+
+    def open_path(self, path):
+        """Opens a folder or file in Windows Explorer / its default app."""
+        if not path or not os.path.exists(path):
+            return {"ok": False, "message": "That file or folder no longer exists."}
+        try:
+            if hasattr(os, "startfile"):
+                os.startfile(path)
+            else:
+                import subprocess
+                subprocess.Popen(["xdg-open", path])
+            return {"ok": True}
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    def get_report_settings(self):
+        return sfa_store.get_settings()
+
+    def save_report_settings(self, values):
+        ok, message = sfa_store.save_settings(values or {})
+        return {"ok": ok, "message": message}
+
+    def import_salespulse_database(self, include_history=True):
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(
+            webview.OPEN_DIALOG, file_types=("SalesPulse database (*.db)", "All files (*.*)"))
+        if not paths:
+            return {"ok": False, "message": "No file selected."}
+        try:
+            r = sfa_store.import_salespulse_db(paths[0], include_history=include_history)
+        except Exception as e:
+            return {"ok": False, "message": f"Could not import: {e}"}
+        return {"ok": True, "message": (f"Imported {r['groups']} territory-group rows, {r['settings']} settings, "
+                                        f"{r['history_bills']} historical bills and "
+                                        f"{r['history_unproductive']} historical unproductive visits."), **r}

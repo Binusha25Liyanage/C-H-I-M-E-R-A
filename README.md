@@ -93,3 +93,19 @@ python build.py
 ## Status
 
 Actively developed. This is an internal tool for Lakmee Exports Lanka's IT department — not a general-purpose or public product.
+
+## Daily SFA Reports (SKU, Pivot, Hourly BC & SV)
+
+Built straight from **raw, unedited** SalesPro exports — no manual merging.
+
+1. **Settings → Manager groups → Import from SalesPulse database…** (one-time): brings in the
+   territory→manager list, report rules and history.
+2. **Daily SFA Reports → Select SFA export files…**: pick the 5 exports at once (Invoices – Van selling,
+   Sales Orders – Pending, Outlet Wise SKU – Van Selling, Outlet Wise SKU – Pre Sales Order Pending,
+   Unproductive Visits). Each file is identified from its own headers/banner; a newer export for the same
+   date replaces the older one.
+3. **Generate reports** → PDFs + WhatsApp-ready PNGs in `~/Chimera/exports/SFA Reports/<date>/<time>/`.
+
+Headless (used by the scheduler): `py backend\run_reports.py --date 2026-10-26`
+
+Tests: `py -m unittest discover -s tests -v`
