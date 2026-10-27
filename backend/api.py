@@ -41,8 +41,13 @@ class Api:
         automation_store.init_schema()
         automation_store.mark_interrupted_runs()
         whatsapp_sender.init_schema()
-        self.window = None
-        self.scheduler = None  # set by app.py after the pywebview window is created
+        # IMPORTANT: anything that is not an API method must start with "_".
+        # pywebview walks every public attribute of this object to build
+        # window.pywebview.api — walking into the native window or the
+        # scheduler thread breaks that and makes EVERY button fail with
+        # "... is not a function". Underscored attributes are skipped.
+        self._win = None          # set by app.py after the window is created
+        self._scheduler = None    # set by app.py
 
     # ------------------------------------------------------------
     # Step 1 scaffold: a single proven round trip through the real
@@ -133,7 +138,7 @@ class Api:
 
     def pick_excel_file(self):
         """Opens a native file picker. Returns the chosen path, or None if cancelled."""
-        window = self.window or (webview.windows[0] if webview.windows else None)
+        window = self._win or (webview.windows[0] if webview.windows else None)
         if window is None:
             return None
         result = window.create_file_dialog(
@@ -257,7 +262,7 @@ class Api:
     # command line and (next) the scheduler.
     # ------------------------------------------------------------
     def _window(self):
-        return self.window or (webview.windows[0] if webview.windows else None)
+        return self._win or (webview.windows[0] if webview.windows else None)
 
     def get_daily_status(self, date):
         status = sfa_store.get_dataset_status(date)

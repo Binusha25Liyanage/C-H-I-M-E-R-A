@@ -9,6 +9,7 @@ the frontend/index.html page rendered inside it, and wires up the Api
 bridge from api.py so JavaScript in that page can call real Python code.
 """
 
+import logging
 import os
 import sys
 import webview
@@ -33,6 +34,19 @@ INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
 ICON_PATH = os.path.join(FRONTEND_DIR, "assets", "chimera.ico")
 
 
+def api_public_non_methods(obj):
+    """Public attributes that aren't methods. Must be empty, or pywebview can't expose the API."""
+    import inspect
+    out = []
+    for name in dir(obj):
+        if name.startswith("_"):
+            continue
+        attr = getattr(obj, name)
+        if not (inspect.ismethod(attr) or inspect.isfunction(attr)):
+            out.append(name)
+    return out
+
+
 def main():
     # Windows Task Scheduler launches "Chimera.exe --scheduled": run the due
     # SFA automation headless and exit, without opening a window.
@@ -40,7 +54,17 @@ def main():
         import run_scheduled
         sys.exit(run_scheduled.main(["--now"] if "--run-now" in sys.argv else []))
 
+    # Keep a log so problems (including pywebview's own errors) leave a trace.
+    log_dir = os.path.join(os.path.expanduser("~"), "Chimera", "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    logging.basicConfig(filename=os.path.join(log_dir, "chimera.log"), level=logging.INFO,
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.info("Chimera starting")
+
     api = Api()
+    bad = api_public_non_methods(api)
+    if bad:  # would break pywebview's API discovery — see Api.__init__
+        logging.error("Api has public non-method attributes: %s", bad)
 
     window_kwargs = dict(
         js_api=api,
@@ -64,12 +88,12 @@ def main():
     # window reference — the Api object doesn't have one until the
     # window actually exists, so it's attached here rather than in
     # Api.__init__.
-    api.window = window
+    api._win = window
 
     # Scheduled SFA runs while the window is open (Task Scheduler covers when it's closed).
     import scheduler
-    api.scheduler = scheduler.InAppScheduler()
-    api.scheduler.start()
+    api._scheduler = scheduler.InAppScheduler()
+    api._scheduler.start()
 
     webview.start()
 

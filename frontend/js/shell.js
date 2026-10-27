@@ -315,7 +315,22 @@ function openRuleModal(rule) {
 }
 
 // ---------------------------------------------------------------- start-up
+function apiConnected() {
+  const api = window.pywebview && window.pywebview.api;
+  return !!api && typeof api.get_dashboard_summary === "function" && typeof api.get_notifications === "function";
+}
+function showApiBanner() {
+  if (document.getElementById("api-banner")) return;
+  const d = document.createElement("div");
+  d.id = "api-banner"; d.className = "problem-box";
+  d.style.cssText = "margin:16px 32px 0;";
+  d.innerHTML = `<b>Chimera's screen couldn't connect to its Python side</b>, so buttons won't work. Close Chimera and start it again.
+    If it keeps happening, make sure every file from the latest update is in place (especially <code>backend\\api.py</code> and
+    <code>backend\\app.py</code>) and send the log file <code>%USERPROFILE%\\Chimera\\logs\\chimera.log</code>.`;
+  document.querySelector(".main-col").insertBefore(d, document.querySelector("main"));
+}
 window.addEventListener("pywebviewready", () => {
+  if (!apiConnected()) { showApiBanner(); return; }
   loadOverviewFeed(); refreshBell();
   SH.notifTimer = setInterval(refreshBell, 30000);
 });
