@@ -21,6 +21,7 @@
       <nav class="sidebar-nav">
         <button class="nav-btn active" data-view="overview"><span class="nav-icon">&#9638;</span> Overview</button>
         <button class="nav-btn" data-view="daily"><span class="nav-icon">&#9201;</span> Daily SFA Reports</button>
+        <button class="nav-btn" data-view="automation"><span class="nav-icon">&#9881;</span> SFA Automation</button>
         <button class="nav-btn" data-view="reports"><span class="nav-icon">&#9776;</span> Reports</button>
         <button class="nav-btn" data-view="visit-state"><span class="nav-icon">&#8644;</span> Visit State Update</button>
         <button class="nav-btn" data-view="sequence"><span class="nav-icon">&#9776;</span> Sequence Update</button>
@@ -103,6 +104,108 @@
           </div>
         </section>
 
+
+
+        <!-- ============ SFA AUTOMATION ============ -->
+        <section id="view-automation" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div>
+              <h2>SFA Automation</h2>
+              <p class="hint">Chimera logs in to SFA once, opens every enabled report in its own tab at the same time,
+                fills the filters, exports, checks each file and imports it &mdash; then builds the daily reports.</p>
+            </div>
+            <div class="heading-actions">
+              <button class="btn-outline" id="au-add-btn">+ Add report</button>
+              <button class="btn-primary" id="au-run-btn">&#9654; Run all now</button>
+            </div>
+          </div>
+
+          <div id="au-live-banner" class="live-banner" style="display:none;">
+            <span class="pulse-dot"></span><span id="au-live-text">Run in progress</span>
+            <button class="btn-outline btn-small" id="au-live-open">View progress</button>
+          </div>
+
+          <div class="stat-cards" id="au-stats">
+            <div class="stat-card"><div class="stat-label">PROFILES ENABLED</div><div class="stat-value" id="au-stat-enabled">&mdash;</div><div class="stat-foot" id="au-stat-enabled-foot"></div></div>
+            <div class="stat-card"><div class="stat-label">LAST RUN</div><div class="stat-value stat-value-small" id="au-stat-last">&mdash;</div><div class="stat-foot" id="au-stat-last-foot"></div></div>
+            <div class="stat-card"><div class="stat-label">NEXT SCHEDULED RUN</div><div class="stat-value stat-value-small" id="au-stat-next">&mdash;</div><div class="stat-foot" id="au-stat-next-foot"></div></div>
+            <div class="stat-card"><div class="stat-label">PARALLEL TABS</div><div class="stat-value" id="au-stat-tabs">&mdash;</div><div class="stat-foot">browser tabs at the same time</div></div>
+          </div>
+
+          <div class="tabs" id="au-tabs">
+            <button class="tab active" data-tab="profiles">Report Profiles</button>
+            <button class="tab" data-tab="schedule">Schedule &amp; Control</button>
+            <button class="tab" data-tab="history">Run History</button>
+          </div>
+
+          <div class="tab-panel" id="au-panel-profiles">
+            <div id="au-login-warning"></div>
+            <div class="card card-flush"><table class="report-table profile-table">
+              <thead><tr><th style="width:56px">Order</th><th style="width:70px">On</th><th>Report</th><th>Navigation URL</th><th>Feeds into</th><th>Filters</th><th>Last result</th><th style="width:210px"></th></tr></thead>
+              <tbody id="au-profile-rows"><tr><td colspan="8" class="hint">Loading&hellip;</td></tr></tbody>
+            </table></div>
+          </div>
+
+          <div class="tab-panel" id="au-panel-schedule" style="display:none;">
+            <div class="card master-card">
+              <div>
+                <div class="stat-label">AUTOMATION</div>
+                <div class="master-state"><span id="au-state-chip" class="chip">&mdash;</span> <span class="hint" id="au-state-hint"></span></div>
+              </div>
+              <div class="master-actions">
+                <button class="btn-outline" id="au-skip-btn">Skip today</button>
+                <button class="btn-outline" id="au-cancel-btn" disabled>Cancel current run</button>
+                <label class="big-switch"><input type="checkbox" id="au-paused-switch"><span class="big-slider"></span><b id="au-paused-label">Running</b></label>
+              </div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <h3>Run times</h3>
+                <p class="hint">Each time downloads every enabled report for today and builds the reports. 24-hour clock.</p>
+                <div id="au-times" class="time-chips"></div>
+                <div class="form-row" style="margin-top:12px;">
+                  <label>Add a time <input type="time" id="au-time-input"></label>
+                  <button class="btn-outline" id="au-time-add">Add time</button>
+                </div>
+                <h3 style="margin-top:8px;">Run days</h3>
+                <div id="au-weekdays" class="day-pills"></div>
+                <div class="toggle-row" style="margin-top:18px;">
+                  <div><b>Run even when Chimera is closed</b>
+                    <p class="hint">Adds the run times to Windows Task Scheduler. The PC must be on and signed in.</p></div>
+                  <label class="switch2"><input type="checkbox" id="au-task-switch"><span></span></label>
+                </div>
+                <div id="au-task-result"></div>
+              </div>
+              <div class="card">
+                <h3>Run behaviour</h3>
+                <div class="form-row">
+                  <label>Parallel browser tabs <span class="range-wrap"><input type="range" min="1" max="5" id="au-parallel"><b id="au-parallel-val"></b></span></label>
+                </div>
+                <div class="form-row">
+                  <label>Retries per report <input type="number" min="0" max="5" id="au-retries"></label>
+                  <label>Page timeout (seconds) <input type="number" min="15" max="600" id="au-timeout"></label>
+                </div>
+                <div class="toggle-row">
+                  <div><b>Hide the browser during scheduled runs</b><p class="hint">Turn off to watch Chimera work.</p></div>
+                  <label class="switch2"><input type="checkbox" id="au-headless"><span></span></label>
+                </div>
+                <h3 style="margin-top:16px;">After downloading, build</h3>
+                <div class="form-row">
+                  <label class="check"><input type="checkbox" class="au-gen" value="sku"> SKU Report</label>
+                  <label class="check"><input type="checkbox" class="au-gen" value="pivot"> Pivot Report</label>
+                  <label class="check"><input type="checkbox" class="au-gen" value="hourly"> Hourly BC &amp; SV</label>
+                </div>
+                <p class="hint">Output style and report rules are in Settings &rarr; Daily report rules.</p>
+                <div class="form-row" style="margin-top:12px;"><button class="btn-primary" id="au-behaviour-save">Save</button></div>
+                <div id="au-behaviour-result"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="au-panel-history" style="display:none;">
+            <div class="card card-flush"><div id="au-history"></div></div>
+          </div>
+        </section>
 
         <!-- ============ DAILY SFA REPORTS (SKU / Pivot / Hourly) ============ -->
         <section id="view-daily" class="view" style="display:none;">
@@ -389,6 +492,16 @@
     </div>
   </div>
 
+
+  <!-- ============ POP-UPS ============ -->
+  <div class="modal-backdrop" id="modal-backdrop" style="display:none;">
+    <div class="modal" id="modal" role="dialog" aria-modal="true">
+      <div class="modal-header"><h3 id="modal-title"></h3><button class="modal-x" id="modal-x" aria-label="Close">&times;</button></div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer" id="modal-footer"></div>
+    </div>
+  </div>
   <script src="js/main.js"></script>
+  <script src="js/automation.js"></script>
 </body>
 </html>

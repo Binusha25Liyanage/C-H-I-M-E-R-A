@@ -27,6 +27,8 @@ import sfa_config
 import sfa_connection
 import sfa_store
 import report_pipeline
+import automation_store
+import scheduler
 
 
 class Api:
@@ -34,7 +36,10 @@ class Api:
         db.init_db()
         sfa_store.init_schema()
         report_pipeline.init_schema()
-        self.window = None  # set by app.py after the pywebview window is created
+        automation_store.init_schema()
+        automation_store.mark_interrupted_runs()
+        self.window = None
+        self.scheduler = None  # set by app.py after the pywebview window is created
 
     # ------------------------------------------------------------
     # Step 1 scaffold: a single proven round trip through the real
@@ -325,3 +330,95 @@ class Api:
         return {"ok": True, "message": (f"Imported {r['groups']} territory-group rows, {r['settings']} settings, "
                                         f"{r['history_bills']} historical bills and "
                                         f"{r['history_unproductive']} historical unproductive visits."), **r}
+
+    # ------------------------------------------------------------
+    # SFA Automation: report profiles, runs, schedule & control.
+    # Long work (runs, test runs) happens in a background thread; the
+    # UI polls get_live_run() once a second to draw the lanes.
+    # ------------------------------------------------------------
+    def get_automation_overview(self):
+        import sfa_automation
+        settings = automation_store.get_automation_settings()
+        nxt = scheduler.next_run(settings=settings)
+        cfg = sfa_config.load_config()
+        runs = automation_store.list_runs(1)
+        return {
+            "profiles": automation_store.list_profiles(),
+            "settings": settings,
+            "next_run": nxt.strftime("%a %d %b, %H:%M") if nxt else None,
+            "last_run": runs[0] if runs else None,
+            "live_active": sfa_automation.LIVE.snapshot().get("active", False),
+            "login_ready": bool(cfg.get("login_url") and cfg.get("username") and cfg.get("password")),
+            "feeds": automation_store.FEEDS,
+            "filter_types": list(automation_store.FILTER_TYPES),
+            "date_modes": list(automation_store.DATE_MODES),
+            "is_windows": os.name == "nt",
+            "task_command": scheduler.scheduled_command(),
+        }
+
+    def save_automation_profile(self, data):
+        ok, message, profile = automation_store.save_profile(data or {})
+        return {"ok": ok, "message": message, "profile": profile}
+
+    def duplicate_automation_profile(self, pid):
+        ok, message, profile = automation_store.duplicate_profile(pid)
+        return {"ok": ok, "message": message, "profile": profile}
+
+    def delete_automation_profile(self, pid):
+        ok = automation_store.delete_profile(pid)
+        return {"ok": ok, "message": "Profile deleted." if ok else "That profile no longer exists."}
+
+    def set_automation_profile_enabled(self, pid, enabled):
+        automation_store.set_profile_enabled(pid, enabled)
+        return {"ok": True}
+
+    def reorder_automation_profiles(self, ids):
+        automation_store.reorder_profiles(ids)
+        return {"ok": True}
+
+    def detect_profile_filters(self, url, show_browser=False):
+        import sfa_automation
+        if sfa_automation.LIVE.snapshot().get("active"):
+            return {"ok": False, "message": "Wait for the current run to finish first."}
+        return sfa_automation.detect_filters(url, headless=not show_browser)
+
+    def start_automation_run(self, report_date=None, profile_ids=None, show_browser=False):
+        import sfa_automation
+        return sfa_automation.start_background(report_date=report_date or None, profile_ids=profile_ids or None,
+                                               trigger="manual", headless=not show_browser)
+
+    def start_profile_test(self, profile_id, report_date=None, show_browser=True):
+        import sfa_automation
+        return sfa_automation.start_background(report_date=report_date or None, profile_ids=[profile_id],
+                                               trigger="test", headless=not show_browser, test=True,
+                                               generate=False)
+
+    def get_live_run(self):
+        import sfa_automation
+        return sfa_automation.LIVE.snapshot()
+
+    def cancel_automation_run(self):
+        import sfa_automation
+        sfa_automation.LIVE.cancel()
+        return {"ok": True}
+
+    def get_automation_runs(self, limit=20):
+        return automation_store.list_runs(limit)
+
+    def save_automation_settings(self, values):
+        before = automation_store.get_automation_settings()
+        ok, message = automation_store.save_automation_settings(values or {})
+        if not ok:
+            return {"ok": False, "message": message}
+        after = automation_store.get_automation_settings()
+        task_keys = ("run_times", "weekdays", "paused", "use_task_scheduler")
+        sync = None
+        if os.name == "nt" and (after["use_task_scheduler"] == "1" or before["use_task_scheduler"] == "1") \
+                and any(before[k] != after[k] for k in task_keys):
+            sync = scheduler.sync_windows_tasks(after)
+        nxt = scheduler.next_run(settings=after)
+        return {"ok": True, "message": message, "task_sync": sync,
+                "next_run": nxt.strftime("%a %d %b, %H:%M") if nxt else None, "settings": after}
+
+    def sync_windows_tasks(self):
+        return scheduler.sync_windows_tasks()

@@ -34,6 +34,12 @@ ICON_PATH = os.path.join(FRONTEND_DIR, "assets", "chimera.ico")
 
 
 def main():
+    # Windows Task Scheduler launches "Chimera.exe --scheduled": run the due
+    # SFA automation headless and exit, without opening a window.
+    if "--scheduled" in sys.argv or "--run-now" in sys.argv:
+        import run_scheduled
+        sys.exit(run_scheduled.main(["--now"] if "--run-now" in sys.argv else []))
+
     api = Api()
 
     window_kwargs = dict(
@@ -59,6 +65,11 @@ def main():
     # window actually exists, so it's attached here rather than in
     # Api.__init__.
     api.window = window
+
+    # Scheduled SFA runs while the window is open (Task Scheduler covers when it's closed).
+    import scheduler
+    api.scheduler = scheduler.InAppScheduler()
+    api.scheduler.start()
 
     webview.start()
 

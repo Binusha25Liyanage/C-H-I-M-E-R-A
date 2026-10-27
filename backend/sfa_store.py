@@ -411,3 +411,33 @@ def get_dataset_status(date):
             "warnings": json.loads(r[5]) if r and r[5] else [],
         })
     return {"date": date, "datasets": out, "history_bills": hist}
+
+
+def record_empty_dataset(dataset, date, source_file="", generated_at="", note=""):
+    """
+    SFA returned no rows for this dataset+date (e.g. no pending sales orders
+    right now). Clear the earlier snapshot for that day so stale rows don't
+    linger, and record the dataset as loaded with 0 rows.
+    """
+    conn = db.get_connection()
+    try:
+        cur = conn.cursor()
+        if dataset in ("invoices", "sales_orders"):
+            kind = "INV" if dataset == "invoices" else "SO"
+            cur.execute("DELETE FROM sfa_bills WHERE bill_date=? AND "
+                        "(dataset=? OR (dataset='salespulse_history' AND kind=?))", (date, dataset, kind))
+        elif dataset.startswith("sku_"):
+            cur.execute("DELETE FROM sfa_sku_lines WHERE dataset=? AND line_date=?", (dataset, date))
+        elif dataset == "unproductive":
+            cur.execute("DELETE FROM sfa_unproductive WHERE dataset IN ('unproductive', 'salespulse_history') "
+                        "AND visit_date=?", (date,))
+        else:
+            raise ValueError(f"Unknown dataset '{dataset}'.")
+        cur.execute(
+            """INSERT OR REPLACE INTO sfa_datasets (dataset, data_date, rows, source_file, generated_at,
+               imported_at, filters, warnings) VALUES (?, ?, 0, ?, ?, ?, '{}', ?)""",
+            (dataset, date, source_file, generated_at, datetime.now().isoformat(timespec="seconds"),
+             json.dumps([note or "SFA returned no rows for this date."])))
+        conn.commit()
+    finally:
+        conn.close()

@@ -9,6 +9,7 @@ function escapeHtml(s) {
 const VIEW_TITLES = {
   "overview": "Dashboard Overview",
   "daily": "Daily SFA Reports",
+  "automation": "SFA Automation",
   "reports": "Combined SKU + Invoice Report",
   "visit-state": "Visit State Update",
   "sequence": "Sequence Update",
@@ -31,6 +32,7 @@ function switchView(view) {
   if (view === "import-data") loadImportLog();
   if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); }
   if (view === "daily") { loadDailyStatus(); loadRuns(); }
+  if (view === "automation" && window.loadAutomation) window.loadAutomation();
 }
 
 document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {

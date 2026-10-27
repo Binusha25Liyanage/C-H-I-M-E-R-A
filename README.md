@@ -109,3 +109,22 @@ Built straight from **raw, unedited** SalesPro exports — no manual merging.
 Headless (used by the scheduler): `py backend\run_reports.py --date 2026-10-26`
 
 Tests: `py -m unittest discover -s tests -v`
+
+## SFA Automation (download reports from SFA automatically)
+
+**SFA Automation** screen:
+
+* **Report Profiles** — one per SFA report: navigation URL, what it feeds (Invoices, Sales Orders,
+  SKU Van, SKU Pre, Unproductive, or download-only), the filters to fill, and the Search / Export button
+  texts. *Detect filters from page* logs in, reads the page's filter labels and dropdown options for you.
+  **Test** runs one profile with screenshots and never imports anything. Add as many profiles as you need.
+* **Run all now** — logs in once, opens every enabled report in parallel tabs (1–5), fills filters,
+  exports, checks each file's banner against the profile (report kind, Report Type, dates…), imports it,
+  then builds the daily reports. A live monitor shows each tab's progress; a failed tab retries on its own.
+* **Schedule & Control** — run times, run days, Pause/Resume, Skip today, Cancel current run, and
+  *Run even when Chimera is closed* (Windows Task Scheduler → `Chimera.exe --scheduled` or
+  `py backend\run_scheduled.py`).
+* **Run History** — every run with per-report results. Downloads are kept in
+  `~/Chimera/downloads/<date>/<time>/`, failure screenshots in `~/Chimera/screenshots/automation/`.
+
+Headless: `py backend\run_scheduled.py --now` runs every enabled profile immediately.
