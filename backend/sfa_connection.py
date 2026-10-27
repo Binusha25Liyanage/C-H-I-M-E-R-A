@@ -87,6 +87,32 @@ def _login(page, config):
     return username_filled, password_filled, form_appeared
 
 
+def _verify_logged_in(page, timeout_ms=20000):
+    """
+    A login counts as successful only when the password box has gone away
+    (SFA left the sign-in form). Also reads the 'Welcome, <name>' text SFA
+    shows in the top-right corner, when present.
+    """
+    import re
+    try:
+        page.locator("input[type='password']").first.wait_for(state="hidden", timeout=timeout_ms)
+    except Exception:
+        if page.locator("input[type='password']").count() and page.locator("input[type='password']").first.is_visible():
+            return False, ""
+    try:
+        page.wait_for_load_state("networkidle", timeout=8000)
+    except Exception:
+        pass
+    welcome = ""
+    try:
+        m = re.search(r"Welcome,?\s+([^\n]{2,60})", page.inner_text("body"))
+        if m:
+            welcome = m.group(1).strip()
+    except Exception:
+        pass
+    return True, welcome
+
+
 def test_connection():
     """
     Loads the saved SFA config, launches the configured browser, attempts
@@ -95,10 +121,8 @@ def test_connection():
 
     Returns:
         {
-            "ok": bool,               # True only if config was present and
-                                       # the browser could navigate + submit
-                                       # the login form — NOT a confirmed
-                                       # successful login, see "note" below
+            "ok": bool,               # True only when the login form is gone after
+                                       # submitting (a confirmed login)
             "message": str,
             "screenshot_path": str or None,
             "note": str,              # always present — reminds you to
@@ -124,6 +148,9 @@ def test_connection():
             browser = _launch_browser(p, config.get("browser", "chrome"))
             page = browser.new_page()
             username_filled, password_filled, form_appeared = _login(page, config)
+            logged_in, welcome = False, ""
+            if username_filled and password_filled:
+                logged_in, welcome = _verify_logged_in(page)
             page.screenshot(path=screenshot_path)
             browser.close()
 
@@ -140,13 +167,19 @@ def test_connection():
                 "note": "This is expected until real Test SFA login selectors are confirmed.",
             }
 
+        if not logged_in:
+            return {
+                "ok": False,
+                "message": "Login failed — SFA still shows the login form after submitting. Check the "
+                           "username and password (the screenshot shows what SFA said).",
+                "screenshot_path": screenshot_path,
+                "note": "",
+            }
         return {
             "ok": True,
-            "message": "Navigated to the login page and submitted the form. This does NOT "
-                        "confirm login actually succeeded — check the screenshot.",
+            "message": "Logged in to SFA successfully" + (f" — SFA shows “Welcome, {welcome}”." if welcome else "."),
             "screenshot_path": screenshot_path,
-            "note": "Please open the screenshot and confirm it shows a logged-in SFA page, "
-                    "not an error message or the login page again.",
+            "note": "",
         }
 
     except Exception as e:

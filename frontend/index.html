@@ -461,13 +461,10 @@
         <!-- ============ SETTINGS / SUPPORT (placeholder) ============ -->
         <section id="view-settings" class="view" style="display:none;">
           <div class="view-heading-row"><h2>Settings</h2></div>
-          <div class="banner-warning">
-            <b>Early stage.</b> Login form field selectors haven't been confirmed against a real Test SFA
-            login page yet — "Test Connection" will attempt login and show you a screenshot so you can
-            verify whether it actually worked, rather than trusting a guessed success message.
-          </div>
           <div class="card">
             <h3>SFA Connection</h3>
+            <p class="hint" style="margin:-4px 0 14px;">The login Chimera uses for SFA Automation. <b>Test Connection</b> logs in with a real
+              browser and reports success only if SFA accepts the login; the screenshot shows what SFA displayed.</p>
             <div class="form-row">
               <label>Login URL <input type="text" id="sfa-login-url" placeholder="https://..." style="min-width:320px;"></label>
               <label>Browser
