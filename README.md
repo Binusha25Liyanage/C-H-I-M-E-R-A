@@ -128,3 +128,16 @@ Tests: `py -m unittest discover -s tests -v`
   `~/Chimera/downloads/<date>/<time>/`, failure screenshots in `~/Chimera/screenshots/automation/`.
 
 Headless: `py backend\run_scheduled.py --now` runs every enabled profile immediately.
+
+## Preview before saving, WhatsApp delivery, notifications
+
+* **Preview before saving** (Daily SFA Reports): choose *Save straight away* or *Preview before saving*. In preview
+  mode every page is shown first; then **Save**, **Save & send to WhatsApp**, or **Discard**. Scheduled runs wait for
+  approval too (the bell shows "Reports waiting for your approval").
+* **WhatsApp Delivery** (SFA Automation tab): *Link WhatsApp* once (scan the QR code; Chimera keeps its own browser
+  profile in `~/Chimera/whatsapp_profile`), *Load my chats*, then add rules — which chat gets which reports, for which
+  managers, with a caption (`{report}`, `{date}`, `{time}`). Optional automatic sending after each SFA run. Every send
+  is logged; a chat name that doesn't match exactly is never guessed.
+* **Bell** — automation runs, reports waiting for approval, WhatsApp deliveries. **?** — help for the current screen.
+  **Support** — About page. Overview shows recent activity and today's data-source health.
+* Up to **12** parallel browser tabs (above 8 needs a capable PC).

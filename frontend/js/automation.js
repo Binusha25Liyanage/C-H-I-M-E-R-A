@@ -43,8 +43,17 @@ function confirmModal(title, text, okLabel, onOk, danger = false) {
 
 // ---------------------------------------------------------------- load
 async function loadAutomation() {
-  try { AU.ov = await API().get_automation_overview(); }
-  catch (err) { document.getElementById("au-profile-rows").innerHTML = `<tr><td colspan="8" class="error">${esc(String(err))}</td></tr>`; return; }
+  try {
+    if (typeof API().get_automation_overview !== "function")
+      throw new Error("OUTDATED");
+    AU.ov = await API().get_automation_overview();
+  } catch (err) {
+    const outdated = String(err).includes("OUTDATED") || String(err).includes("not a function");
+    document.getElementById("au-profile-rows").innerHTML = `<tr><td colspan="8"><div class="problem-box" style="margin:6px 0;">${outdated
+      ? "Chimera's screens are newer than its backend: <b>backend\\api.py</b> (and the other backend files from the latest update) still need replacing. Replace them, then restart Chimera."
+      : "Couldn't load SFA Automation: " + esc(String(err))}</div></td></tr>`;
+    return;
+  }
   renderStats(); renderProfiles(); renderSchedule(); loadHistory();
   if (AU.ov.live_active) startPolling();
 }
@@ -356,7 +365,7 @@ function openRunNowModal() {
       <div class="section-title" style="margin-top:16px;">Reports to download</div>
       <div class="detect-list">${en.map(p => `<label><input type="checkbox" class="rn-p" value="${p.id}" ${p.enabled && !p.problems.length ? "checked" : ""} ${p.problems.length ? "disabled" : ""}>
         <b>${esc(p.name)}</b><span class="muted">${p.problems.length ? `<span class="error">${esc(p.problems[0])}</span>` : esc(p.feeds_label)}</span></label>`).join("")}</div>
-      <p class="hint" style="margin-top:10px;">Up to ${esc(AU.ov.settings.parallel_tabs)} tabs at once. Afterwards the ${esc(AU.ov.settings.generate_list.join(", ") || "no")} report(s) are built.</p>`,
+      <p class="hint" style="margin-top:10px;">Up to ${esc(AU.ov.settings.parallel_tabs)} tabs at once. Afterwards the ${esc(AU.ov.settings.generate_list.join(", ") || "no")} report(s) are built${AU.ov.settings.wa_auto_send === "1" ? " and sent to WhatsApp" : ""}.</p>`,
     footer: `<button class="btn-outline" id="rn-cancel">Cancel</button><button class="btn-primary" id="rn-go">▶ Start</button>` });
   document.getElementById("rn-cancel").onclick = () => closeModal();
   document.getElementById("rn-go").onclick = async () => {
@@ -367,8 +376,15 @@ function openRunNowModal() {
     closeModal(true); openMonitor();
   };
 }
-document.getElementById("au-run-btn").addEventListener("click", () => AU.ov && openRunNowModal());
-document.getElementById("au-add-btn").addEventListener("click", () => AU.ov && openProfileEditor(null));
+function needOverview(fn) {
+  return () => {
+    if (AU.ov) return fn();
+    openModal({ title: "SFA Automation isn't ready", body: `<div class="problem-box">The automation data couldn't be loaded — see the message on the screen (usually a backend file from the latest update is missing). Restart Chimera after replacing the files.</div>`,
+      footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
+  };
+}
+document.getElementById("au-run-btn").addEventListener("click", needOverview(() => openRunNowModal()));
+document.getElementById("au-add-btn").addEventListener("click", needOverview(() => openProfileEditor(null)));
 document.getElementById("au-live-open").addEventListener("click", openMonitor);
 
 function openMonitor() {
@@ -387,7 +403,7 @@ function renderMonitor(s) {
   const total = lanes.length * STEP_ORDER.length || 1;
   const done = lanes.reduce((a, l) => a + STEP_ORDER.filter(x => ["done", "skipped"].includes(l.steps[x]) || (["failed", "cancelled", "empty"].includes(l.status))).length, 0);
   const pct = s.active ? Math.min(99, Math.round(100 * done / total)) : 100;
-  const phase = { starting: "Starting…", logging_in: "Logging in to SFA…", downloading: "Downloading reports…", generating: "Building reports…", done: "Finished" }[s.phase] || s.phase;
+  const phase = { starting: "Starting…", logging_in: "Logging in to SFA…", downloading: "Downloading reports…", generating: "Building reports…", sending: "Sending to WhatsApp…", done: "Finished" }[s.phase] || s.phase;
   let gen = "";
   const rr = s.result && s.result.report_run;
   if (rr) gen = `<div class="section-title">Reports built</div><ul class="result-list">${rr.reports.map(r => r.ok
@@ -471,7 +487,7 @@ function renderSchedule() {
   document.getElementById("au-weekdays").innerHTML = DAY_NAMES.map((d, i) => `<button class="day-pill ${s.weekdays[i] === "1" ? "on" : ""}" data-day="${i}">${d}</button>`).join("");
   const ts = document.getElementById("au-task-switch"); ts.checked = s.use_task_scheduler === "1"; ts.disabled = !AU.ov.is_windows;
   if (!AU.ov.is_windows) document.getElementById("au-task-result").innerHTML = `<p class="hint">Available when Chimera runs on Windows.</p>`;
-  document.getElementById("au-parallel").value = s.parallel_tabs; document.getElementById("au-parallel-val").textContent = s.parallel_tabs;
+  document.getElementById("au-parallel").value = s.parallel_tabs; document.getElementById("au-parallel-val").textContent = s.parallel_tabs; parallelWarn(s.parallel_tabs);
   document.getElementById("au-retries").value = s.retries; document.getElementById("au-timeout").value = s.page_timeout_seconds;
   document.getElementById("au-headless").checked = s.headless === "1";
   document.querySelectorAll(".au-gen").forEach(c => { c.checked = s.generate_list.includes(c.value); });
@@ -504,7 +520,12 @@ document.getElementById("au-weekdays").addEventListener("click", (e) => {
   saveAuto({ weekdays: w.join("") }, "au-task-result");
 });
 document.getElementById("au-task-switch").addEventListener("change", (e) => saveAuto({ use_task_scheduler: e.target.checked ? "1" : "0" }, "au-task-result"));
-document.getElementById("au-parallel").addEventListener("input", (e) => { document.getElementById("au-parallel-val").textContent = e.target.value; });
+function parallelWarn(v) {
+  document.getElementById("au-parallel-warn").innerHTML = Number(v) > 8
+    ? `<span style="color:#9a6a00;">${v} tabs is heavy: each tab is a full SFA page (~150–250 MB of memory). Use it only if the PC and SFA stay responsive; reports that fail retry on their own.</span>`
+    : "Each enabled report gets its own tab; extra reports wait for a free tab.";
+}
+document.getElementById("au-parallel").addEventListener("input", (e) => { document.getElementById("au-parallel-val").textContent = e.target.value; parallelWarn(e.target.value); });
 document.getElementById("au-behaviour-save").addEventListener("click", () => saveAuto({
   parallel_tabs: document.getElementById("au-parallel").value, retries: document.getElementById("au-retries").value,
   page_timeout_seconds: document.getElementById("au-timeout").value, headless: document.getElementById("au-headless").checked ? "1" : "0",
@@ -535,6 +556,6 @@ document.getElementById("au-history").addEventListener("click", (e) => {
 document.getElementById("au-tabs").addEventListener("click", (e) => {
   const t = e.target.dataset.tab; if (!t) return;
   document.querySelectorAll("#au-tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
-  ["profiles", "schedule", "history"].forEach(x => { document.getElementById("au-panel-" + x).style.display = x === t ? "block" : "none"; });
+  ["profiles", "schedule", "whatsapp", "history"].forEach(x => { document.getElementById("au-panel-" + x).style.display = x === t ? "block" : "none"; });
   if (t === "history") loadHistory();
 });

@@ -37,6 +37,7 @@ FEEDS = {
     "download_only": "Download only (not used in reports)",
 }
 FILTER_TYPES = ("dropdown", "multiselect", "date", "text", "toggle")
+MAX_PARALLEL_TABS = 12   # each tab is a full page of SFA; above ~8 needs a capable PC and SFA server
 DATE_MODES = ("report_date", "today", "yesterday", "fixed")
 
 DEFAULT_AUTOMATION = {
@@ -50,6 +51,11 @@ DEFAULT_AUTOMATION = {
     "generate_kinds": "sku,pivot,hourly",
     "use_task_scheduler": "0",
     "page_timeout_seconds": "60",
+    "wa_auto_send": "0",                 # send to WhatsApp automatically once reports are saved
+    "wa_show_browser": "1",              # show the WhatsApp Web window while sending
+    "wa_style": "classic",               # which output style's images to send when 'both' are built
+    "wa_chats_cache": "[]",              # chat names last read from WhatsApp Web
+    "notif_seen_at": "",                 # notifications newer than this are unread
 }
 
 LOCK_PATH = os.path.join(db.APP_DATA_DIR, "automation.lock")
@@ -350,11 +356,16 @@ def save_automation_settings(values):
         elif k == "skip_date":
             if v and not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
                 return False, "Skip date must be YYYY-MM-DD."
-        elif k in ("paused", "headless", "use_task_scheduler"):
+        elif k == "wa_style":
+            if v not in ("classic", "professional"):
+                return False, "WhatsApp style must be classic or professional."
+        elif k in ("wa_chats_cache", "notif_seen_at"):
+            pass
+        elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
         elif k == "parallel_tabs":
-            if not v.isdigit() or not 1 <= int(v) <= 5:
-                return False, "Parallel tabs must be between 1 and 5."
+            if not v.isdigit() or not 1 <= int(v) <= MAX_PARALLEL_TABS:
+                return False, f"Parallel tabs must be between 1 and {MAX_PARALLEL_TABS}."
         elif k == "retries":
             if not v.isdigit() or not 0 <= int(v) <= 5:
                 return False, "Retries must be between 0 and 5."

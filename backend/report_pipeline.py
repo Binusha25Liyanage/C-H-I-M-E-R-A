@@ -14,6 +14,7 @@ every run is recorded in the report_runs table (shown as run history).
 
 import json
 import os
+import shutil
 import traceback
 from datetime import datetime
 
@@ -91,8 +92,15 @@ def build_report(kind, date, settings=None):
     raise ValueError(f"Unknown report '{kind}'.")
 
 
+def _page_group(kind, page_name):
+    """'SKU Report - Asela' -> 'Asela'; the hourly report covers every group."""
+    if kind == "hourly":
+        return "*"
+    return page_name.split(" - ", 1)[1] if " - " in page_name else page_name
+
+
 def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=True,
-                trigger="manual", allow_missing_inputs=False, style=None):
+                trigger="manual", allow_missing_inputs=False, style=None, review=None):
     """
     date: 'YYYY-MM-DD'. kinds: any of sku / pivot / hourly (one = single
     mode, several = bulk — same code path). style: 'classic' | 'professional'
@@ -100,12 +108,21 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
     to import first. A report whose inputs aren't loaded for `date` is
     skipped with a reason unless allow_missing_inputs=True.
 
+    review: True = "preview before saving": outputs go to a pending folder
+    and the run waits (status 'pending_review') until approve_run() or
+    discard_run(). Default comes from the delivery_mode setting.
+
     Returns {"ok", "status", "run_id", "folder", "imports", "reports": [...]}.
     """
     output_root = output_root or DEFAULT_OUTPUT_ROOT
+    if review is None:
+        review = sfa_store.get_settings().get("delivery_mode") == "preview"
     run_id = _log_start(date, trigger)
-    folder = os.path.join(output_root, date, datetime.now().strftime("%H%M%S"))
-    summary = {"imports": [], "reports": []}
+    final_folder = os.path.join(output_root, date, datetime.now().strftime("%H%M%S"))
+    folder = os.path.join(output_root, "_pending", f"run_{run_id}") if review else final_folder
+    images = images or review          # previews are the page images
+    summary = {"imports": [], "reports": [], "review": bool(review), "final_folder": final_folder,
+               "output_root": output_root}
     try:
         if files:
             summary["imports"] = sfa_store.import_files(files)
@@ -138,9 +155,12 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
                 for st in styles:
                     sub = folder if len(styles) == 1 else os.path.join(folder, st.capitalize())
                     pdf, pages = daily_reports_pdf.write_pdf(kind, report, sub, style=st)
+                    turned = []
                     imgs = daily_reports_pdf.pdf_to_images(pdf, pages, os.path.join(sub, "WhatsApp"),
-                                                           rotate_wide=rotate) if images else []
-                    outputs.append({"style": st, "pdf": pdf, "images": imgs})
+                                                           rotate_wide=rotate, rotated_out=turned) if images else []
+                    outputs.append({"style": st, "pdf": pdf, "images": imgs,
+                                    "items": [{"path": im, "page": pg, "group": _page_group(kind, pg), "rotated": rt}
+                                              for im, pg, rt in zip(imgs, pages, turned)]})
                 entry.update(ok=True, pdf=outputs[0]["pdf"], images=[i for o in outputs for i in o["images"]],
                              outputs=outputs, notes=report["notes"], missing_inputs=missing)
             except Exception as e:
@@ -150,6 +170,11 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
 
         oks = [r for r in summary["reports"] if r["ok"]]
         state = "success" if len(oks) == len(summary["reports"]) and oks else ("partial" if oks else "failed")
+        summary["final_status"] = state
+        if review and oks:
+            state = "pending_review"
+        elif review and os.path.isdir(folder):
+            shutil.rmtree(folder, ignore_errors=True)
         _log_finish(run_id, state, folder if oks else None, summary)
         return {"ok": bool(oks), "status": state, "run_id": run_id, "folder": folder if oks else None,
                 **summary}
@@ -157,3 +182,79 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
         summary["error"] = f"{type(e).__name__}: {e}"
         _log_finish(run_id, "failed", None, summary)
         return {"ok": False, "status": "failed", "run_id": run_id, "folder": None, **summary}
+
+
+# ---------------------------------------------------------------------------
+# Preview before saving: approve / discard a pending run
+# ---------------------------------------------------------------------------
+def get_run(run_id):
+    return next((r for r in get_runs(500) if r["id"] == run_id), None)
+
+
+def list_pending():
+    return [r for r in get_runs(100) if r["status"] == "pending_review"]
+
+
+def _rewrite_paths(obj, old, new):
+    if isinstance(obj, str):
+        return new + obj[len(old):] if obj.startswith(old) else obj
+    if isinstance(obj, list):
+        return [_rewrite_paths(x, old, new) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _rewrite_paths(v, old, new) for k, v in obj.items()}
+    return obj
+
+
+def approve_run(run_id):
+    """Moves a previewed run's files to the normal output folder and marks it saved."""
+    run = get_run(run_id)
+    if not run:
+        return {"ok": False, "message": "That run no longer exists."}
+    if run["status"] != "pending_review":
+        return {"ok": False, "message": f"This run is already {run['status'].replace('_', ' ')}."}
+    old, summary = run["folder"], run["summary"]
+    new = summary.get("final_folder") or os.path.join(DEFAULT_OUTPUT_ROOT, run["report_date"],
+                                                       datetime.now().strftime("%H%M%S"))
+    if not old or not os.path.isdir(old):
+        return {"ok": False, "message": "The preview files are missing (were they deleted?)."}
+    if os.path.exists(new):
+        new = new + "_" + datetime.now().strftime("%S%f")[:4]
+    os.makedirs(os.path.dirname(new), exist_ok=True)
+    shutil.move(old, new)
+    summary = _rewrite_paths(summary, old, new)
+    state = summary.get("final_status", "success")
+    conn = db.get_connection()
+    conn.execute("UPDATE report_runs SET status=?, folder=?, summary=? WHERE id=?",
+                 (state, new, json.dumps(summary), run_id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "message": "Reports saved.", "folder": new, "status": state, "run_id": run_id}
+
+
+def discard_run(run_id):
+    run = get_run(run_id)
+    if not run:
+        return {"ok": False, "message": "That run no longer exists."}
+    if run["status"] != "pending_review":
+        return {"ok": False, "message": f"This run is already {run['status'].replace('_', ' ')}."}
+    if run["folder"] and os.path.isdir(run["folder"]):
+        shutil.rmtree(run["folder"], ignore_errors=True)
+    conn = db.get_connection()
+    conn.execute("UPDATE report_runs SET status='discarded', folder=NULL WHERE id=?", (run_id,))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "message": "Preview discarded."}
+
+
+def image_items(run, style=None):
+    """[{path, kind, label, group, page, style}] for a saved/pending run — used for previews and WhatsApp."""
+    out = []
+    for rep in run["summary"].get("reports", []):
+        if not rep.get("ok"):
+            continue
+        for o in rep.get("outputs", []):
+            if style and o["style"] != style:
+                continue
+            for it in o.get("items", []):
+                out.append({**it, "kind": rep["kind"], "label": rep["label"], "style": o["style"]})
+    return out

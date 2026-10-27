@@ -288,6 +288,42 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(r["style"], "professional")
         sfa_store.save_settings({"output_style": "classic"})
 
+    # --- preview before saving + WhatsApp delivery plan ---
+    def test_preview_approve_discard_and_plan(self):
+        import whatsapp_sender as W
+        import notifications as N
+        import automation_store as AS
+        AS.init_schema()
+        W.init_schema()
+        out = tempfile.mkdtemp()
+        r = P.run_reports(D, output_root=out, review=True, images=False)
+        self.assertEqual(r["status"], "pending_review")
+        self.assertIn("_pending", r["folder"])
+        self.assertTrue(any(e["title"].startswith("Reports waiting") for e in N.events()))
+        self.assertIn("Save (approve)", W.deliver_run(r["run_id"])["message"])
+        a = P.approve_run(r["run_id"])
+        self.assertTrue(a["ok"], a)
+        self.assertFalse(os.path.exists(r["folder"]))
+        run = P.get_run(r["run_id"])
+        self.assertEqual(run["status"], "success")
+        items = P.image_items(run)
+        self.assertTrue(items and all(os.path.exists(i["path"]) for i in items))
+        self.assertFalse(P.approve_run(r["run_id"])["ok"])          # can't approve twice
+        r2 = P.run_reports(D, output_root=out, review=True, kinds=["sku"])
+        self.assertTrue(P.discard_run(r2["run_id"])["ok"])
+        self.assertFalse(os.path.exists(r2["folder"]))
+        self.assertEqual(P.get_run(r2["run_id"])["status"], "discarded")
+        ok, _ = W.save_rule({"chat_name": "Mgr1 team", "kinds": ["sku", "pivot"], "groups": ["Mgr1"],
+                             "caption": "{report} {date}"})
+        self.assertTrue(ok)
+        ok, _ = W.save_rule({"chat_name": "All", "kinds": ["hourly"], "groups": ["*"]})
+        self.assertTrue(ok)
+        self.assertFalse(W.save_rule({"chat_name": "x", "kinds": []})[0])
+        plan = {p["chat_name"]: p for p in W.plan_delivery(run)}
+        self.assertEqual(plan["Mgr1 team"]["pages"], ["SKU Report - Mgr1", "Pivot Report - Mgr1"])
+        self.assertEqual(plan["Mgr1 team"]["caption"], f"Pivot Report, SKU Report {D}")
+        self.assertTrue(all(pg.startswith("Hourly") for pg in plan["All"]["pages"]))
+
     def test_classic_focus_label(self):
         import daily_reports_pdf as PDF
         self.assertEqual(PDF._focus_short("Lakposha 200g"), "Lakposha200")

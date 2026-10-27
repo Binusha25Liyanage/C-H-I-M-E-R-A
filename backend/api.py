@@ -29,6 +29,8 @@ import sfa_store
 import report_pipeline
 import automation_store
 import scheduler
+import notifications
+import whatsapp_sender
 
 
 class Api:
@@ -38,6 +40,7 @@ class Api:
         report_pipeline.init_schema()
         automation_store.init_schema()
         automation_store.mark_interrupted_runs()
+        whatsapp_sender.init_schema()
         self.window = None
         self.scheduler = None  # set by app.py after the pywebview window is created
 
@@ -276,11 +279,12 @@ class Api:
         results = sfa_store.import_files(list(paths))
         return {"ok": any(r["ok"] for r in results), "results": results}
 
-    def generate_daily_reports(self, date, kinds, images=True, style=None):
+    def generate_daily_reports(self, date, kinds, images=True, style=None, review=None):
         kinds = [k for k in kinds if k in report_pipeline.REPORT_KINDS] or list(report_pipeline.REPORT_KINDS)
         if style not in sfa_store.OUTPUT_STYLES:
             style = None  # fall back to the saved setting
-        result = report_pipeline.run_reports(date, kinds=kinds, images=images, trigger="manual", style=style)
+        result = report_pipeline.run_reports(date, kinds=kinds, images=images, trigger="manual", style=style,
+                                             review=review)
         for r in result["reports"]:
             r.pop("trace", None)
         return result
@@ -422,3 +426,82 @@ class Api:
 
     def sync_windows_tasks(self):
         return scheduler.sync_windows_tasks()
+
+    # ------------------------------------------------------------
+    # Notifications (bell), Overview feed, report previews, WhatsApp, About
+    # ------------------------------------------------------------
+    def get_notifications(self):
+        return notifications.summary()
+
+    def mark_notifications_read(self):
+        notifications.mark_read()
+        return {"ok": True}
+
+    def get_overview_feed(self):
+        return {"events": notifications.events(8), "health": notifications.data_health()}
+
+    def list_pending_reports(self):
+        return report_pipeline.list_pending()
+
+    def get_report_preview(self, run_id):
+        run = report_pipeline.get_run(run_id)
+        if not run:
+            return {"ok": False, "message": "That run no longer exists."}
+        return {"ok": True, "run": run, "items": report_pipeline.image_items(run),
+                "has_rules": bool([r for r in whatsapp_sender.list_rules() if r["enabled"]])}
+
+    def get_image_b64(self, path):
+        """Only serves images inside Chimera's own export folder."""
+        root = os.path.realpath(os.path.join(os.path.expanduser("~"), "Chimera"))
+        real = os.path.realpath(path or "")
+        if not real.startswith(root + os.sep) or not real.lower().endswith(".png") or not os.path.exists(real):
+            return None
+        with open(real, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
+
+    def approve_report_run(self, run_id, send_whatsapp=False):
+        r = report_pipeline.approve_run(run_id)
+        if r.get("ok") and send_whatsapp:
+            r["whatsapp"] = whatsapp_sender.deliver_run(run_id)
+        return r
+
+    def discard_report_run(self, run_id):
+        return report_pipeline.discard_run(run_id)
+
+    def get_whatsapp_overview(self):
+        st = whatsapp_sender.linked_status()
+        settings = automation_store.get_automation_settings()
+        return {"rules": whatsapp_sender.list_rules(), "deliveries": whatsapp_sender.list_deliveries(20),
+                "profile_exists": st["profile_exists"], "chats": st["chats"],
+                "groups": sorted(sfa_store.get_groups().keys()),
+                "settings": {k: settings[k] for k in ("wa_auto_send", "wa_show_browser", "wa_style")},
+                "live": whatsapp_sender.WA.snapshot(),
+                "last_saved_run": next((r for r in report_pipeline.get_runs(30)
+                                        if r["status"] in ("success", "partial")), None)}
+
+    def save_whatsapp_rule(self, data):
+        ok, msg = whatsapp_sender.save_rule(data or {})
+        return {"ok": ok, "message": msg}
+
+    def delete_whatsapp_rule(self, rid):
+        whatsapp_sender.delete_rule(rid)
+        return {"ok": True}
+
+    def whatsapp_link(self):
+        return whatsapp_sender.link_whatsapp()
+
+    def whatsapp_load_chats(self):
+        return whatsapp_sender.load_chats()
+
+    def whatsapp_send_test(self, chat_name):
+        return whatsapp_sender.send_test(chat_name)
+
+    def whatsapp_send_run(self, run_id):
+        return whatsapp_sender.deliver_run(run_id)
+
+    def whatsapp_plan(self, run_id):
+        run = report_pipeline.get_run(run_id)
+        return whatsapp_sender.plan_delivery(run) if run else []
+
+    def get_whatsapp_live(self):
+        return whatsapp_sender.WA.snapshot()

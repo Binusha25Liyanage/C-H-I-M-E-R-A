@@ -36,6 +36,7 @@ DEFAULT_SETTINGS = {
     "pre_bc_target": "30",
     "pre_sv_target": "125000",
     "output_style": "classic",      # classic (SalesPulse look) | professional (Chimera) | both
+    "delivery_mode": "save",        # save = save straight away | preview = hold for review before saving/sending
 }
 
 OUTPUT_STYLES = ("classic", "professional", "both")
@@ -149,6 +150,9 @@ def save_settings(values):
         elif k == "output_style":
             if v not in OUTPUT_STYLES:
                 return False, f"Output style must be one of: {', '.join(OUTPUT_STYLES)}."
+        elif k == "delivery_mode":
+            if v not in ("save", "preview"):
+                return False, "Choose 'Save straight away' or 'Preview before saving'."
         else:
             try:
                 n = float(v)

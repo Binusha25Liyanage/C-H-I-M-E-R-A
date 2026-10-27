@@ -87,7 +87,9 @@ class AutomationStoreTest(unittest.TestCase):
         self.assertEqual(AS.resolve_date({"date_mode": "fixed", "value": "2026-01-02"}, D), "2026-01-02")
 
     def test_settings_validation(self):
-        for bad in ({"run_times": "25:00"}, {"weekdays": "11"}, {"parallel_tabs": "9"}, {"retries": "x"},
+        ok, _ = AS.save_automation_settings({"parallel_tabs": "12"})
+        self.assertTrue(ok)
+        for bad in ({"run_times": "25:00"}, {"weekdays": "11"}, {"parallel_tabs": "13"}, {"parallel_tabs": "0"}, {"retries": "x"},
                     {"skip_date": "26/10"}, {"generate_kinds": "sku,nope"}):
             ok, _ = AS.save_automation_settings(bad)
             self.assertFalse(ok, bad)

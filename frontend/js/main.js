@@ -62,6 +62,9 @@ async function loadDashboard() {
     } else {
       const mostRecent = entries.map(e => e.last_imported).sort().reverse()[0];
       lastImportEl.textContent = mostRecent.slice(0, 10);
+      const foot = document.getElementById("stat-last-import-foot");
+      foot.className = "stat-foot";
+      foot.textContent = `at ${mostRecent.slice(11, 16)} · ${entries.length} data type(s) imported`;
     }
   } catch (err) {
     console.error("Import log load error:", err);
@@ -442,7 +445,9 @@ document.getElementById("dr-generate-btn").addEventListener("click", async () =>
     const style = document.getElementById("dr-style").value || null;
     const r = await window.pywebview.api.generate_daily_reports(drDate(), kinds, document.getElementById("dr-images").checked, style);
     let html = r.warning ? `<p class="error">${escapeHtml(r.warning)}</p>` : "";
-    html += `<p class="${r.ok ? 'hint' : 'error'}">Run #${r.run_id}: <b>${r.status.toUpperCase()}</b>${r.folder ? " — " + openPathButton(r.folder, "Open output folder") : ""}</p><ul class="result-list">`;
+    html += r.status === "pending_review"
+      ? `<p class="hint">Run #${r.run_id}: <b>waiting for your review</b> — the preview opens automatically; reports are saved only when you approve them.</p><ul class="result-list">`
+      : `<p class="${r.ok ? 'hint' : 'error'}">Run #${r.run_id}: <b>${r.status.toUpperCase()}</b>${r.folder ? " — " + openPathButton(r.folder, "Open output folder") : ""}</p><ul class="result-list">`;
     for (const rep of r.reports) {
       if (rep.ok) {
         const pdfLinks = (rep.outputs || [{style: "", pdf: rep.pdf}]).map(o => openPathButton(o.pdf, o.style ? `PDF (${o.style})` : "PDF")).join(" · ");

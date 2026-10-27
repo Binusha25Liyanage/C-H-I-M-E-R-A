@@ -647,8 +647,12 @@ def write_pdf(kind, report, folder, style="classic"):
     return path, [p["name"] for p in pages]
 
 
-def pdf_to_images(pdf_path, page_names, folder, rotate_wide=True, scale=2.2):
-    """One PNG per page. Wide pages are rotated 90° (to portrait) for phone viewing."""
+def pdf_to_images(pdf_path, page_names, folder, rotate_wide=True, scale=2.2, rotated_out=None):
+    """
+    One PNG per page. Wide pages are rotated 90° (to portrait) for phone
+    viewing. If rotated_out is a list, it receives True/False per page so
+    previews can turn rotated pages back upright.
+    """
     import pypdfium2 as pdfium
     os.makedirs(folder, exist_ok=True)
     out = []
@@ -656,8 +660,11 @@ def pdf_to_images(pdf_path, page_names, folder, rotate_wide=True, scale=2.2):
     try:
         for i, name in enumerate(page_names):
             img = pdf[i].render(scale=scale).to_pil()
-            if rotate_wide and img.width > img.height:
+            turned = rotate_wide and img.width > img.height
+            if turned:
                 img = img.rotate(90, expand=True)
+            if rotated_out is not None:
+                rotated_out.append(bool(turned))
             path = os.path.join(folder, f"{_safe(name)}.png")
             img.save(path, optimize=True)
             out.append(path)

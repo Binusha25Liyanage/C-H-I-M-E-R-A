@@ -33,7 +33,7 @@
       <div class="sidebar-footer">
         <div class="system-status"><span class="status-dot"></span> System Status: Live</div>
         <button class="nav-btn nav-btn-muted" data-view="settings"><span class="nav-icon">&#9881;</span> Settings</button>
-        <button class="nav-btn nav-btn-muted" data-view="support"><span class="nav-icon">?</span> Support</button>
+        <button class="nav-btn nav-btn-muted" data-view="about"><span class="nav-icon">?</span> About &amp; Support</button>
       </div>
     </aside>
 
@@ -42,11 +42,22 @@
       <header class="topbar">
         <h1 id="topbar-title">Dashboard Overview</h1>
         <div class="topbar-right">
-          <span class="icon-btn" title="Notifications">&#128276;</span>
-          <span class="icon-btn" title="History">&#8635;</span>
-          <span class="icon-btn" title="Help">?</span>
+          <button class="icon-btn" id="tb-bell" title="Notifications" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="badge-count" id="tb-bell-count" style="display:none;">0</span>
+          </button>
+          <button class="icon-btn" id="tb-refresh" title="Refresh this screen" aria-label="Refresh">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>
+          </button>
+          <button class="icon-btn" id="tb-help" title="Help for this screen" aria-label="Help">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+          </button>
           <span class="topbar-divider"></span>
-          <span class="support-link">Support</span>
+          <button class="support-link" id="tb-support">Support</button>
+          <div class="notif-panel" id="notif-panel" style="display:none;">
+            <div class="notif-head"><b>Notifications</b><button class="link-btn" id="notif-read">Mark all as read</button></div>
+            <div id="notif-list"><p class="hint" style="padding:14px;">Loading&hellip;</p></div>
+          </div>
         </div>
       </header>
 
@@ -84,7 +95,7 @@
             <div class="stat-card">
               <div class="stat-label">LAST DATA IMPORT</div>
               <div class="stat-value stat-value-small" id="stat-last-import">Never</div>
-              <div class="stat-foot stat-foot-warn">No imports recorded yet</div>
+              <div class="stat-foot stat-foot-warn" id="stat-last-import-foot">No imports recorded yet</div>
             </div>
           </div>
 
@@ -93,13 +104,13 @@
               <div class="card-header-row">
                 <h3>RECENT ACTIVITY LOG</h3>
               </div>
-              <p class="hint">Not yet available — Chimera doesn't track an activity history yet. This will populate once report generation and SFA automation runs are logged.</p>
+              <div id="ov-activity"><p class="hint">Loading&hellip;</p></div>
             </div>
             <div class="card">
               <div class="card-header-row">
                 <h3>DATA SOURCE HEALTH</h3>
               </div>
-              <p class="hint">Not yet available — per-source freshness checks aren't built yet. See the Import Data screen for what has (and hasn't) been imported.</p>
+              <div id="ov-health"><p class="hint">Loading&hellip;</p></div>
             </div>
           </div>
         </section>
@@ -135,6 +146,7 @@
           <div class="tabs" id="au-tabs">
             <button class="tab active" data-tab="profiles">Report Profiles</button>
             <button class="tab" data-tab="schedule">Schedule &amp; Control</button>
+            <button class="tab" data-tab="whatsapp">WhatsApp Delivery</button>
             <button class="tab" data-tab="history">Run History</button>
           </div>
 
@@ -179,8 +191,9 @@
               <div class="card">
                 <h3>Run behaviour</h3>
                 <div class="form-row">
-                  <label>Parallel browser tabs <span class="range-wrap"><input type="range" min="1" max="5" id="au-parallel"><b id="au-parallel-val"></b></span></label>
+                  <label>Parallel browser tabs <span class="range-wrap"><input type="range" min="1" max="12" id="au-parallel"><b id="au-parallel-val"></b></span></label>
                 </div>
+                <p class="hint" id="au-parallel-warn" style="margin:-8px 0 12px;"></p>
                 <div class="form-row">
                   <label>Retries per report <input type="number" min="0" max="5" id="au-retries"></label>
                   <label>Page timeout (seconds) <input type="number" min="15" max="600" id="au-timeout"></label>
@@ -200,6 +213,39 @@
                 <div id="au-behaviour-result"></div>
               </div>
             </div>
+          </div>
+
+          <div class="tab-panel" id="au-panel-whatsapp" style="display:none;">
+            <div class="card master-card">
+              <div>
+                <div class="stat-label">WHATSAPP</div>
+                <div class="master-state"><span id="wa-state-chip" class="chip chip-grey">&mdash;</span> <span class="hint" id="wa-state-hint"></span></div>
+              </div>
+              <div class="master-actions">
+                <button class="btn-outline" id="wa-link-btn">Link WhatsApp</button>
+                <button class="btn-outline" id="wa-chats-btn">Load my chats</button>
+                <button class="btn-primary" id="wa-send-latest">Send latest reports now</button>
+              </div>
+            </div>
+            <div id="wa-live"></div>
+            <div class="two-col">
+              <div class="card">
+                <div class="card-header-row"><h3>Delivery rules</h3><button class="btn-outline btn-small" id="wa-add-rule">+ Add rule</button></div>
+                <p class="hint">Each rule sends chosen reports to one chat or group. Manager filters send only that manager's pages (the Hourly report always goes as a whole).</p>
+                <div id="wa-rules"></div>
+              </div>
+              <div class="card">
+                <h3>Sending options</h3>
+                <div class="toggle-row"><div><b>Send automatically after each SFA run</b><p class="hint">Only after reports are saved &mdash; with &ldquo;Preview before saving&rdquo; on, they're sent when you approve them.</p></div>
+                  <label class="switch2"><input type="checkbox" id="wa-auto"><span></span></label></div>
+                <div class="toggle-row"><div><b>Show the WhatsApp window while sending</b><p class="hint">Keep this on until you trust it.</p></div>
+                  <label class="switch2"><input type="checkbox" id="wa-show"><span></span></label></div>
+                <div class="form-row" style="margin-top:10px;"><label>Images to send when both styles are built
+                  <select id="wa-style"><option value="classic">Classic</option><option value="professional">Professional</option></select></label></div>
+                <div class="banner-warning" style="margin:6px 0 0;">Chimera uses <b>your own WhatsApp</b> through WhatsApp Web (scan the QR once). WhatsApp doesn't officially support automated sending from personal accounts &mdash; a few report messages to your own groups is fine, but avoid bulk messaging.</div>
+              </div>
+            </div>
+            <div class="card card-flush"><div class="card-header-row" style="padding:16px 18px 0;"><h3>Recent deliveries</h3></div><div id="wa-deliveries"></div></div>
           </div>
 
           <div class="tab-panel" id="au-panel-history" style="display:none;">
@@ -251,7 +297,18 @@
               </label>
               <button id="dr-generate-btn" class="btn-primary">&#128196; Generate reports</button>
             </div>
+            <div class="radio-row">
+              <span class="hint" style="margin:0;">After generating:</span>
+              <label class="radio"><input type="radio" name="dr-mode" value="save"> Save straight away</label>
+              <label class="radio"><input type="radio" name="dr-mode" value="preview"> Preview before saving</label>
+              <span class="hint" style="margin:0;">Applies to scheduled runs too &mdash; they wait for your approval.</span>
+            </div>
             <div id="dr-generate-result"></div>
+          </div>
+
+          <div class="card" id="dr-pending-card" style="display:none;">
+            <h3>Waiting for your approval</h3>
+            <div id="dr-pending"></div>
           </div>
 
           <div class="card">
@@ -483,11 +540,57 @@
             <div id="mg-groups" class="group-grid"></div>
           </div>
         </section>
+
+        <!-- ============ ABOUT & SUPPORT ============ -->
+        <section id="view-about" class="view" style="display:none;">
+          <div class="about-hero card">
+            <img src="assets/chimera-logo-mono.png" alt="" class="about-logo">
+            <div>
+              <div class="stat-label">ABOUT THE APPLICATION</div>
+              <h2 style="margin:4px 0 6px;">C H I M E R A</h2>
+              <p class="hint" style="font-size:14px;max-width:760px;">Chimera brings sales-operations work into one place: it downloads the day's reports from SFA
+                automatically, checks every file, builds the SKU, Pivot and Hourly reports, and delivers them &mdash; replacing slow,
+                manual, error-prone steps with a process that is fast, precise and repeatable.</p>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <div class="stat-label">CREATED BY</div>
+              <h2 style="margin:6px 0 2px;">Binusha</h2>
+              <p style="margin:0 0 14px;color:var(--color-ash);font-weight:600;">Full-Stack Software Engineer &middot; BSc (Hons) Software Engineering, NIBM</p>
+              <p style="line-height:1.6;">Binusha is a software engineer from Sri Lanka who builds production-grade tools that solve real operational
+                problems. His work spans desktop applications, web platforms, data extraction and reporting systems, and browser
+                automation, always with a focus on clean interfaces, dependable performance, and software that people can use from
+                the very first click.</p>
+              <p style="line-height:1.6;">Developed through hands-on work with Lakmee Holdings PLC / Lakmee Exports Lanka, one of Sri Lanka&rsquo;s FMCG
+                and food manufacturing companies, this application reflects a simple standard: replace slow, manual, error-prone
+                work with tools that are fast, precise, and built to last.</p>
+            </div>
+            <div class="card">
+              <div class="stat-label">GET IN TOUCH</div>
+              <p class="hint" style="margin:6px 0 14px;">For support, feedback, custom development, or collaboration:</p>
+              <a class="contact-row" href="mailto:binusha45liyanage@gmail.com">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+                <span>binusha45liyanage@gmail.com</span></a>
+              <a class="contact-row" href="tel:+94761282723">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+                <span>+94 76 12 82 723</span></a>
+              <a class="contact-row" href="https://github.com/Binusha25Liyanage" target="_blank" rel="noopener">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+                <span>github.com/Binusha25Liyanage</span></a>
+              <div class="section-title" style="margin-top:22px;">Need help with Chimera?</div>
+              <p class="hint">Press <b>?</b> in the top bar for help on the screen you're on. When reporting a problem, include the run number and the
+                screenshot Chimera saves for failed steps (Run History &rarr; Details).</p>
+            </div>
+          </div>
+          <p class="about-legal">&copy; 2026 Binusha. All rights reserved. Unauthorized copying, redistribution, or modification of this software is prohibited.</p>
+        </section>
         <section id="view-support" class="view" style="display:none;">
           <div class="view-heading-row"><h2>Support</h2></div>
           <div class="card"><p class="hint">Not yet built.</p></div>
         </section>
 
+        <footer class="app-footer">Crafted by Binusha &middot; Full-Stack Software Engineer &middot; binusha45liyanage@gmail.com</footer>
       </main>
     </div>
   </div>
@@ -503,5 +606,6 @@
   </div>
   <script src="js/main.js"></script>
   <script src="js/automation.js"></script>
+  <script src="js/shell.js"></script>
 </body>
 </html>

@@ -799,6 +799,17 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                 if failed:
                     LIVE.log("Reports used the earlier SFA data for: " + ", ".join(failed)
                              + " (their download failed this run).", level="warn")
+                if report_run.get("status") == "pending_review":
+                    LIVE.log("Reports are waiting for your approval (Preview before saving is on). "
+                             "Open the bell or Daily SFA Reports to review them.", level="warn")
+                elif report_run.get("ok") and settings.get("wa_auto_send") == "1":
+                    import whatsapp_sender
+                    if [r for r in whatsapp_sender.list_rules() if r["enabled"]]:
+                        LIVE.set(phase="sending")
+                        LIVE.log("Sending reports to WhatsApp…")
+                        wa = whatsapp_sender.deliver_run(report_run["run_id"], wait=True)
+                        LIVE.log("WhatsApp: " + wa.get("message", ""), level="info" if wa.get("ok") else "error")
+                        report_run["whatsapp"] = wa
         if cancelled:
             status = "cancelled"
         elif len(ok_lanes) == len(lanes) and lanes:
