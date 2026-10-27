@@ -319,3 +319,64 @@ window.addEventListener("pywebviewready", () => {
   loadOverviewFeed(); refreshBell();
   SH.notifTimer = setInterval(refreshBell, 30000);
 });
+
+// ---------------------------------------------------------------- "About Chimera" pop-up (sidebar logo)
+const ICON = {
+  report: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+  bot: '<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M12 8V4M8 14h.01M16 14h.01"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  chat: '<path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/>',
+  route: '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h7a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h7"/>',
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
+  swap: '<path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  store: '<path d="M3 9l1-5h16l1 5M4 9v11h16V9M9 20v-6h6v6"/>',
+  tool: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
+};
+const svg = (k) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+const FEATURES = [
+  ["report", "Daily SFA Reports", "built", "SKU, Pivot and Hourly BC & SV reports straight from raw SFA exports — no manual merging; every file checked against its own banner."],
+  ["eye", "Preview & approve", "built", "See every page before it's saved; then save, save & send, or discard. Scheduled runs wait for your approval."],
+  ["bot", "SFA Automation", "beta", "One login, many parallel tabs: fills each report's filters, exports, validates and imports — then builds the reports."],
+  ["clock", "Scheduler", "beta", "Run times, run days, pause and skip-today; keeps running through Windows Task Scheduler when Chimera is closed."],
+  ["chat", "WhatsApp Delivery", "beta", "Sends each manager's pages to the right chats through your own WhatsApp, with captions and a delivery log."],
+  ["bell", "Notifications & help", "built", "A bell for runs, approvals and deliveries, per-screen help, and recent activity on the Overview."],
+  ["table", "Combined SKU + Invoice", "built", "Route-wise outlet report anchored to the previous visit date."],
+  ["route", "Last Visit Sales Summary", "built", "Checks the rep really worked the previous visit day before building the report."],
+  ["upload", "Import Data", "built", "Itinerary, territories, invoices, sales orders, outlet master and SKU sales, with real counts and timestamps."],
+  ["swap", "Visit State Update", "planned", "Bulk Mandatory ↔ Optional changes in SFA, dry run first, with an audit log."],
+  ["list", "Sequence Update", "planned", "Bulk outlet sequence changes in SFA using the same safe run pattern."],
+  ["store", "Outlet Master & Maintenance", "planned", "Outlet records and housekeeping tools in one place."],
+];
+const FLOW = [["Log in once", "One SFA session"], ["Download", "Parallel tabs"], ["Check", "Every file validated"],
+              ["Build", "SKU · Pivot · Hourly"], ["Review", "Preview & approve"], ["Deliver", "Folder + WhatsApp"]];
+
+function openAppAbout() {
+  const badge = { built: ["BUILT", "b-built"], beta: ["BETA", "b-beta"], planned: ["PLANNED", "b-planned"] };
+  openModal({ title: "About Chimera", size: "lg app-about", body: `
+    <div class="aa-hero">
+      <div class="aa-logo"><img src="assets/chimera-logo.png" alt="Chimera"></div>
+      <h1>C H I M E R A</h1>
+      <p>A sales-operations desk for SFA — downloads the day's reports automatically, checks every file, builds the
+         SKU, Pivot and Hourly reports, and delivers them, all from one desktop app.</p>
+    </div>
+    <div class="aa-body">
+      <p class="aa-intro">Data lives on this PC in Chimera's own SQLite database &mdash; no server, no cloud account. Chimera works with
+        SFA and WhatsApp through a browser, exactly as you would, and whether data arrives from an automatic download or a
+        file you pick, it goes through the same checks, the same snapshot rules and the same run history &mdash; so the
+        numbers stay consistent however they got there.</p>
+      <div class="aa-title">How a run works</div>
+      <div class="aa-flow">${FLOW.map(([t, s], i) => `<div class="aa-step"><span>${i + 1}</span><b>${t}</b><small>${s}</small></div>`).join("")}</div>
+      <div class="aa-title">What's inside</div>
+      <div class="aa-grid">${FEATURES.map(([ic, t, st, d]) => `
+        <div class="aa-card ${st}"><div class="aa-card-head"><span class="aa-ic">${svg(ic)}</span><b>${t}</b><span class="aa-badge ${badge[st][1]}">${badge[st][0]}</span></div>
+          <p>${d}</p></div>`).join("")}</div>
+      <p class="aa-legend"><span class="aa-badge b-built">BUILT</span> in use &nbsp; <span class="aa-badge b-beta">BETA</span> built and tested, awaiting first live runs &nbsp; <span class="aa-badge b-planned">PLANNED</span> not active yet</p>
+      <div class="aa-foot">Crafted by Binusha &middot; Full-Stack Software Engineer &middot; <button class="link-btn" onclick="closeModal();switchView('about')">About &amp; Support</button></div>
+    </div>`, footer: "" });
+}
+document.querySelector(".sidebar-brand").addEventListener("click", openAppAbout);
+document.querySelector(".sidebar-brand").setAttribute("title", "About Chimera");
