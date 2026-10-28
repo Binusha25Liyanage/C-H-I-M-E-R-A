@@ -7,14 +7,26 @@ const SH = { view: "overview", notifTimer: null, waPoll: null, preview: null, lb
 
 // Track the current view without touching every caller of switchView().
 const _origSwitchView = window.switchView;
-window.switchView = function (view) {
-  _origSwitchView(view);
+window.switchView = function (view, tab) {
+  _origSwitchView(view, tab);
   SH.view = view;
   document.getElementById("notif-panel").style.display = "none";
   if (view === "overview") loadOverviewFeed();
   if (view === "daily") { loadDeliveryMode(); loadPending(); }
-  if (view === "about") document.getElementById("topbar-title").textContent = "About & Support";
 };
+
+// ---------------------------------------------------------------- run-in-progress pill (top bar)
+async function refreshRunPill() {
+  let s; try { s = await window.pywebview.api.get_live_run(); } catch (e) { return; }
+  const pill = document.getElementById("tb-run");
+  if (!s.active) { pill.style.display = "none"; return; }
+  const lanes = s.lanes || [], done = lanes.filter(l => ["done", "empty", "failed", "cancelled"].includes(l.status)).length;
+  const phase = { logging_in: "Logging in to SFA", downloading: "Downloading", generating: "Building reports", sending: "Sending to WhatsApp" }[s.phase] || "Running";
+  document.getElementById("tb-run-text").textContent = lanes.length && s.phase === "downloading" ? `${phase} ${done}/${lanes.length}` : phase;
+  pill.style.display = "";
+}
+document.getElementById("tb-run").addEventListener("click", () => { if (typeof openMonitor === "function") openMonitor(); });
+window.addEventListener("pywebviewready", () => { refreshRunPill(); setInterval(refreshRunPill, 3000); });
 
 // ---------------------------------------------------------------- notifications
 async function refreshBell() {
@@ -214,6 +226,7 @@ document.addEventListener("keydown", (e) => { if (SH.lb && e.key === "Escape") {
 
 // ---------------------------------------------------------------- WhatsApp Delivery tab
 function selectAutomationTab(t) { const b = document.querySelector(`#au-tabs [data-tab="${t}"]`); if (b) b.click(); }
+window.selectAutomationTab = selectAutomationTab;
 document.getElementById("au-tabs").addEventListener("click", (e) => { if (e.target.dataset.tab === "whatsapp") loadWhatsApp(); });
 
 async function loadWhatsApp() {

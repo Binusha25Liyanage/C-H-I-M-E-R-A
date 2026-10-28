@@ -47,6 +47,49 @@ def api_public_non_methods(obj):
     return out
 
 
+TITLE_BAR_RGB = (0x1C, 0x1C, 0x1E)   # same charcoal as the sidebar (theme --color-sidebar-bg)
+
+
+def style_title_bar(window, rgb=TITLE_BAR_RGB):
+    """
+    Colours the native Windows title bar to match the app.
+    Windows 11: exact caption colour + white title text (DWM attributes 35/36).
+    Windows 10 (2004+): no custom colours, but the dark title bar (attribute 20,
+    or 19 on older builds) is close to the sidebar colour.
+    Anything else (or any failure) leaves the normal title bar — never crashes.
+    """
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+        hwnd = None
+        try:
+            hwnd = int(window.native.Handle.ToInt64())
+        except Exception:
+            hwnd = ctypes.windll.user32.FindWindowW(None, APP_TITLE)
+        if not hwnd:
+            logging.info("Title bar: window handle not found")
+            return False
+        dwm = ctypes.windll.dwmapi
+
+        def set_attr(attr, value):
+            v = ctypes.c_int(value)
+            return dwm.DwmSetWindowAttribute(wintypes.HWND(hwnd), ctypes.c_uint(attr), ctypes.byref(v), ctypes.sizeof(v))
+
+        if set_attr(20, 1) != 0:          # dark title bar (Windows 10 2004+ / 11)
+            set_attr(19, 1)               # same, older Windows 10 builds
+        r, g, b = rgb
+        caption = set_attr(35, r | (g << 8) | (b << 16))   # COLORREF is 0x00BBGGRR (Windows 11)
+        set_attr(36, 0x00FFFFFF)                            # title text: white
+        set_attr(34, r | (g << 8) | (b << 16))              # window border
+        logging.info("Title bar styled (caption colour %s)", "applied" if caption == 0 else "not supported, dark mode only")
+        return True
+    except Exception as e:
+        logging.info("Title bar styling skipped: %s", e)
+        return False
+
+
 def main():
     # Windows Task Scheduler launches "Chimera.exe --scheduled": run the due
     # SFA automation headless and exit, without opening a window.
@@ -94,6 +137,8 @@ def main():
     import scheduler
     api._scheduler = scheduler.InAppScheduler()
     api._scheduler.start()
+
+    window.events.shown += lambda: style_title_bar(window)
 
     webview.start()
 

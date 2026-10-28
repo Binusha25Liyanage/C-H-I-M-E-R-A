@@ -6,39 +6,65 @@ function escapeHtml(s) {
   }[c]));
 }
 
-const VIEW_TITLES = {
-  "overview": "Dashboard Overview",
-  "daily": "Daily SFA Reports",
-  "automation": "SFA Automation",
-  "schedules": "Schedules",
-  "reports": "Combined SKU + Invoice Report",
-  "visit-state": "Visit State Update",
-  "sequence": "Sequence Update",
-  "import-data": "Import Data",
-  "outlet-master": "Outlet Master",
-  "maintenance": "Maintenance",
-  "settings": "Settings",
-  "support": "Support",
+// Screen name (shown once, in the top bar) and its sidebar group.
+const VIEW_META = {
+  "overview": ["", "Overview"],
+  "daily": ["Reports", "Daily Reports"],
+  "reports": ["Reports", "Combined SKU + Invoice"],
+  "automation": ["Automation", "Report Downloads"],
+  "schedules": ["Automation", "Schedules"],
+  "visit-state": ["Automation", "Visit State Update"],
+  "sequence": ["Automation", "Sequence Update"],
+  "import-data": ["Data", "Manual Import"],
+  "outlet-master": ["Data", "Outlets & Territories"],
+  "maintenance": ["System", "Maintenance"],
+  "settings": ["System", "Settings"],
+  "about": ["System", "About & Support"],
+  "support": ["System", "Support"],
 };
+// The automation screen's tabs each have their own sidebar entry.
+const AUTOMATION_TAB_META = {
+  profiles: ["Automation", "Report Downloads", "profiles"],
+  schedule: ["Automation", "Report Downloads", "profiles"],   // Run Settings lives under Report Downloads
+  whatsapp: ["Delivery", "WhatsApp", "whatsapp"],
+  history: ["Automation", "Run History", "history"],
+};
+const VIEW_TITLES = Object.fromEntries(Object.entries(VIEW_META).map(([k, v]) => [k, v[1]]));
 
-function switchView(view) {
+function setShellTitle(view, tab) {
+  let [group, title] = VIEW_META[view] || ["", "Chimera"];
+  let navTab = "";
+  if (view === "automation") {
+    const t = tab || (document.querySelector("#au-tabs .tab.active") || {}).dataset?.tab || "profiles";
+    [group, title, navTab] = AUTOMATION_TAB_META[t] || AUTOMATION_TAB_META.profiles;
+    if (t === "schedule") title = "Report Downloads · Run Settings";
+  }
+  document.getElementById("topbar-title").textContent = title;
+  document.getElementById("topbar-crumb").textContent = group;
+  document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.view === view && (btn.dataset.tab || "") === navTab);
+  });
+  document.title = title === "Overview" ? "Chimera" : `${title} — Chimera`;
+}
+window.setShellTitle = setShellTitle;
+
+function switchView(view, tab) {
   document.querySelectorAll(".view").forEach(el => el.style.display = "none");
   const target = document.getElementById("view-" + view);
   if (!target) return;
   target.style.display = "block";
-  document.querySelectorAll(".nav-btn").forEach(btn => {
-    btn.classList.toggle("active", btn.dataset.view === view);
-  });
-  document.getElementById("topbar-title").textContent = VIEW_TITLES[view] || "Chimera";
+  document.querySelector("main").scrollTop = 0; window.scrollTo(0, 0);
   if (view === "import-data") loadImportLog();
   if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); loadDataUsage(); }
   if (view === "daily") { loadDailyStatus(); loadRuns(); }
   if (view === "automation" && window.loadAutomation) window.loadAutomation();
   if (view === "schedules" && window.loadSchedules) window.loadSchedules();
+  if (view === "automation" && tab && window.selectAutomationTab) window.selectAutomationTab(tab);
+  setShellTitle(view, tab);
 }
 
 document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
-  btn.addEventListener("click", () => switchView(btn.dataset.view));
+  btn.addEventListener("click", () => switchView(btn.dataset.view, btn.dataset.tab));
 });
 document.querySelectorAll("[data-goto]").forEach(btn => {
   btn.addEventListener("click", () => switchView(btn.dataset.goto));

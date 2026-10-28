@@ -384,6 +384,10 @@ function needOverview(fn) {
   };
 }
 document.getElementById("au-run-btn").addEventListener("click", needOverview(() => openRunNowModal()));
+document.getElementById("ov-run-btn").addEventListener("click", async () => {
+  if (!AU.ov) { try { AU.ov = await API().get_automation_overview(); } catch (e) {} }
+  needOverview(() => openRunNowModal())();
+});
 document.getElementById("au-add-btn").addEventListener("click", needOverview(() => openProfileEditor(null)));
 document.getElementById("au-live-open").addEventListener("click", openMonitor);
 
@@ -535,5 +539,6 @@ document.getElementById("au-tabs").addEventListener("click", (e) => {
   const t = e.target.dataset.tab; if (!t) return;
   document.querySelectorAll("#au-tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
   ["profiles", "schedule", "whatsapp", "history"].forEach(x => { document.getElementById("au-panel-" + x).style.display = x === t ? "block" : "none"; });
+  if (window.setShellTitle && document.getElementById("view-automation").style.display !== "none") window.setShellTitle("automation", t);
   if (t === "history") loadHistory();
 });
