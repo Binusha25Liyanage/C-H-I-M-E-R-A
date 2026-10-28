@@ -49,7 +49,10 @@
       <header class="topbar">
         <div class="tb-title"><div class="tb-crumb" id="topbar-crumb"></div><h1 id="topbar-title">Overview</h1></div>
         <div class="topbar-right">
-          <button class="tb-run" id="tb-run" style="display:none;" title="Open the live run"><span class="pulse-dot"></span><span id="tb-run-text">Running</span></button>
+          <span class="tb-run-wrap" id="tb-run" style="display:none;">
+            <button class="tb-run" id="tb-run-open" title="Open the live run"><span class="pulse-dot"></span><span id="tb-run-text">Running</span></button>
+            <button class="tb-run-stop" id="tb-run-stop" title="Stop now">&#9632; Stop</button>
+          </span>
           <button class="tb-clock" id="tb-clock" data-goto="schedules" title="PC clock and next scheduled run — open Schedules">
             <span class="clk-dot" id="tb-clock-dot"></span><b id="tb-clock-time">--:--</b>
             <span class="clk-next" id="tb-clock-next"></span>
@@ -176,7 +179,7 @@
                 <p class="hint" style="margin:6px 0 0;">Run times, days, holidays, Pause and Skip today are on the <b>Schedules</b> screen.</p>
               </div>
               <div class="master-actions">
-                <button class="btn-outline" id="au-cancel-btn" disabled>Cancel current run</button>
+                <button class="btn-stop" id="au-cancel-btn">&#9632; Stop now</button>
                 <button class="btn-primary" data-goto="schedules">Open Schedules</button>
               </div>
             </div>
@@ -459,10 +462,16 @@
             <div class="master-actions">
               <button class="btn-outline" id="sc-skip-btn">Skip today</button>
               <button class="btn-outline" id="sc-clock-btn">Check clock with SFA</button>
+              <button class="btn-stop" onclick="openStopNow()" title="Stop anything that is running, immediately">&#9632; Stop now</button>
               <label class="big-switch"><input type="checkbox" id="sc-paused-switch"><span class="big-slider"></span><b id="sc-paused-label">Running</b></label>
             </div>
           </div>
           <div id="sc-clock-warning"></div>
+
+          <div class="card">
+            <div class="card-header-row"><h3>Automations</h3><span class="hint">Turn each automatic process on or off. Pause above stops all of them.</span></div>
+            <div class="auto-grid" id="sc-switches"></div>
+          </div>
 
           <div class="tabs" id="sc-tabs">
             <button class="tab active" data-tab="jobs">Jobs</button>

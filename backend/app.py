@@ -139,6 +139,9 @@ def main():
     api._scheduler.start()
 
     window.events.shown += lambda: style_title_bar(window)
+    # Closing the window stops Chimera's own runs and frees the run lock, so the
+    # next run doesn't report "Another SFA run is already in progress".
+    window.events.closing += lambda: api._on_window_closing()
 
     webview.start()
 

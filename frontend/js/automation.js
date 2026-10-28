@@ -395,10 +395,10 @@ document.getElementById("au-live-open").addEventListener("click", openMonitor);
 function openMonitor() {
   AU.monitorOpen = true;
   openModal({ title: "Live run", size: "xl", body: `<div id="mon-body"><span class="spinner"></span> Starting…</div>`,
-    footer: `<button class="btn-outline left" id="mon-cancel">Cancel run</button><button class="btn-outline" id="mon-min">Minimise</button>`,
+    footer: `<button class="btn-stop left" id="mon-cancel">&#9632; Stop now</button><button class="btn-outline" id="mon-min">Minimise</button>`,
     onClose: () => { AU.monitorOpen = false; } });
   document.getElementById("mon-min").onclick = () => closeModal();
-  document.getElementById("mon-cancel").onclick = async () => { await API().cancel_automation_run(); };
+  document.getElementById("mon-cancel").onclick = () => openStopNow();
   startPolling();
 }
 
@@ -412,17 +412,18 @@ function renderMonitor(s) {
   let gen = "";
   const rr = s.result && s.result.report_run;
   if (rr) gen = `<div class="section-title">Reports built</div><ul class="result-list">${rr.reports.map(r => r.ok
-      ? `<li>${chip("done")} <b>${esc(r.label)}</b> — ${(r.outputs || [{ pdf: r.pdf }]).map(o => openPathButton(o.pdf, o.style ? `PDF (${o.style})` : "PDF")).join(" · ")} · ${r.images.length} WhatsApp image(s)</li>`
+      ? `<li>${chip("done")} <b>${esc(r.label)}</b> — ${(r.outputs || [{ pdf: r.pdf }]).map(o => openPathButton(o.pdf, o.style ? `PDF (${o.style})` : "PDF")).join(" · ")} · ${r.images.length} WhatsApp image(s)${r.images_error ? `<div class="error" style="font-size:12px;">${esc(r.images_error)}</div>` : ""}</li>`
       : `<li>${chip("failed")} <b>${esc(r.label)}</b> — ${esc(r.reason)}</li>`).join("")}</ul>${rr.folder ? `<p class="hint">${openPathButton(rr.folder, "Open output folder")}</p>` : ""}`;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <div><b>${esc(phase)}</b> <span class="hint">· report date ${esc(s.report_date || "")} · ${esc(s.trigger || "")}${s.slot ? " " + esc(s.slot) : ""}${s.run_id ? ` · run #${s.run_id}` : ""}${s.data_bytes != null ? ` · data ${fmtBytes(s.data_bytes)}${s.data_saver ? ` (data saver on${s.blocked ? `, ${s.blocked} skipped` : ""})` : ""}` : ""}</span></div>
       <div>${s.result ? chip(s.result.status) : ""}</div></div>
     <div class="progress"><div style="width:${pct}%"></div></div>
-    ${s.result && s.result.message && !s.result.ok ? `<div class="problem-box">${esc(s.result.message)}</div>` : ""}
+    ${s.result && s.result.message && !s.result.ok ? `<div class="problem-box">${esc(s.result.message)}${/already in progress/i.test(s.result.message)
+      ? `<div style="margin-top:8px;">If Chimera was closed during that run, or it's stuck: <button class="btn-stop btn-small" onclick="openStopNow()">&#9632; Stop it now</button></div>` : ""}</div>` : ""}
     <div class="lanes">${lanes.map(laneHtml).join("")}</div>
     ${gen}
-    <div class="section-title">Log</div><div class="log-box" id="mon-log">${logHtml(s.log || [])}</div>`;
+    <div class="section-title">Log <button class="btn-outline btn-small" data-copy-log="live" title="Copy the whole run (reports, results and log) to paste anywhere">Copy log</button></div><div class="log-box" id="mon-log">${logHtml(s.log || [])}</div>`;
   const lg = document.getElementById("mon-log"); lg.scrollTop = lg.scrollHeight;
   const c = document.getElementById("mon-cancel"); if (c) c.style.display = s.active ? "" : "none";
   const m = document.getElementById("mon-min"); if (m) m.textContent = s.active ? "Minimise" : "Close";
@@ -436,7 +437,7 @@ function startPolling() {
     banner.style.display = s.active && !s.test ? "flex" : "none";
     if (s.active) document.getElementById("au-live-text").textContent =
       `${s.trigger === "scheduled" ? "Scheduled" : "Manual"} run in progress — ${(s.lanes || []).filter(l => ["done", "empty"].includes(l.status)).length}/${(s.lanes || []).length} reports done`;
-    document.getElementById("au-cancel-btn").disabled = !s.active;
+    document.getElementById("au-cancel-btn").classList.toggle("is-live", !!s.active);
     if (AU.monitorOpen) renderMonitor(s);
     if (AU.testOpen) renderTest(s);
     if (!s.active && !AU.monitorOpen && !AU.testOpen) { clearInterval(AU.poll); AU.poll = null; loadAutomation(); }
@@ -473,7 +474,7 @@ function renderTest(s) {
   el.innerHTML = `${laneHtml(l)}
     ${checks ? `<div class="section-title">File checks</div><ul class="check-list">${checks}</ul>` : ""}
     ${(l.shots || []).length ? `<div class="section-title">Screenshots</div><div class="shots">${l.shots.map(x => `<figure><img src="data:image/jpeg;base64,${x.img}" onclick="this.requestFullscreen && this.requestFullscreen()"><figcaption>${esc(x.step.replace(/_/g, " "))}</figcaption></figure>`).join("")}</div>` : ""}
-    <div class="section-title">Log</div><div class="log-box">${logHtml(s.log || [])}</div>`;
+    <div class="section-title">Log <button class="btn-outline btn-small" data-copy-log="live">Copy log</button></div><div class="log-box">${logHtml(s.log || [])}</div>`;
   const go = document.getElementById("tr-go"); if (go) { go.disabled = !!s.active; go.textContent = s.active ? "Running…" : "▶ Run test again"; }
 }
 
@@ -501,7 +502,7 @@ async function saveAuto(values, resultId) {
   if (r.ok) await loadAutomationQuiet().then(renderSchedule);
   return r;
 }
-document.getElementById("au-cancel-btn").addEventListener("click", () => confirmModal("Cancel current run", "Stop the run that's in progress? Reports already downloaded stay imported.", "Cancel run", async () => { await API().cancel_automation_run(); }, true));
+document.getElementById("au-cancel-btn").addEventListener("click", () => openStopNow());
 function parallelWarn(v) {
   document.getElementById("au-parallel-warn").innerHTML = Number(v) > 8
     ? `<span style="color:#9a6a00;">${v} tabs is heavy: each tab is a full SFA page (~150–250 MB of memory). Use it only if the PC and SFA stay responsive; reports that fail retry on their own.</span>`
@@ -532,7 +533,7 @@ document.getElementById("au-history").addEventListener("click", (e) => {
   openModal({ title: `Run #${r.id} — ${r.report_date}`, size: "lg",
     body: `<p class="hint">${esc((r.started_at || "").replace("T", " "))} → ${esc((r.finished_at || "").replace("T", " "))} · ${esc(r.trigger)}${r.slot ? " " + esc(r.slot) : ""} · ${chip(r.status)}</p>
            <div class="lanes">${(r.lanes || []).map(laneHtml).join("") || "<p class='hint'>No reports in this run.</p>"}</div>`,
-    footer: `<button class="btn-outline" onclick="closeModal()">Close</button>` });
+    footer: `<button class="btn-outline left" data-copy-log="${r.id}">Copy log</button><button class="btn-outline" onclick="closeModal()">Close</button>` });
 });
 
 // ---------------------------------------------------------------- tabs

@@ -41,6 +41,13 @@ JOB_TYPES = {
     "sequence": {"label": "Sequence update", "available": False, "hint": "Coming soon."},
 }
 REPORT_DAYS = ("today", "yesterday")
+# Each job type has an on/off switch in automation_settings (Schedules > Automations).
+TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "master_sync": "auto_master_sync",
+               "visit_state": "auto_visit_state", "sequence": "auto_sequence"}
+
+
+def type_on(job, settings):
+    return settings.get(TYPE_SWITCH.get(job["job_type"], ""), "1") != "0"
 LAST_DAY = "last"
 _TIME = re.compile(r"^(\d{1,2}):(\d{2})$")
 

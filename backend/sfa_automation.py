@@ -199,6 +199,25 @@ class LiveState:
 
 LIVE = LiveState()
 
+# The browser of the run in progress, so "Stop now" can close it at once
+# instead of waiting for the current step to finish.
+_ACTIVE = {"loop": None, "browser": None}
+
+
+def force_stop(timeout=10):
+    """Stop the SFA run / filter detection in this process immediately."""
+    was = bool(LIVE.snapshot().get("active")) or _ACTIVE["browser"] is not None
+    if was:
+        LIVE.cancel()
+        LIVE.log("Stopped immediately by the user.", level="warn")
+    loop, browser = _ACTIVE["loop"], _ACTIVE["browser"]
+    if loop and browser:
+        try:
+            asyncio.run_coroutine_threadsafe(browser.close(), loop).result(timeout)
+        except Exception:
+            pass
+    return was
+
 
 def _new_lane(profile):
     return {"profile_id": profile["id"], "name": profile["name"], "feeds_into": profile["feeds_into"],
@@ -903,7 +922,10 @@ async def _run_async(cfg, items, report_date, opts):
         LIVE.set(phase="logging_in")
         LIVE.log(f"Starting {cfg.get('browser', 'chrome')} ({'hidden' if opts['headless'] else 'visible'}).")
         browser = await _launch(p, cfg.get("browser", "chrome"), opts["headless"])
+        _ACTIVE.update(loop=asyncio.get_running_loop(), browser=browser)
         try:
+            if LIVE.cancelled():
+                raise Cancelled()
             context = await browser.new_context(accept_downloads=True, viewport={"width": 1500, "height": 950})
             meter = opts["meter"]
             meter.watch_popups(context)
@@ -939,7 +961,11 @@ async def _run_async(cfg, items, report_date, opts):
                                    for i, prof in items])
             return True
         finally:
-            await browser.close()
+            _ACTIVE.update(loop=None, browser=None)
+            try:
+                await browser.close()
+            except Exception:
+                pass
 
 
 def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=None, headless=None,
@@ -1011,7 +1037,10 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
         ok_lanes = [l for l in lanes if l["status"] in ("done", "empty")]
         cancelled = LIVE.cancelled()
         report_run = None
-        if generate and not test and ok_lanes and not cancelled:
+        build_on = settings.get("auto_build_reports", "1") == "1"
+        if generate and not test and ok_lanes and not cancelled and not build_on:
+            LIVE.log("Building reports is switched off (Schedules › Automations) — downloads only.")
+        if generate and not test and ok_lanes and not cancelled and build_on:
             kinds = settings["generate_list"]
             if kinds:
                 LIVE.set(phase="generating")
@@ -1048,6 +1077,12 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
         meter = opts["meter"]
         LIVE.set(data_bytes=meter.bytes, blocked=meter.blocked)
         msg = f"{len(ok_lanes)} of {len(lanes)} report(s) downloaded."
+        if report_run:
+            bad = [r for r in report_run.get("reports", []) if not r.get("ok")]
+            if bad:
+                msg += f" {len(bad)} report(s) couldn't be built — see 'Reports built'."
+            if report_run.get("warning"):
+                LIVE.log(report_run["warning"], level="warn")
         if runnable:
             LIVE.log(f"Internet data used by this run: {meter.bytes / 1_048_576:.2f} MB"
                      + (f" ({meter.blocked} images/fonts skipped by data saver)" if meter.data_saver else "") + ".")
@@ -1068,7 +1103,37 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
         LIVE.set(active=False, phase="done", result={"ok": False, "message": msg})
         return {"ok": False, "status": "failed", "message": msg, "run_id": run_id}
     finally:
+        if run_id:
+            try:
+                AS.save_run_log(run_id, log_text(LIVE.snapshot()))
+            except Exception:
+                pass
         AS.release_lock()
+
+
+def log_text(s):
+    """A run as plain text — what 'Copy log' puts on the clipboard."""
+    out = [f"Chimera SFA run #{s.get('run_id') or '-'} · report date {s.get('report_date') or '-'} · "
+           f"{s.get('trigger') or ''}{(' ' + s['slot']) if s.get('slot') else ''}"]
+    res = s.get("result") or {}
+    if res:
+        out.append(f"Result: {str(res.get('status', '')).upper()} — {res.get('message', '')}")
+    if s.get("data_bytes") is not None:
+        out.append(f"Data used: {s['data_bytes'] / 1_048_576:.2f} MB" + (" (data saver on)" if s.get("data_saver") else ""))
+    out.append("")
+    for l in s.get("lanes") or []:
+        steps = " ".join(f"{k}:{v}" for k, v in (l.get("steps") or {}).items())
+        out.append(f"[{l.get('status')}] {l.get('name')} — {l.get('message') or ''} (rows={l.get('rows')}) {steps}")
+    rr = res.get("report_run") or {}
+    if rr.get("reports"):
+        out.append("")
+        for r in rr["reports"]:
+            out.append(f"[{'ok' if r.get('ok') else 'failed'}] {r.get('label')} — "
+                       f"{r.get('reason') or r.get('images_error') or ', '.join(o.get('pdf', '') for o in r.get('outputs') or [])}")
+    out.append("")
+    for x in s.get("log") or []:
+        out.append(f"{x['t']} {x['level'].upper():5} {('[' + x['lane'] + '] ') if x.get('lane') else ''}{x['msg']}")
+    return "\n".join(out)
 
 
 def start_background(**kw):
@@ -1139,6 +1204,7 @@ async def _detect_async(cfg, url, headless, read_options):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
         browser = await _launch(p, cfg.get("browser", "chrome"), headless)
+        _ACTIVE.update(loop=asyncio.get_running_loop(), browser=browser)
         try:
             context = await browser.new_context(viewport={"width": 1500, "height": 950})
             page = await context.new_page()
@@ -1175,7 +1241,11 @@ async def _detect_async(cfg, url, headless, read_options):
             shot = await page.screenshot(type="jpeg", quality=55)
             return fields, base64.b64encode(shot).decode("ascii"), await page.title()
         finally:
-            await browser.close()
+            _ACTIVE.update(loop=None, browser=None)
+            try:
+                await browser.close()
+            except Exception:
+                pass
 
 
 def detect_filters(url, headless=True, read_options=True):

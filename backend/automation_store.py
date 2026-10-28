@@ -57,6 +57,11 @@ DEFAULT_AUTOMATION = {
     "wa_chats_cache": "[]",              # chat names last read from WhatsApp Web
     "notif_seen_at": "",                 # notifications newer than this are unread
     "data_saver": "0",                   # don't load images/fonts/media during automated SFA runs
+    "auto_sfa_downloads": "1",           # per-process switches (Schedules > Automations)
+    "auto_build_reports": "1",
+    "auto_master_sync": "1",
+    "auto_visit_state": "1",
+    "auto_sequence": "1",
     "clock_offset_s": "",                # SFA server time minus PC time, seconds (last check)
     "clock_source": "",
     "clock_checked_at": "",
@@ -134,6 +139,8 @@ def init_schema():
         cur.execute("ALTER TABLE automation_runs ADD COLUMN blocked INTEGER")
     if "data_saver" not in cols:
         cur.execute("ALTER TABLE automation_runs ADD COLUMN data_saver INTEGER")
+    if "log" not in cols:
+        cur.execute("ALTER TABLE automation_runs ADD COLUMN log TEXT")
     for k, v in DEFAULT_AUTOMATION.items():
         cur.execute("INSERT OR IGNORE INTO automation_settings (key, value) VALUES (?, ?)", (k, v))
     if cur.execute("SELECT COUNT(*) FROM sfa_profiles").fetchone()[0] == 0:
@@ -375,7 +382,8 @@ def save_automation_settings(values):
                 return False, "WhatsApp style must be classic or professional."
         elif k in ("wa_chats_cache", "notif_seen_at", "clock_source", "clock_checked_at"):
             pass
-        elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver"):
+        elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
+                   "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
         elif k == "parallel_tabs":
             if not v.isdigit() or not 1 <= int(v) <= MAX_PARALLEL_TABS:
@@ -442,6 +450,21 @@ def list_runs(limit=20):
     return out
 
 
+def save_run_log(rid, text):
+    """Keeps the run's log with its history entry (so it can be copied later)."""
+    conn = db.get_connection()
+    conn.execute("UPDATE automation_runs SET log=? WHERE id=?", (text[-200_000:], rid))
+    conn.commit()
+    conn.close()
+
+
+def get_run_log(rid):
+    conn = db.get_connection()
+    r = conn.execute("SELECT log FROM automation_runs WHERE id=?", (rid,)).fetchone()
+    conn.close()
+    return (r[0] if r else None) or ""
+
+
 def slot_already_ran(report_date, slot):
     conn = db.get_connection()
     n = conn.execute("""SELECT COUNT(*) FROM automation_runs WHERE report_date=? AND slot=?
@@ -476,7 +499,8 @@ def acquire_lock(owner):
             try:
                 with open(LOCK_PATH) as f:
                     info = json.load(f)
-                stale = time.time() - float(info.get("since", 0)) > LOCK_STALE_SECONDS
+                stale = (time.time() - float(info.get("since", 0)) > LOCK_STALE_SECONDS
+                         or not pid_alive(int(info.get("pid", 0))))     # Chimera was closed mid-run
             except Exception:
                 stale = True
             if not stale:
@@ -488,6 +512,33 @@ def acquire_lock(owner):
     return False
 
 
+def pid_alive(pid):
+    """Is that process still running? (Windows-safe: never sends a signal there.)"""
+    if not pid or pid <= 0:
+        return False
+    if pid == os.getpid():
+        return True
+    if os.name == "nt":
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        h = k32.OpenProcess(0x1000, False, pid)        # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return ctypes.GetLastError() == 5          # access denied = exists but not ours
+        try:
+            code = ctypes.c_ulong()
+            k32.GetExitCodeProcess(h, ctypes.byref(code))
+            return code.value == 259                   # STILL_ACTIVE
+        finally:
+            k32.CloseHandle(h)
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
 def lock_holder():
     try:
         with open(LOCK_PATH) as f:
@@ -496,7 +547,11 @@ def lock_holder():
         return None
 
 
-def release_lock():
+def release_lock(only_if_mine=False):
+    if only_if_mine:
+        h = lock_holder()
+        if h and h.get("pid") != os.getpid():
+            return
     try:
         os.remove(LOCK_PATH)
     except OSError:

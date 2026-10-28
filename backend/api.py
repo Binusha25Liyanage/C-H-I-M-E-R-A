@@ -415,6 +415,31 @@ class Api:
         sfa_automation.LIVE.cancel()
         return {"ok": True}
 
+    def get_run_log_text(self, run_id=None):
+        """Plain-text log: the live/last run, or a past run from the history."""
+        import sfa_automation
+        s = sfa_automation.LIVE.snapshot()
+        if run_id is None or s.get("run_id") == run_id:
+            return sfa_automation.log_text(s)
+        return automation_store.get_run_log(int(run_id)) or "No log was kept for this run (runs before this update)."
+
+    def copy_text(self, text):
+        """Clipboard fallback when the window's own clipboard isn't available."""
+        try:
+            import subprocess
+            if os.name == "nt":
+                subprocess.run(["clip"], input=(text or "").encode("utf-16"), check=True,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                return {"ok": True}
+            import shutil
+            for cmd in (["pbcopy"], ["xclip", "-selection", "clipboard"], ["wl-copy"]):
+                if shutil.which(cmd[0]):
+                    subprocess.run(cmd, input=(text or "").encode(), check=True)
+                    return {"ok": True}
+            return {"ok": False, "message": "No clipboard tool found."}
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
     def get_automation_runs(self, limit=20):
         return automation_store.list_runs(limit)
 
@@ -472,6 +497,7 @@ class Api:
             "week_start": start.date().isoformat(),
             "week": [{"job_id": o["job"]["id"], "job": o["job"]["name"], "type": o["job"]["job_type"],
                       "at": o["at"].isoformat(), "slot": o["slot"], "holiday": o["holiday"],
+                      "switched_off": not schedule_store.type_on(o["job"], settings),
                       "skipped_today": settings["skip_date"] == o["at"].date().isoformat()} for o in week],
             "week_holidays": {d: n for d, n in hol.items() if start.date().isoformat() <= d
                               <= (start.date() + timedelta(days=6)).isoformat()},
@@ -481,6 +507,8 @@ class Api:
             "next": {"job": nxt["job"]["name"], "at": nxt["at"].isoformat(), "label": self._fmt_dt(nxt["at"])}
                     if nxt else None,
             "controls": {k: settings[k] for k in ("paused", "skip_date", "use_task_scheduler")},
+            "switches": {k: settings.get(k, "1") for k in ("auto_sfa_downloads", "auto_build_reports", "wa_auto_send",
+                                                           "auto_master_sync", "auto_visit_state", "auto_sequence")},
             "clock": scheduler.clock_status(settings),
             "task_times": scheduler.wanted_task_times(),
             "is_windows": os.name == "nt",
@@ -539,6 +567,73 @@ class Api:
                 "paused": settings["paused"] == "1",
                 "next": {"job": nxt["job"]["name"], "at": nxt["at"].isoformat(), "label": self._fmt_dt(nxt["at"])}
                         if nxt else None}
+
+    def emergency_stop(self, pause=False):
+        """
+        'Stop now': closes the SFA / WhatsApp browser of anything running in
+        this window at once, stops a background (Task Scheduler) Chimera that
+        holds the run lock, clears a lock left by a closed window, and — by
+        ticked — pauses scheduled runs so nothing starts again by itself.
+        """
+        import sfa_automation
+        done = []
+        if sfa_automation.force_stop():
+            done.append("Stopped the SFA run in this window.")
+        if whatsapp_sender.force_stop():
+            done.append("Closed the WhatsApp sending window.")
+        holder = automation_store.lock_holder()
+        if holder:
+            pid = int(holder.get("pid") or 0)
+            if pid and pid != os.getpid() and automation_store.pid_alive(pid):
+                killed = self._kill_process_tree(pid)
+                done.append(f"Stopped the background Chimera run ({holder.get('owner', 'scheduled')})." if killed
+                            else f"Couldn't stop the background run (process {pid}) — close it in Task Manager.")
+                if killed:
+                    automation_store.release_lock()
+                    automation_store.mark_interrupted_runs()
+            elif not sfa_automation.LIVE.snapshot().get("active"):
+                automation_store.release_lock()
+                automation_store.mark_interrupted_runs()
+                done.append("Cleared a run that was left unfinished when Chimera was closed.")
+        if pause:
+            automation_store.save_automation_settings({"paused": "1"})
+            self._sync_tasks_if_used()
+            done.append("Scheduled runs are paused — switch them back on in Schedules.")
+        if not done:
+            done.append("Nothing was running.")
+        return {"ok": True, "message": " ".join(done), "steps": done}
+
+    @staticmethod
+    def _kill_process_tree(pid):
+        import subprocess
+        try:
+            if os.name == "nt":
+                r = subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, text=True,
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                return r.returncode == 0
+            import signal
+            os.kill(pid, signal.SIGTERM)
+            return True
+        except Exception:
+            return False
+
+    def _on_window_closing(self):
+        """Closing Chimera stops its own runs cleanly and frees the run lock (not exposed to JS)."""
+        try:
+            import sfa_automation
+            sfa_automation.force_stop(timeout=5)
+            whatsapp_sender.force_stop(timeout=5)
+        except Exception:
+            pass
+        automation_store.release_lock(only_if_mine=True)
+
+    def check_dependencies(self):
+        """Python packages Chimera needs that aren't installed on this PC (shown as a banner)."""
+        import importlib.util
+        needed = {"pandas": "pandas", "openpyxl": "openpyxl", "reportlab": "reportlab",
+                  "playwright": "playwright", "pypdfium2": "pypdfium2", "PIL": "pillow"}
+        missing = [pkg for mod, pkg in needed.items() if importlib.util.find_spec(mod) is None]
+        return {"missing": missing, "command": "py -m pip install -r requirements.txt" if missing else ""}
 
     def get_data_usage(self):
         """Settings > Network & Data: data saver state + measured usage."""

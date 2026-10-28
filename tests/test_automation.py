@@ -97,6 +97,17 @@ class AutomationStoreTest(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(AS.get_automation_settings()["run_times_list"], ["09:05", "17:30"])
 
+    def test_lock_left_by_closed_app_is_stale(self):
+        import json as _j
+        AS.release_lock()
+        os.makedirs(os.path.dirname(AS.LOCK_PATH), exist_ok=True)
+        with open(AS.LOCK_PATH, "w") as f:
+            _j.dump({"owner": "closed window", "pid": 999999, "since": __import__("time").time()}, f)
+        self.assertFalse(AS.pid_alive(999999))
+        self.assertTrue(AS.acquire_lock("new run"))          # dead process -> taken over
+        self.assertEqual(AS.lock_holder()["owner"], "new run")
+        AS.release_lock()
+
     def test_lock(self):
         self.assertTrue(AS.acquire_lock("a"))
         self.assertFalse(AS.acquire_lock("b"))

@@ -448,3 +448,22 @@ svg.nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; }
 .banner-info .link-btn { font-size: 13px; padding: 0; }
 .view-heading-row { align-items: center; }
 .view-heading-row .hint { margin: 0; max-width: 820px; }
+
+/* ---------- Stop now + automation switches ---------- */
+.btn-stop { background: #fff; color: var(--color-primary); border: 1.5px solid var(--color-primary); border-radius: 8px; padding: 9px 16px;
+  font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+.btn-stop:hover { background: var(--color-primary); color: #fff; }
+.btn-stop.btn-small { padding: 5px 10px; font-size: 12px; }
+#au-cancel-btn.is-live { background: var(--color-primary); color: #fff; }
+.tb-run-wrap { display: inline-flex; align-items: center; gap: 0; }
+.tb-run-wrap .tb-run { border-radius: 20px 0 0 20px; border-right: none; }
+.tb-run-stop { background: var(--color-primary); color: #fff; border: 1px solid var(--color-primary); border-radius: 0 20px 20px 0;
+  padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.tb-run-stop:hover { background: var(--color-primary-dark); }
+.auto-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.auto-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; border: 1px solid #eee; border-radius: 10px;
+  padding: 12px 14px; background: #fafafb; }
+.auto-item.on { border-color: #cfe9da; background: #f4fbf7; }
+.auto-item.soon { opacity: .6; }
+.auto-item .hint { margin: 2px 0 0; font-size: 12px; }
+.nav-soon.dark { color: var(--color-ash); border-color: #ccc; }

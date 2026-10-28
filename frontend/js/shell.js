@@ -25,8 +25,46 @@ async function refreshRunPill() {
   document.getElementById("tb-run-text").textContent = lanes.length && s.phase === "downloading" ? `${phase} ${done}/${lanes.length}` : phase;
   pill.style.display = "";
 }
-document.getElementById("tb-run").addEventListener("click", () => { if (typeof openMonitor === "function") openMonitor(); });
-window.addEventListener("pywebviewready", () => { refreshRunPill(); setInterval(refreshRunPill, 3000); });
+document.getElementById("tb-run-open").addEventListener("click", () => { if (typeof openMonitor === "function") openMonitor(); });
+document.getElementById("tb-run-stop").addEventListener("click", () => openStopNow());
+
+// ---------------------------------------------------------------- Stop now (everywhere)
+function openStopNow() {
+  openModal({ title: "Stop now", body: `
+      <p>Stops whatever Chimera is doing <b>immediately</b>: the SFA download browser closes, a WhatsApp send in
+        progress is stopped, and a background run started by Windows Task Scheduler is ended.</p>
+      <p class="hint">Reports already downloaded and imported stay. A run left unfinished when Chimera was closed is cleared too.</p>
+      <label class="check" style="margin-top:12px;"><input type="checkbox" id="stop-pause"> Also pause scheduled runs (nothing starts again until you switch it back on)</label>
+      <div id="stop-result"></div>`,
+    footer: `<button class="btn-outline" id="stop-cancel">Keep running</button><button class="btn-stop" id="stop-go">&#9632; Stop now</button>` });
+  document.getElementById("stop-cancel").onclick = () => closeModal();
+  document.getElementById("stop-go").onclick = async (e) => {
+    e.target.disabled = true; e.target.textContent = "Stopping…";
+    const r = await window.pywebview.api.emergency_stop(document.getElementById("stop-pause").checked);
+    document.getElementById("stop-result").innerHTML = `<div class="ok-box" style="margin-top:14px;">${r.steps.map(x => esc(x)).join("<br>")}</div>`;
+    document.getElementById("modal-footer").innerHTML = `<button class="btn-primary" id="stop-done">Done</button>`;
+    document.getElementById("stop-done").onclick = () => closeModal(true);
+    refreshRunPill();
+    if (window.refreshClock) refreshClock();
+    if (SH.view === "schedules" && window.loadSchedules) loadSchedules();
+    if (SH.view === "automation" && window.loadAutomation) loadAutomation();
+  };
+}
+window.openStopNow = openStopNow;
+window.addEventListener("pywebviewready", () => { refreshRunPill(); setInterval(refreshRunPill, 3000); checkDependencies(); });
+
+// ---------------------------------------------------------------- missing Python packages
+async function checkDependencies() {
+  let d; try { d = await window.pywebview.api.check_dependencies(); } catch (e) { return; }
+  if (!d.missing.length) return;
+  const box = document.createElement("div");
+  box.className = "problem-box dep-banner";
+  box.innerHTML = `<b>Some Python packages are missing on this PC:</b> ${esc(d.missing.join(", "))}.
+    Close Chimera, open a terminal in the Chimera folder and run <code>${esc(d.command)}</code>, then start Chimera again.
+    <button class="btn-outline btn-small" id="dep-copy">Copy command</button>`;
+  document.querySelector("main").prepend(box);
+  document.getElementById("dep-copy").onclick = (e) => copyText(d.command, e.target);
+}
 
 // ---------------------------------------------------------------- notifications
 async function refreshBell() {

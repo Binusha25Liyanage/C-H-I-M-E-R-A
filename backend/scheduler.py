@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import threading
+import urllib.error
 import urllib.request
 from datetime import date, datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -58,7 +59,7 @@ def due_jobs(now=None, settings=None, jobs=None):
     hol = SS.holiday_set()
     due = []
     for j in (jobs if jobs is not None else SS.list_jobs()):
-        if not SS.runs_on(j, now.date(), hol):
+        if not SS.type_on(j, s) or not SS.runs_on(j, now.date(), hol):
             continue
         for t in j["times_list"]:
             h, m = (int(x) for x in t.split(":"))
@@ -78,7 +79,7 @@ def upcoming(now=None, days=7, settings=None, limit=None, include_skipped=False)
     if s["paused"] == "1":
         return []
     occ = SS.occurrences(now, now + timedelta(days=days), include_skipped=include_skipped)
-    occ = [o for o in occ if o["at"] > now and s["skip_date"] != o["at"].date().isoformat()]
+    occ = [o for o in occ if o["at"] > now and s["skip_date"] != o["at"].date().isoformat() and SS.type_on(o["job"], s)]
     return occ[:limit] if limit else occ
 
 
@@ -104,7 +105,7 @@ def next_run_per_job(now=None, settings=None):
     if s["paused"] == "1":
         return out
     for o in SS.occurrences(now, now + timedelta(days=370)):
-        if o["at"] > now and s["skip_date"] != o["at"].date().isoformat():
+        if o["at"] > now and s["skip_date"] != o["at"].date().isoformat() and SS.type_on(o["job"], s):
             out.setdefault(o["job"]["id"], o["at"])
     return out
 

@@ -21,7 +21,7 @@ async function loadSchedules(week) {
       : "Couldn't load schedules: " + esc(String(err))}</div>`;
     return;
   }
-  renderScTop(); renderScJobs(); renderScWeek(); renderScHolidays(); renderScFires();
+  renderScTop(); renderScSwitches(); renderScJobs(); renderScWeek(); renderScHolidays(); renderScFires();
 }
 window.loadSchedules = loadSchedules;
 
@@ -78,6 +78,29 @@ document.getElementById("sc-clock-btn").addEventListener("click", async (e) => {
   if (!r.ok) document.getElementById("sc-clock-warning").innerHTML = `<div class="problem-box">${esc(r.message)}</div>`;
   else { await loadSchedules(); if (r.level === "ok") document.getElementById("sc-clock-warning").innerHTML = `<div class="ok-box">${esc(r.message)}</div>`; }
   refreshClock();
+});
+
+// ---------------------------------------------------------------- per-process switches
+const SC_SWITCHES = [
+  ["auto_sfa_downloads", "SFA report downloads", "Scheduled download jobs run at their times."],
+  ["auto_build_reports", "Build reports after downloading", "SKU, Pivot and Hourly are built when a download finishes."],
+  ["wa_auto_send", "Send to WhatsApp automatically", "Reports go to the chats in your delivery rules once saved or approved."],
+  ["auto_master_sync", "Master data sync", "Itinerary, Territories and Outlet Master from SFA.", true],
+  ["auto_visit_state", "Visit state update", "Mandatory / Optional route changes in SFA.", true],
+  ["auto_sequence", "Sequence update", "Outlet visit order in SFA.", true],
+];
+function renderScSwitches() {
+  const sw = SC.ov.switches, paused = SC.ov.controls.paused === "1";
+  document.getElementById("sc-switches").innerHTML = SC_SWITCHES.map(([k, label, hint, soon]) => `
+    <div class="auto-item ${soon ? "soon" : ""} ${!soon && sw[k] === "1" && !paused ? "on" : ""}">
+      <div><b>${esc(label)}</b>${soon ? ' <em class="nav-soon dark">Soon</em>' : ""}<p class="hint">${esc(hint)}</p></div>
+      <label class="switch2"><input type="checkbox" data-switch="${k}" ${!soon && sw[k] === "1" ? "checked" : ""} ${soon ? "disabled" : ""}><span></span></label>
+    </div>`).join("");
+}
+document.getElementById("sc-switches").addEventListener("change", async (e) => {
+  const k = e.target.dataset.switch; if (!k) return;
+  await API().save_automation_settings({ [k]: e.target.checked ? "1" : "0" });
+  await loadSchedules(); refreshClock();
 });
 
 // ---------------------------------------------------------------- jobs
@@ -235,7 +258,7 @@ function renderScWeek() {
     return `<div class="wk-col ${iso === o.today ? "today" : ""}">
       <div class="wk-head"><b>${n}</b> ${d.getDate()} ${scFmtDate(d, { month: "short" })}${hol ? `<div class="wk-hol" title="${esc(hol)}">${esc(hol)}</div>` : ""}</div>
       ${items.map(x => {
-        const skipped = x.holiday || x.skipped_today || o.controls.paused === "1";
+        const skipped = x.holiday || x.skipped_today || x.switched_off || o.controls.paused === "1";
         return `<div class="wk-item ${SC_TYPE_CLASS[x.type] || ""} ${x.at <= now ? "past" : ""} ${skipped ? "skipped" : ""}" title="${esc(x.job)} at ${esc(x.slot)}${x.holiday ? " — skipped (holiday)" : ""}">
           <b>${esc(x.slot)}</b> ${esc(x.job)}</div>`; }).join("") || '<div class="wk-empty">—</div>'}
     </div>`; }).join("");

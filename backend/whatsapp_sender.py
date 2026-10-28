@@ -196,6 +196,20 @@ class _State:
 
 
 WA = _State()
+_ACTIVE = {"loop": None, "ctx": None}
+
+
+def force_stop(timeout=10):
+    """Close the WhatsApp Web window of a send / link in progress, immediately."""
+    loop, ctx = _ACTIVE["loop"], _ACTIVE["ctx"]
+    if not (loop and ctx):
+        return False
+    WA.log("Stopped immediately by the user.", level="warn")
+    try:
+        asyncio.run_coroutine_threadsafe(ctx.close(), loop).result(timeout)
+    except Exception:
+        pass
+    return True
 
 
 # ===========================================================================
@@ -338,6 +352,7 @@ async def _session(action, headless, fn, link_timeout=180):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
         ctx = await _open(p, headless)
+        _ACTIVE.update(loop=asyncio.get_running_loop(), ctx=ctx)
         try:
             page = ctx.pages[0] if ctx.pages else await ctx.new_page()
             WA.log("Opening WhatsApp Web…")
@@ -354,7 +369,11 @@ async def _session(action, headless, fn, link_timeout=180):
             await page.wait_for_timeout(1500)
             return await fn(page)
         finally:
-            await ctx.close()
+            _ACTIVE.update(loop=None, ctx=None)
+            try:
+                await ctx.close()
+            except Exception:
+                pass
 
 
 def _run(action, headless, fn):

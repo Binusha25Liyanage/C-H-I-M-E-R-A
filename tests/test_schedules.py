@@ -96,6 +96,16 @@ class ScheduleTest(unittest.TestCase):
         SS.save_job(dict(j, times=j["times_list"], skip_holidays=False))
         self.assertEqual(len(scheduler.due_jobs(mon_1010)[0]), 1)                        # this job runs on holidays
 
+    def test_switched_off_type_doesnt_run(self):
+        mon_1010 = datetime(2026, 10, 26, 10, 10)
+        AS.save_automation_settings({"auto_sfa_downloads": "0"})
+        try:
+            self.assertEqual(scheduler.due_jobs(mon_1010)[0], [])
+            self.assertIsNone(scheduler.next_run(mon_1010))
+        finally:
+            AS.save_automation_settings({"auto_sfa_downloads": "1"})
+        self.assertEqual(len(scheduler.due_jobs(mon_1010)[0]), 1)
+
     def test_monthly_days_and_last_day(self):
         SS.delete_job(SS.list_jobs()[0]["id"])
         job(name="Month", frequency="monthly", month_days="1,31", times="06:00")
