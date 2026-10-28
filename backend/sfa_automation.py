@@ -1055,17 +1055,27 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                 if failed:
                     LIVE.log("Reports used the earlier SFA data for: " + ", ".join(failed)
                              + " (their download failed this run).", level="warn")
+                import whatsapp_sender
+                has_rules = bool([r for r in whatsapp_sender.list_rules() if r["enabled"]])
                 if report_run.get("status") == "pending_review":
                     LIVE.log("Reports are waiting for your approval (Preview before saving is on). "
-                             "Open the bell or Daily SFA Reports to review them.", level="warn")
-                elif report_run.get("ok") and settings.get("wa_auto_send") == "1":
-                    import whatsapp_sender
-                    if [r for r in whatsapp_sender.list_rules() if r["enabled"]]:
-                        LIVE.set(phase="sending")
-                        LIVE.log("Sending reports to WhatsApp…")
-                        wa = whatsapp_sender.deliver_run(report_run["run_id"], wait=True)
-                        LIVE.log("WhatsApp: " + wa.get("message", ""), level="info" if wa.get("ok") else "error")
-                        report_run["whatsapp"] = wa
+                             "Open the bell or Daily Reports and press 'Approve & send to WhatsApp'.", level="warn")
+                elif not report_run.get("ok"):
+                    LIVE.log("WhatsApp: not sent — no report was built.", level="warn")
+                elif settings.get("wa_auto_send") != "1":
+                    LIVE.log("WhatsApp: not sent — 'Send to WhatsApp automatically' is off (Schedules › Automations). "
+                             "To send this run now: WhatsApp › Send latest reports now.", level="warn")
+                elif not has_rules:
+                    LIVE.log("WhatsApp: not sent — there are no delivery rules. Add one on the WhatsApp screen "
+                             "(which chat gets which reports).", level="warn")
+                else:
+                    LIVE.set(phase="sending")
+                    LIVE.log("Sending reports to WhatsApp…")
+                    wa = whatsapp_sender.deliver_run(report_run["run_id"], wait=True)
+                    for x in whatsapp_sender.WA.snapshot().get("log", [])[-15:]:
+                        LIVE.log("WhatsApp › " + x["msg"], level=x.get("level", "info"))
+                    LIVE.log("WhatsApp: " + wa.get("message", ""), level="info" if wa.get("ok") else "error")
+                    report_run["whatsapp"] = wa
         if cancelled:
             status = "cancelled"
         elif len(ok_lanes) == len(lanes) and lanes:

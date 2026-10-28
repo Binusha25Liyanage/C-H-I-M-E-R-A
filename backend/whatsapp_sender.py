@@ -465,6 +465,12 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
     if not rules:
         return {"ok": False, "message": "No WhatsApp delivery rules are set up."}
     plan = [p for p in plan_delivery(run, rules)]
+    if not any(p["files"] for p in plan):
+        built = sum(len(r.get("images") or []) for r in run["summary"].get("reports", []))
+        return {"ok": False, "message": ("No WhatsApp images were made for this run — install the missing package: "
+                                         "py -m pip install -r requirements.txt, then build the reports again.")
+                if not built else
+                "None of the built pages match your delivery rules (check each rule's reports and manager groups)."}
 
     def go():
         s = AS.get_automation_settings()
