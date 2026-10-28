@@ -502,13 +502,63 @@ _CLICKABLES_JS = r"""
     return {el, words: norm(words), icons: norm(icons + ' ' + (el.getAttribute('class') || '')), disabled};
   }).filter(x => !x.disabled);
   const w = norm(want);
+  if (/^css:/i.test(want || '')) {          // exact element chosen by the user, e.g. css:img[src*="excel"]
+    let el = null; try { el = document.querySelector(want.slice(4).trim()); } catch (e) {}
+    if (!el) return {found: false, seen: ['nothing matches ' + want.slice(4).trim()]};
+    el.setAttribute('data-chimera-btn', token);
+    return {found: true, label: want, seen: []};
+  }
   let hit = info.find(x => x.words === w) || info.find(x => w && x.words.includes(w));
   if (!hit && exportMode) {
     hit = info.find(x => /excel|xlsx?\b/.test(x.icons + ' ' + x.words))
        || info.find(x => /export|download/.test(x.icons + ' ' + x.words));
   }
+  // Export controls that aren't buttons at all: an Excel picture / icon /
+  // background image the page made clickable (e.g. SalesPro's green "X"
+  // sheet above the results table). Images may be blocked by the data saver
+  // and have no size, so these don't have to be visible — they're clicked
+  // with a JavaScript click if the normal click can't reach them.
+  let iconHits = [];
+  if (exportMode) {
+    const describe = el => {
+      const bg = getComputedStyle(el).backgroundImage || '';
+      return norm([el.getAttribute('src'), el.getAttribute('srcset'), el.getAttribute('alt'), el.getAttribute('title'),
+                   el.getAttribute('aria-label'), el.getAttribute('class'), el.getAttribute('id'), el.getAttribute('data-icon'),
+                   el.getAttribute('href'), el.getAttribute('ptooltip'), el.getAttribute('mattooltip'),
+                   el.getAttribute('data-pr-tooltip'), bg !== 'none' ? bg : '',
+                   el.tagName === 'svg' ? (el.querySelector('title') || {}).textContent : ''].filter(Boolean).join(' '));
+    };
+    const cands = [...document.querySelectorAll('img, svg, i, span, div, a, input[type=image], mat-icon, em')]
+      .filter(el => !el.closest('nav, header, .navbar, .p-menubar, .p-dropdown-panel, .p-multiselect-panel'))
+      .map(el => ({el, d: describe(el)}))
+      .filter(x => /excel|\bxlsx?\b|xls[-_.]|file-excel|spreadsheet/.test(x.d)
+                || (/export|download/.test(x.d) && !/pdf|print|csv/.test(x.d)));
+    // the innermost match, then its nearest clickable ancestor (a button, link or anything with a click cursor)
+    const inner = cands.filter(x => !cands.some(o => o !== x && x.el.contains(o.el)));
+    iconHits = inner.map(x => {
+      let target = x.el;
+      for (let p = x.el; p && p !== document.body; p = p.parentElement) {
+        if (p.matches('button, a, [role=button], .p-button, .btn') || getComputedStyle(p).cursor === 'pointer') { target = p; break; }
+      }
+      return {el: target, label: x.d.slice(0, 80), visible: visible(target),
+              excel: /excel|\bxlsx?\b|xls[-_.]|file-excel|spreadsheet/.test(x.d)};
+    }).filter(x => !(x.el.disabled || x.el.getAttribute('aria-disabled') === 'true'));
+    if (!hit) {
+      const order = [...iconHits.filter(x => x.excel && x.visible), ...iconHits.filter(x => x.excel),
+                     ...iconHits.filter(x => x.visible), ...iconHits];
+      if (order.length) hit = {el: order[0].el, words: '', icons: '[excel icon] ' + order[0].label};
+    }
+  }
   const seen = info.map(x => (x.words || ('[icon: ' + (x.icons.match(/(pi|fa|mdi|material-icons)[-\w ]*/) || [x.icons.slice(0, 40)])[0] + ']')).slice(0, 50))
-                   .filter(Boolean).slice(0, 25);
+                   .filter(Boolean).slice(0, 25)
+                   .concat(iconHits.slice(0, 5).map(x => '[icon: ' + x.label.slice(0, 50) + ']'));
+  if (!hit && exportMode) {     // help the user name it: clickable pictures on the page
+    [...document.querySelectorAll('img, input[type=image]')]
+      .filter(i => !i.closest('nav, header, .navbar, .p-menubar') && (getComputedStyle(i).cursor === 'pointer'
+               || (i.parentElement && getComputedStyle(i.parentElement).cursor === 'pointer')))
+      .slice(0, 6).forEach(i => seen.push('[clickable picture: ' + (i.getAttribute('src') || '').split('/').pop().slice(0, 40)
+                                         + ' → use css:img[src*="' + (i.getAttribute('src') || '').split('/').pop().slice(0, 30) + '"]]'));
+  }
   if (!hit) return {found: false, seen};
   hit.el.setAttribute('data-chimera-btn', token);
   return {found: true, label: hit.words || hit.icons.slice(0, 60), seen};
@@ -560,7 +610,12 @@ async def _click_and_download(page, el, timeout_ms):
     page.on("download", on_download)
     page.context.on("page", on_page)
     try:
-        await el.click()
+        try:
+            await el.click(timeout=5000)
+        except Exception:
+            # hidden / zero-size icon (e.g. its picture was blocked by the data
+            # saver) or covered by something: click it the way the page would
+            await el.evaluate("e => e.click()")
         return await asyncio.wait_for(fut, timeout_ms / 1000)
     except asyncio.TimeoutError:
         return None
@@ -738,7 +793,7 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
                         return
                     raise StepError("export", f"No '{parts[-1]}' button appeared within "
                                               f"{profile['wait_seconds']}s after searching. Buttons Chimera can "
-                                              "see: " + ("; ".join(seen[:15]) or "none") + ". Set the profile's "
+                                              "see: " + ("; ".join(seen[:25]) or "none") + ". Set the profile's "
                                               "Export button text to one of these (or raise the wait time if "
                                               "SFA is still loading).")
                 os.makedirs(opts["download_dir"], exist_ok=True)

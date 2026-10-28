@@ -165,7 +165,8 @@ function openProfileEditor(p) {
       <div class="section-title">After filters</div>
       <div class="grid-2">
         <label class="field">Search button text <input id="pe-search"></label>
-        <label class="field">Export button text <input id="pe-export"><span>If Export opens a menu, write both: <code>Export &gt; Excel</code></span></label>
+        <label class="field">Export button text <input id="pe-export"><span>Chimera also finds the green Excel icon by itself. If Export opens a menu, write both: <code>Export &gt; Excel</code>.
+          To point at one exact element: <code>css:img[src*="excel"]</code></span></label>
         <label class="field">Wait for results (seconds) <input type="number" min="5" max="600" id="pe-wait"></label>
         <label class="field" style="justify-content:flex-end;"><span><input type="checkbox" id="pe-empty"> An empty report (no records) is OK</span></label>
       </div>
