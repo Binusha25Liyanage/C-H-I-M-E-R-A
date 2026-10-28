@@ -56,6 +56,83 @@ PANEL_SEL = ".p-dropdown-panel, .p-multiselect-panel, .ng-dropdown-panel, .p-ove
 OPTION_SEL = "[role=option], li.p-dropdown-item, li.p-multiselect-item, .ng-option"
 
 
+# Data saver: what SFA pages can skip without breaking (blocked inside Chrome
+# itself, so the HTTP cache keeps working — Playwright request interception
+# would disable the cache and use MORE data).
+BLOCK_PATTERNS = ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.svg", "*.ico", "*.bmp",
+                  "*.woff", "*.woff2", "*.ttf", "*.otf", "*.eot", "*.mp4", "*.webm", "*.mp3"]
+BLOCK_TYPES = ("image", "font", "media")
+
+
+class NetMeter:
+    """
+    Counts the internet data a run actually transfers (bytes on the wire,
+    from Chrome's own network events) and applies the data saver to every
+    tab, including tabs an export opens.
+    """
+
+    def __init__(self, data_saver=False):
+        self.data_saver = bool(data_saver)
+        self.bytes = 0
+        self.blocked = 0
+        self._seen = set()
+        self._last_pub = 0
+
+    def _add(self, n):
+        self.bytes += int(n or 0)
+        if self.bytes - self._last_pub > 50_000:
+            self._last_pub = self.bytes
+            LIVE.set(data_bytes=self.bytes, blocked=self.blocked)
+
+    def add_download(self, url, path):
+        """Chrome's network counters skip file downloads, so count the file itself
+        (a report built in the page — blob:/data: — was already counted as the
+        request that fetched its data)."""
+        if str(url or "").startswith(("http:", "https:")):
+            try:
+                self._add(os.path.getsize(path))
+            except OSError:
+                pass
+
+    async def attach(self, page):
+        if id(page) in self._seen:
+            return
+        self._seen.add(id(page))
+        try:  # Chrome / Edge: exact numbers via the DevTools protocol
+            cdp = await page.context.new_cdp_session(page)
+            await cdp.send("Network.enable")
+            if self.data_saver:
+                await cdp.send("Network.setBlockedURLs", {"urls": BLOCK_PATTERNS})
+            cdp.on("Network.loadingFinished", lambda e: self._add(e.get("encodedDataLength", 0)))
+
+            def failed(e):
+                if e.get("blockedReason"):
+                    self.blocked += 1
+                else:
+                    self._add(e.get("encodedDataLength", 0))
+            cdp.on("Network.loadingFailed", failed)
+        except Exception:  # Firefox: estimate from response sizes, block by resource type
+            async def on_finished(req):
+                try:
+                    sz = await req.sizes()
+                    self._add(sz.get("responseBodySize", 0) + sz.get("responseHeadersSize", 0)
+                              + sz.get("requestHeadersSize", 0) + sz.get("requestBodySize", 0))
+                except Exception:
+                    pass
+            page.on("requestfinished", lambda r: asyncio.ensure_future(on_finished(r)))
+            if self.data_saver:
+                async def route(r):
+                    if r.request.resource_type in BLOCK_TYPES:
+                        self.blocked += 1
+                        await r.abort()
+                    else:
+                        await r.continue_()
+                await page.route("**/*", route)
+
+    def watch_popups(self, context):
+        context.on("page", lambda p: asyncio.ensure_future(self.attach(p)))
+
+
 class Cancelled(Exception):
     pass
 
@@ -160,7 +237,13 @@ async def _settle(page, timeout_ms=8000):
 
 
 async def _login(page, cfg, timeout_ms):
-    await page.goto(cfg["login_url"], wait_until="domcontentloaded", timeout=timeout_ms)
+    resp = await page.goto(cfg["login_url"], wait_until="domcontentloaded", timeout=timeout_ms)
+    try:  # compare the PC clock with SFA's on every login (scheduled runs depend on it)
+        if resp:
+            import scheduler
+            scheduler.record_clock(resp.headers.get("date"), "SFA login")
+    except Exception:
+        pass
     pw = page.locator("input[type='password']").first
     try:
         await pw.wait_for(state="visible", timeout=15000)
@@ -400,22 +483,90 @@ async def fill_filter(page, f, report_date):
     raise StepError("filters", f"Picked '{', '.join(values)}' for '{label}' but the box shows '{shown or 'nothing'}'.")
 
 
-async def _click_by_text(page, text, timeout_ms):
-    """Clicks a button/link whose visible text matches `text` (case-insensitive)."""
-    pat = re.compile(rf"^\s*{re.escape(text)}\s*$", re.I)
-    loose = re.compile(re.escape(text), re.I)
-    candidates = [page.get_by_role("button", name=pat), page.get_by_role("link", name=pat),
-                  page.locator("button, a, [role=button], .p-button, .btn").filter(has_text=loose)]
+_CLICKABLES_JS = r"""
+([want, token, exportMode]) => {
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const visible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length)
+                        && getComputedStyle(el).visibility !== 'hidden';
+  const sel = 'button, a, [role=button], .p-button, .btn, input[type=button], input[type=submit], ' +
+              '[ptooltip], [mattooltip], [data-pr-tooltip], [title]';
+  const els = [...document.querySelectorAll(sel)].filter(el => visible(el) && !el.closest('nav, header, .navbar, .p-menubar'));
+  // keep the outermost clickable (a <button> rather than the <i> icon inside it)
+  const top = els.filter(el => !els.some(o => o !== el && o.contains(el) && o.matches('button, a, [role=button]')));
+  const info = top.map(el => {
+    const icons = [...el.querySelectorAll('i, span, svg, img')].map(i => (i.getAttribute('class') || '') + ' ' + (i.getAttribute('src') || '') + ' ' + (i.getAttribute('data-icon') || '')).join(' ');
+    const words = [el.innerText || el.value || '', el.getAttribute('title'), el.getAttribute('aria-label'),
+                   el.getAttribute('ptooltip'), el.getAttribute('mattooltip'), el.getAttribute('data-pr-tooltip'),
+                   el.getAttribute('data-original-title')].filter(Boolean).join(' | ');
+    const disabled = el.disabled || el.getAttribute('aria-disabled') === 'true' || el.classList.contains('p-disabled');
+    return {el, words: norm(words), icons: norm(icons + ' ' + (el.getAttribute('class') || '')), disabled};
+  }).filter(x => !x.disabled);
+  const w = norm(want);
+  let hit = info.find(x => x.words === w) || info.find(x => w && x.words.includes(w));
+  if (!hit && exportMode) {
+    hit = info.find(x => /excel|xlsx?\b/.test(x.icons + ' ' + x.words))
+       || info.find(x => /export|download/.test(x.icons + ' ' + x.words));
+  }
+  const seen = info.map(x => (x.words || ('[icon: ' + (x.icons.match(/(pi|fa|mdi|material-icons)[-\w ]*/) || [x.icons.slice(0, 40)])[0] + ']')).slice(0, 50))
+                   .filter(Boolean).slice(0, 25);
+  if (!hit) return {found: false, seen};
+  hit.el.setAttribute('data-chimera-btn', token);
+  return {found: true, label: hit.words || hit.icons.slice(0, 60), seen};
+}
+"""
+
+
+async def _find_button(page, text, timeout_ms, export_mode=False):
+    """
+    Finds a clickable control by its text, tooltip/aria-label/title, or (for
+    exports) by an Excel/export/download icon. Returns (locator | None,
+    label it matched, [labels of buttons that ARE on the page]).
+    """
     deadline = time.time() + timeout_ms / 1000
-    while time.time() < deadline:
-        for loc in candidates:
-            n = await loc.count()
-            for i in range(n):
-                el = loc.nth(i)
-                if await el.is_visible() and await el.is_enabled():
-                    return el
-        await page.wait_for_timeout(400)
-    return None
+    seen = []
+    while True:
+        token = uuid.uuid4().hex[:10]
+        res = await page.evaluate(_CLICKABLES_JS, [text, token, export_mode])
+        seen = res.get("seen", [])
+        if res.get("found"):
+            return page.locator(f"[data-chimera-btn='{token}']").first, res.get("label", ""), seen
+        if time.time() >= deadline:
+            return None, "", seen
+        await page.wait_for_timeout(500)
+
+
+async def _click_by_text(page, text, timeout_ms):
+    """Back-compatible helper: the matching button/link, or None."""
+    el, _label, _seen = await _find_button(page, text, timeout_ms)
+    return el
+
+
+async def _click_and_download(page, el, timeout_ms):
+    """
+    Clicks and waits for a download from this tab OR from a new tab/popup the
+    click opens (some systems export through window.open). Returns the
+    Download or None.
+    """
+    loop = asyncio.get_running_loop()
+    fut = loop.create_future()
+
+    def on_download(d):
+        if not fut.done():
+            fut.set_result(d)
+
+    def on_page(p):
+        p.on("download", on_download)
+
+    page.on("download", on_download)
+    page.context.on("page", on_page)
+    try:
+        await el.click()
+        return await asyncio.wait_for(fut, timeout_ms / 1000)
+    except asyncio.TimeoutError:
+        return None
+    finally:
+        page.remove_listener("download", on_download)
+        page.context.remove_listener("page", on_page)
 
 
 async def _shot(page, lane_idx, name, folder, keep_b64=False):
@@ -502,6 +653,8 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
             for s in STEPS[1:]:
                 LIVE.step(idx, s, "pending")
             page = await context.new_page()
+            if opts.get("meter"):
+                await opts["meter"].attach(page)
             current = "open"
             try:
                 # ---- open
@@ -544,9 +697,10 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
                 # ---- search
                 current = "search"
                 LIVE.step(idx, "search", "active")
-                btn = await _click_by_text(page, profile["search_text"], 10000)
+                btn, _lbl, seen = await _find_button(page, profile["search_text"], 10000)
                 if btn is None:
-                    raise StepError("search", f"No '{profile['search_text']}' button found.", retry=False)
+                    raise StepError("search", f"No '{profile['search_text']}' button found. Buttons on the page: "
+                                              + ("; ".join(seen[:15]) or "none"), retry=False)
                 await btn.click()
                 await _settle(page, profile["wait_seconds"] * 1000)
                 LIVE.step(idx, "search", "done")
@@ -559,12 +713,16 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
                 parts = [p.strip() for p in profile["export_text"].split(">") if p.strip()]
                 wait_ms = profile["wait_seconds"] * 1000
                 for p_text in parts[:-1]:  # e.g. "Export > Excel": open the menu first
-                    el = await _click_by_text(page, p_text, wait_ms)
+                    el, _lbl, seen = await _find_button(page, p_text, wait_ms, export_mode=True)
                     if el is None:
-                        raise StepError("export", f"No '{p_text}' button found.")
+                        raise StepError("export", f"No '{p_text}' button found. Buttons on the page: "
+                                                  + "; ".join(seen[:15]))
                     await el.click()
-                    await page.wait_for_timeout(400)
-                el = await _click_by_text(page, parts[-1], wait_ms)
+                    await page.wait_for_timeout(500)
+                el, matched, seen = await _find_button(page, parts[-1], wait_ms, export_mode=True)
+                if el is not None and matched and parts[-1].lower() not in matched:
+                    LIVE.log(f"No button says '{parts[-1]}' — using the one that looks like an export: "
+                             f"'{matched[:50]}'.", lane=profile["name"], level="warn")
                 if el is None:
                     body = await page.inner_text("body")
                     if NO_DATA_PATTERNS.search(body) and profile["allow_empty"]:
@@ -579,11 +737,16 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
                         LIVE.log("No records in SFA for this date.", lane=profile["name"])
                         return
                     raise StepError("export", f"No '{parts[-1]}' button appeared within "
-                                              f"{profile['wait_seconds']}s after searching.")
+                                              f"{profile['wait_seconds']}s after searching. Buttons Chimera can "
+                                              "see: " + ("; ".join(seen[:15]) or "none") + ". Set the profile's "
+                                              "Export button text to one of these (or raise the wait time if "
+                                              "SFA is still loading).")
                 os.makedirs(opts["download_dir"], exist_ok=True)
-                async with page.expect_download(timeout=wait_ms) as dl_info:
-                    await el.click()
-                dl = await dl_info.value
+                dl = await _click_and_download(page, el, wait_ms)
+                if dl is None:
+                    raise StepError("export", f"Clicked '{(matched or parts[-1])[:50]}' but no file downloaded within "
+                                              f"{profile['wait_seconds']}s. If it opens a menu, set the export text "
+                                              "to e.g. 'Export > Excel'; for big reports raise the wait time.")
                 fail = await dl.failure()
                 if fail:
                     raise StepError("export", f"Download failed: {fail}")
@@ -591,6 +754,8 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
                 ext = os.path.splitext(dl.suggested_filename or "")[1] or ".xlsx"
                 path = os.path.join(opts["download_dir"], f"{idx + 1:02d} {safe}{ext}")
                 await dl.save_as(path)
+                if opts.get("meter"):
+                    opts["meter"].add_download(dl.url, path)
                 LIVE.lane(idx, file=path)
                 LIVE.step(idx, "export", "done")
                 LIVE.log(f"Downloaded {os.path.basename(path)}", lane=profile["name"])
@@ -685,7 +850,12 @@ async def _run_async(cfg, items, report_date, opts):
         browser = await _launch(p, cfg.get("browser", "chrome"), opts["headless"])
         try:
             context = await browser.new_context(accept_downloads=True, viewport={"width": 1500, "height": 950})
+            meter = opts["meter"]
+            meter.watch_popups(context)
             page = await context.new_page()
+            await meter.attach(page)
+            if meter.data_saver:
+                LIVE.log("Data saver is on — SFA images and fonts are not downloaded.")
             for i, _p in items:
                 LIVE.step(i, "login", "active")
             try:
@@ -775,7 +945,9 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
             "shot_dir": os.path.join(SHOT_ROOT, report_date, stamp),
             "import": import_data and not test,
             "test": test,
+            "meter": NetMeter(settings.get("data_saver") == "1"),
         }
+        LIVE.set(data_bytes=0, blocked=0, data_saver=opts["meter"].data_saver)
         if runnable:
             # Profiles with problems keep their (skipped) lanes; the rest run in their own lanes.
             asyncio.run(_run_async(cfg, [(i, profiles[i]) for i in runnable], report_date, opts))
@@ -818,9 +990,16 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
             status = "partial"
         else:
             status = "failed"
+        meter = opts["meter"]
+        LIVE.set(data_bytes=meter.bytes, blocked=meter.blocked)
         msg = f"{len(ok_lanes)} of {len(lanes)} report(s) downloaded."
+        if runnable:
+            LIVE.log(f"Internet data used by this run: {meter.bytes / 1_048_576:.2f} MB"
+                     + (f" ({meter.blocked} images/fonts skipped by data saver)" if meter.data_saver else "") + ".")
         AS.finish_run_record(run_id, status, [{k: v for k, v in l.items() if k != "shots"} for l in lanes],
-                             report_run.get("run_id") if report_run else None, msg)
+                             report_run.get("run_id") if report_run else None, msg,
+                             data_bytes=meter.bytes if runnable else None, blocked=meter.blocked,
+                             data_saver=meter.data_saver)
         result = {"ok": status in ("success", "partial"), "status": status, "message": msg, "run_id": run_id,
                   "report_run": report_run}
         LIVE.set(active=False, phase="done", result=result)
@@ -908,6 +1087,7 @@ async def _detect_async(cfg, url, headless, read_options):
         try:
             context = await browser.new_context(viewport={"width": 1500, "height": 950})
             page = await context.new_page()
+            await NetMeter(AS.get_automation_settings().get("data_saver") == "1").attach(page)
             await _login(page, cfg, 60000)
             await page.goto(url, wait_until="domcontentloaded", timeout=60000)
             await _settle(page, 15000)

@@ -10,6 +10,7 @@ const VIEW_TITLES = {
   "overview": "Dashboard Overview",
   "daily": "Daily SFA Reports",
   "automation": "SFA Automation",
+  "schedules": "Schedules",
   "reports": "Combined SKU + Invoice Report",
   "visit-state": "Visit State Update",
   "sequence": "Sequence Update",
@@ -30,9 +31,10 @@ function switchView(view) {
   });
   document.getElementById("topbar-title").textContent = VIEW_TITLES[view] || "Chimera";
   if (view === "import-data") loadImportLog();
-  if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); }
+  if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); loadDataUsage(); }
   if (view === "daily") { loadDailyStatus(); loadRuns(); }
   if (view === "automation" && window.loadAutomation) window.loadAutomation();
+  if (view === "schedules" && window.loadSchedules) window.loadSchedules();
 }
 
 document.querySelectorAll(".nav-btn[data-view]").forEach(btn => {
@@ -523,4 +525,44 @@ document.getElementById("mg-import-btn").addEventListener("click", async () => {
 
 window.addEventListener("pywebviewready", () => {
   document.getElementById("dr-date").value = localToday();
+});
+
+
+// ---------------------------------------------------------------- Settings tabs
+document.getElementById("st-tabs").addEventListener("click", (e) => {
+  const t = e.target.dataset.tab; if (!t) return;
+  document.querySelectorAll("#st-tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
+  ["sfa", "rules", "groups", "network"].forEach(x => { document.getElementById("st-panel-" + x).style.display = x === t ? "block" : "none"; });
+  if (t === "network") loadDataUsage();
+});
+
+// ---------------------------------------------------------------- Network & Data
+function fmtBytes(n) {
+  if (n == null) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n / 1024).toFixed(0)} KB`;
+  if (n < 1073741824) return `${(n / 1048576).toFixed(n < 10485760 ? 2 : 1)} MB`;
+  return `${(n / 1073741824).toFixed(2)} GB`;
+}
+async function loadDataUsage() {
+  let u; try { u = await window.pywebview.api.get_data_usage(); } catch (e) { return; }
+  document.getElementById("nd-saver").checked = !!u.data_saver;
+  const set = (id, v, foot) => { document.getElementById(id).textContent = v; document.getElementById(id + "-foot").textContent = foot; };
+  set("nd-last", fmtBytes(u.last_bytes), u.last_at ? u.last_at.replace("T", " ").slice(0, 16) : "no measured runs yet");
+  set("nd-today", fmtBytes(u.today_bytes), `${u.today_runs} run(s)`);
+  set("nd-week", fmtBytes(u.week_bytes), `${u.week_runs} run(s)`);
+  const parts = [];
+  if (u.avg_with_saver != null) parts.push(`saver on: ${fmtBytes(Math.round(u.avg_with_saver))}`);
+  if (u.avg_without_saver != null) parts.push(`saver off: ${fmtBytes(Math.round(u.avg_without_saver))}`);
+  const avg = u.week_runs ? Math.round(u.week_bytes / u.week_runs) : null;
+  set("nd-avg", fmtBytes(avg), parts.join(" · ") || "last 7 days");
+}
+document.getElementById("nd-refresh").addEventListener("click", loadDataUsage);
+document.getElementById("nd-saver").addEventListener("change", async (e) => {
+  const on = e.target.checked;
+  const r = await window.pywebview.api.save_automation_settings({ data_saver: on ? "1" : "0" });
+  document.getElementById("nd-saver-result").innerHTML = r.ok
+    ? `<p class="hint">Data saver ${on ? "on — the next SFA run skips images and fonts" : "off"}.</p>`
+    : `<p class="error">${escapeHtml(r.message)}</p>`;
+  if (!r.ok) e.target.checked = !on;
 });

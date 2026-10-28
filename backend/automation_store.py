@@ -56,6 +56,10 @@ DEFAULT_AUTOMATION = {
     "wa_style": "classic",               # which output style's images to send when 'both' are built
     "wa_chats_cache": "[]",              # chat names last read from WhatsApp Web
     "notif_seen_at": "",                 # notifications newer than this are unread
+    "data_saver": "0",                   # don't load images/fonts/media during automated SFA runs
+    "clock_offset_s": "",                # SFA server time minus PC time, seconds (last check)
+    "clock_source": "",
+    "clock_checked_at": "",
 }
 
 LOCK_PATH = os.path.join(db.APP_DATA_DIR, "automation.lock")
@@ -123,6 +127,13 @@ def init_schema():
             report_run_id INTEGER,
             message       TEXT
         )""")
+    cols = {r[1] for r in cur.execute("PRAGMA table_info(automation_runs)")}
+    if "data_bytes" not in cols:
+        cur.execute("ALTER TABLE automation_runs ADD COLUMN data_bytes INTEGER")
+    if "blocked" not in cols:
+        cur.execute("ALTER TABLE automation_runs ADD COLUMN blocked INTEGER")
+    if "data_saver" not in cols:
+        cur.execute("ALTER TABLE automation_runs ADD COLUMN data_saver INTEGER")
     for k, v in DEFAULT_AUTOMATION.items():
         cur.execute("INSERT OR IGNORE INTO automation_settings (key, value) VALUES (?, ?)", (k, v))
     if cur.execute("SELECT COUNT(*) FROM sfa_profiles").fetchone()[0] == 0:
@@ -356,12 +367,15 @@ def save_automation_settings(values):
         elif k == "skip_date":
             if v and not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
                 return False, "Skip date must be YYYY-MM-DD."
+        elif k == "clock_offset_s":
+            if v and not re.match(r"^-?\d+$", v):
+                return False, "Clock offset must be whole seconds."
         elif k == "wa_style":
             if v not in ("classic", "professional"):
                 return False, "WhatsApp style must be classic or professional."
-        elif k in ("wa_chats_cache", "notif_seen_at"):
+        elif k in ("wa_chats_cache", "notif_seen_at", "clock_source", "clock_checked_at"):
             pass
-        elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser"):
+        elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
         elif k == "parallel_tabs":
             if not v.isdigit() or not 1 <= int(v) <= MAX_PARALLEL_TABS:
@@ -400,12 +414,13 @@ def start_run_record(report_date, trigger, slot=None):
     return rid
 
 
-def finish_run_record(rid, status, lanes, report_run_id=None, message=""):
+def finish_run_record(rid, status, lanes, report_run_id=None, message="", data_bytes=None, blocked=None,
+                      data_saver=None):
     conn = db.get_connection()
-    conn.execute("""UPDATE automation_runs SET finished_at=?, status=?, lanes=?, report_run_id=?, message=?
-                    WHERE id=?""",
+    conn.execute("""UPDATE automation_runs SET finished_at=?, status=?, lanes=?, report_run_id=?, message=?,
+                    data_bytes=?, blocked=?, data_saver=? WHERE id=?""",
                  (datetime.now().isoformat(timespec="seconds"), status, json.dumps(lanes), report_run_id,
-                  message, rid))
+                  message, data_bytes, blocked, None if data_saver is None else int(bool(data_saver)), rid))
     conn.commit()
     conn.close()
 
@@ -413,11 +428,12 @@ def finish_run_record(rid, status, lanes, report_run_id=None, message=""):
 def list_runs(limit=20):
     conn = db.get_connection()
     rows = conn.execute("""SELECT id, started_at, finished_at, report_date, trigger, slot, status, lanes,
-                           report_run_id, message FROM automation_runs ORDER BY id DESC LIMIT ?""",
+                           report_run_id, message, data_bytes, blocked, data_saver
+                           FROM automation_runs ORDER BY id DESC LIMIT ?""",
                         (limit,)).fetchall()
     conn.close()
     keys = ["id", "started_at", "finished_at", "report_date", "trigger", "slot", "status", "lanes",
-            "report_run_id", "message"]
+            "report_run_id", "message", "data_bytes", "blocked", "data_saver"]
     out = []
     for r in rows:
         d = dict(zip(keys, r))
@@ -485,3 +501,26 @@ def release_lock():
         os.remove(LOCK_PATH)
     except OSError:
         pass
+
+
+def data_usage_summary(today=None):
+    """Internet data used by SFA automation runs (measured by Chimera), in bytes."""
+    today = today or date.today()
+    week_ago = (today - timedelta(days=6)).isoformat()
+    conn = db.get_connection()
+    last = conn.execute("""SELECT data_bytes, started_at, data_saver FROM automation_runs
+                           WHERE data_bytes IS NOT NULL ORDER BY id DESC LIMIT 1""").fetchone()
+    day = conn.execute("""SELECT COALESCE(SUM(data_bytes), 0), COUNT(data_bytes) FROM automation_runs
+                          WHERE data_bytes IS NOT NULL AND substr(started_at, 1, 10) = ?""",
+                       (today.isoformat(),)).fetchone()
+    week = conn.execute("""SELECT COALESCE(SUM(data_bytes), 0), COUNT(data_bytes) FROM automation_runs
+                           WHERE data_bytes IS NOT NULL AND substr(started_at, 1, 10) >= ?""",
+                        (week_ago,)).fetchone()
+    avg_on = conn.execute("""SELECT AVG(data_bytes) FROM automation_runs WHERE data_bytes IS NOT NULL
+                             AND data_saver = 1""").fetchone()[0]
+    avg_off = conn.execute("""SELECT AVG(data_bytes) FROM automation_runs WHERE data_bytes IS NOT NULL
+                              AND data_saver = 0""").fetchone()[0]
+    conn.close()
+    return {"last_bytes": last[0] if last else None, "last_at": last[1] if last else None,
+            "today_bytes": day[0], "today_runs": day[1], "week_bytes": week[0], "week_runs": week[1],
+            "avg_with_saver": avg_on, "avg_without_saver": avg_off}

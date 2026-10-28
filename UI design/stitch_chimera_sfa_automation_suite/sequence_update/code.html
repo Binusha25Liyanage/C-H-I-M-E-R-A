@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a aria-current="page" class="flex items-center justify-between px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets &amp; Territories</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About &amp; Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full gap-5">
+<!-- Top Environment Ribbon & Live Operational State -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-lowest shadow-sm">
+<div class="flex flex-wrap items-center gap-3">
+<!-- Breadcrumb & Mode Pills -->
+<div class="flex items-center gap-1.5 bg-surface-container-high px-3 py-1.5 rounded-full text-secondary font-mono-sm text-mono-sm">
+<span class="uppercase tracking-wider">AUTOMATION</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface font-semibold">Sequence Update</span>
+</div>
+<!-- Environment Selector Toggle -->
+<div class="flex items-center p-0.5 rounded-lg bg-surface-container gap-1">
+<button class="px-3 py-1 rounded text-secondary hover:text-on-surface font-label-md text-label-md transition-all" id="env-test-btn" onclick="setEnvironment('test')" type="button">
+          Test SFA
+        </button>
+<button class="px-3 py-1 rounded bg-primary-container text-on-primary font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5" id="env-prod-btn" onclick="setEnvironment('prod')" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+          Production SFA
+        </button>
+</div>
+<!-- Target URL Endpoint Badge -->
+<div class="flex items-center gap-2 px-3 py-1 rounded-lg bg-surface-container font-mono-sm text-mono-sm text-secondary">
+<span class="material-symbols-outlined text-[15px] text-tertiary">lock</span>
+<span class="text-on-surface select-all font-mono-md text-mono-md">https://lakmee.salespro.lk/it/routes/sequence_order</span>
+</div>
+</div>
+<!-- Active Session & Driver State -->
+<div class="flex items-center gap-3 self-end md:self-auto">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-tertiary-container/10 text-tertiary">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-label-sm text-label-sm font-semibold tracking-wide">CHROMIUM DRIVER #04 ACTIVE</span>
+</div>
+<div class="text-secondary font-mono-sm text-mono-sm hidden lg:block">
+        Latency: <span class="text-on-surface font-medium">18ms</span>
+</div>
+</div>
+</div>
+<!-- Primary Workspace Split: Left Scope Config & Dry Run | Right Sequencing Table -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+<!-- LEFT COLUMN: Execution Scope & Safety Controls (xl:col-span-3) -->
+<div class="xl:col-span-3 flex flex-col gap-4">
+<!-- Execution Scope Card -->
+<div class="rounded-xl bg-surface-container-lowest p-4 shadow-sm flex flex-col gap-3.5">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface uppercase tracking-wider font-bold">Execution Scope</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">tune</span>
+</div>
+<!-- Territory Selector -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-secondary font-medium">Territory Region</label>
+<div class="relative">
+<select class="w-full h-8 px-2.5 bg-surface-container rounded font-body-md text-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container appearance-none cursor-pointer">
+<option selected="">Galle - Southern Province (SP-GAL)</option>
+<option>Colombo Central - Metro (WP-COL)</option>
+<option>Kandy - Central Highlands (CP-KAN)</option>
+<option>Matara - Coastal Outer (SP-MAT)</option>
+<option>Kurunegala - North Western (NW-KUR)</option>
+</select>
+<span class="material-symbols-outlined text-[16px] text-secondary absolute right-2.5 top-2 pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Route Selector -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-secondary font-medium">Assigned Route Pattern</label>
+<div class="relative">
+<select class="w-full h-8 px-2.5 bg-surface-container rounded font-body-md text-body-md text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container appearance-none cursor-pointer">
+<option selected="">RTE-01 Galle Fort Bazaar</option>
+<option>RTE-02 Karapitiya Medical Hub</option>
+<option>RTE-03 Unawatuna Coastal Link</option>
+<option>RTE-04 Labuduwa Suburban Express</option>
+</select>
+<span class="material-symbols-outlined text-[16px] text-secondary absolute right-2.5 top-2 pointer-events-none">expand_more</span>
+</div>
+<!-- Route Metadata Chip -->
+<div class="flex items-center justify-between mt-1 px-2.5 py-1 rounded bg-surface-container-high">
+<span class="font-label-sm text-label-sm text-secondary">Registered Outlets:</span>
+<span class="font-mono-sm text-mono-sm font-semibold text-primary">32 Outlets (Active)</span>
+</div>
+</div>
+<!-- Search Outlet -->
+<div class="flex flex-col gap-1">
+<label class="font-label-sm text-label-sm text-secondary font-medium">Quick Filter Outlet</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined text-[16px] text-secondary absolute left-2.5">search</span>
+<input class="w-full h-8 pl-8 pr-2.5 bg-surface-container rounded font-mono-sm text-mono-sm text-on-surface placeholder:text-secondary/60 focus:outline-none focus:ring-1 focus:ring-primary-container" id="outlet-search-input" onkeyup="filterOutletTable()" placeholder="Code or Outlet name..." type="text"/>
+</div>
+</div>
+<!-- Load Sequence SFA Button -->
+<button class="w-full h-8 mt-1 rounded bg-surface-container-high hover:bg-surface-dim font-label-md text-label-md text-on-surface font-semibold flex items-center justify-center gap-2 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">sync_saved_locally</span>
+          Load Sequence from SFA
+        </button>
+</div>
+<!-- Safety Dry Run Warning Card -->
+<div class="rounded-xl bg-error-container/40 p-4 shadow-sm flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-primary-container">
+<span class="material-symbols-outlined text-[20px]">shield_with_heart</span>
+<span class="font-headline-md text-headline-md font-bold">Safety: Dry Run</span>
+</div>
+<!-- Switch Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" id="dry-run-toggle" onchange="toggleDryRunMode()" type="checkbox"/>
+<div class="w-9 h-5 bg-secondary-fixed peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary-container"></div>
+</label>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+          Simulated buffer run enabled by default. Sequence mutations are strictly rendered in-memory and logged to the telemetry console without committing updates directly to SFA remote schema.
+        </p>
+<div class="flex items-center gap-2 text-primary font-label-sm text-label-sm font-semibold">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+          Zero Production Impact Active
+        </div>
+</div>
+<!-- Spatial FMCG Route Map Visualizer Preview -->
+<div class="rounded-xl bg-surface-container-lowest p-3.5 shadow-sm flex flex-col gap-2.5">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md uppercase tracking-wider font-bold text-on-surface">Route Geo-Density</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Galle Fort Node</span>
+</div>
+<div class="w-full h-36 bg-cover bg-center rounded-lg relative overflow-hidden flex items-end p-2.5" data-location="Galle Fort, Sri Lanka" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD9VkUrIA-d2go1g--V1IYHNzFXLdI5zH-OPCkdkI8zID_G5SmPtbsIMGdT0JG2aQHEYS4_kNHY_0W5U7MGe5VuufIGXD-8YIzwB1OI0tqhYVYTyo-S9v6-z9BnxHAPAk3A3R5sdap2wtnsZlJZmt6EmqD2xA2ttATzYjs6fMKCEzf7xhd5tQu73aZo2k53OmP_OJSq3sBR4hxAxabBhiRXVDChNawQibY8mldIZj2H');">
+<div class="relative z-10 bg-surface-container-lowest/90 backdrop-blur-sm px-2.5 py-1 rounded text-on-surface font-mono-sm text-mono-sm flex items-center justify-between w-full">
+<span>Stop density: <strong class="text-primary-container">1.2km radius</strong></span>
+<span class="text-tertiary font-bold">Optimal Seq</span>
+</div>
+</div>
+</div>
+</div>
+<!-- MAIN RIGHT WORKSPACE: Outlet Sequence Table & Execution Console (xl:col-span-9) -->
+<div class="xl:col-span-9 flex flex-col gap-4">
+<!-- Primary Data Grid Container -->
+<div class="rounded-xl bg-surface-container-lowest shadow-sm flex flex-col overflow-hidden">
+<!-- Table Action Toolbar Ribbon -->
+<div class="p-3 bg-surface-container flex flex-wrap items-center justify-between gap-3">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight">Sequence Order</span>
+<span class="px-2 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">32 Outlets</span>
+</div>
+<!-- Utility Control Actions -->
+<div class="flex flex-wrap items-center gap-2">
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-dim text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-xs transition-colors" onclick="autoRenumber()" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary-container">format_list_numbered</span>
+              Auto-renumber 1..N
+            </button>
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-dim text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-xs transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-tertiary">upload_file</span>
+              Import Excel
+            </button>
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-dim text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-xs transition-colors" onclick="sortByCurrentSeq()" type="button">
+<span class="material-symbols-outlined text-[16px]">sort</span>
+              Sort by Current
+            </button>
+<button class="h-8 px-3 rounded bg-surface-container-lowest hover:bg-surface-dim text-secondary hover:text-on-surface font-label-md text-label-md font-semibold flex items-center gap-1.5 shadow-xs transition-colors" onclick="resetToOriginal()" type="button">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+              Reset
+            </button>
+</div>
+</div>
+<!-- Tabular Sequence Data Table -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse" id="outlet-sequence-table">
+<thead>
+<tr class="bg-primary-container text-on-primary font-label-sm text-label-sm uppercase tracking-wider h-9">
+<th class="w-10 px-3 text-center">Grip</th>
+<th class="w-16 px-2 text-center">Input</th>
+<th class="w-36 px-3">Outlet Code</th>
+<th class="px-4">Outlet Name &amp; Address</th>
+<th class="w-24 px-3 text-center">Status</th>
+<th class="w-24 px-3 text-right">Curr Seq</th>
+<th class="w-24 px-3 text-right">New Seq</th>
+<th class="w-36 px-4 text-center">Variance</th>
+</tr>
+</thead>
+<tbody class="divide-none font-body-md text-body-md" id="sequence-tbody">
+<!-- Row 1 (Updated: 03 -> 01) -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group" data-outlet-id="1029">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="1"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1029</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Perera Super Center
+                  <span class="block font-body-sm text-body-sm text-secondary">42 Lighthouse St, Fort Bazaar</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">03</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-primary-container">01</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-tertiary-container/20 text-tertiary font-mono-sm text-mono-sm font-bold">
+                    03 <span class="material-symbols-outlined text-[13px]">arrow_forward</span> 01
+                  </span>
+</td>
+</tr>
+<!-- Row 2 (Updated: 01 -> 02) -->
+<tr class="h-10 bg-surface-container/20 hover:bg-surface-container-low transition-colors group" data-outlet-id="1031">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="2"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1031</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Nawaloka Grocery &amp; Distribution
+                  <span class="block font-body-sm text-body-sm text-secondary">18 Church Cross Lane</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">01</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-primary-container">02</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-outline-variant/30 text-primary font-mono-sm text-mono-sm font-bold">
+                    01 <span class="material-symbols-outlined text-[13px]">arrow_forward</span> 02
+                  </span>
+</td>
+</tr>
+<!-- Row 3 (Updated: 04 -> 03) -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group" data-outlet-id="1045">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="3"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1045</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Lanka Stores Wholesale Hub
+                  <span class="block font-body-sm text-body-sm text-secondary">88 Rampart Promenade</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">04</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-primary-container">03</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-tertiary-container/20 text-tertiary font-mono-sm text-mono-sm font-bold">
+                    04 <span class="material-symbols-outlined text-[13px]">arrow_forward</span> 03
+                  </span>
+</td>
+</tr>
+<!-- Row 4 (Updated: 02 -> 04) -->
+<tr class="h-10 bg-surface-container/20 hover:bg-surface-container-low transition-colors group" data-outlet-id="1052">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="4"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1052</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Ruhunu Family Mart
+                  <span class="block font-body-sm text-body-sm text-secondary">10 Pedlar Street</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">02</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-primary-container">04</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-outline-variant/30 text-primary font-mono-sm text-mono-sm font-bold">
+                    02 <span class="material-symbols-outlined text-[13px]">arrow_forward</span> 04
+                  </span>
+</td>
+</tr>
+<!-- Row 5 (Unchanged: 05 -> 05) -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group" data-outlet-id="1060">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="5"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1060</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Dharmapala Bakers &amp; Cafe
+                  <span class="block font-body-sm text-body-sm text-secondary">31 Leyn Baan Street</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">05</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-secondary">05</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-container text-secondary font-mono-sm text-mono-sm">
+                    Unchanged
+                  </span>
+</td>
+</tr>
+<!-- Row 6 (Updated: 08 -> 06) -->
+<tr class="h-10 bg-surface-container/20 hover:bg-surface-container-low transition-colors group" data-outlet-id="1074">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="6"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1074</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Siriwardena Pharmacy &amp; Provisions
+                  <span class="block font-body-sm text-body-sm text-secondary">04 Hospital Junction Corner</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">08</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-primary-container">06</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-tertiary-container/20 text-tertiary font-mono-sm text-mono-sm font-bold">
+                    08 <span class="material-symbols-outlined text-[13px]">arrow_forward</span> 06
+                  </span>
+</td>
+</tr>
+<!-- Row 7 (Updated: 06 -> 07) -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group" data-outlet-id="1081">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="7"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1081</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Jayasinghe Traders (Sea Street)
+                  <span class="block font-body-sm text-body-sm text-secondary">112 Old Dutch Hospital Walkway</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container/40 text-secondary font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Inactive
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">06</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-primary-container">07</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-outline-variant/30 text-primary font-mono-sm text-mono-sm font-bold">
+                    06 <span class="material-symbols-outlined text-[13px]">arrow_forward</span> 07
+                  </span>
+</td>
+</tr>
+<!-- Row 8 (Unchanged: 07 -> 08) -->
+<tr class="h-10 bg-surface-container/20 hover:bg-surface-container-low transition-colors group" data-outlet-id="1090">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="8"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1090</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Maha Vidyalaya Co-operative Outlet
+                  <span class="block font-body-sm text-body-sm text-secondary">09 Queen Street Arcade</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">07</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-secondary">08</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-container text-secondary font-mono-sm text-mono-sm">
+                    Unchanged
+                  </span>
+</td>
+</tr>
+<!-- Row 9 (Unchanged: 09 -> 09) -->
+<tr class="h-10 hover:bg-surface-container-low transition-colors group" data-outlet-id="1102">
+<td class="px-3 text-center cursor-grab active:cursor-grabbing text-secondary group-hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">drag_indicator</span>
+</td>
+<td class="px-2 text-center">
+<input class="w-12 h-7 text-center rounded bg-surface-container font-mono-md text-mono-md font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary-container" max="32" min="1" type="number" value="9"/>
+</td>
+<td class="px-3 font-mono-md text-mono-md font-semibold text-primary">OUT-GAL-1102</td>
+<td class="px-4 font-body-md text-body-md text-on-surface font-medium">
+                  Southern Express Wholesale Hub
+                  <span class="block font-body-sm text-body-sm text-secondary">15 Colombo-Galle Main Road</span>
+</td>
+<td class="px-3 text-center">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary-container/15 text-tertiary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                  </span>
+</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums text-secondary font-medium">09</td>
+<td class="px-3 text-right font-mono-md text-mono-md tabular-nums font-bold text-secondary">09</td>
+<td class="px-4 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-container text-secondary font-mono-sm text-mono-sm">
+                    Unchanged
+                  </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Pagination and Dense Indicator -->
+<div class="px-4 py-2.5 bg-surface-container-high/40 flex items-center justify-between text-secondary font-mono-sm text-mono-sm">
+<span>Showing 9 of 32 route outlets (Filtered View)</span>
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span> 31 Active
+            </span>
+<span class="flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> 1 Inactive
+            </span>
+</div>
+</div>
+</div>
+<!-- BOTTOM TELEMETRY DOCK: Metric Chips & DOM Execution Log -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+<!-- Left Sub-panel: Metrics Summary (md:col-span-4) -->
+<div class="md:col-span-4 rounded-xl bg-surface-container-lowest p-4 shadow-sm flex flex-col justify-between gap-3">
+<div>
+<span class="font-label-md text-label-md uppercase tracking-wider font-bold text-on-surface block mb-3">Order Mutation Summary</span>
+<div class="grid grid-cols-3 gap-2">
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary">Reordered</span>
+<span class="font-headline-xl text-headline-xl font-bold text-primary-container leading-tight mt-1">6</span>
+<span class="font-mono-sm text-mono-sm text-primary">Pending</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary">Unchanged</span>
+<span class="font-headline-xl text-headline-xl font-bold text-on-surface leading-tight mt-1">26</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Static</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary">Validated</span>
+<span class="font-headline-xl text-headline-xl font-bold text-tertiary leading-tight mt-1">32/32</span>
+<span class="font-mono-sm text-mono-sm text-tertiary">100% OK</span>
+</div>
+</div>
+</div>
+<!-- Micro Sparkline SVG -->
+<div class="flex items-center justify-between pt-2">
+<span class="font-label-sm text-label-sm text-secondary">Sequence Disruption Index: <strong>18.75%</strong></span>
+<svg class="w-24 h-6 text-primary-container" fill="none" viewbox="0 0 100 24">
+<path d="M0 20 L20 18 L40 6 L60 14 L80 4 L100 12" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<circle cx="80" cy="4" fill="currentColor" r="3"></circle>
+</svg>
+</div>
+</div>
+<!-- Right Sub-panel: Embedded Hardware Terminal Log (md:col-span-8) -->
+<div class="md:col-span-8 rounded-xl bg-[#18181B] p-3 shadow-md flex flex-col gap-2">
+<div class="flex items-center justify-between text-secondary">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-[#EF4444]"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span>
+<span class="ml-2 font-mono-sm text-mono-sm text-zinc-400 font-semibold">stdout/stderr :: SFA Sequence Telemetry Console</span>
+</div>
+<span class="font-mono-sm text-mono-sm text-zinc-500">Thread: #2429</span>
+</div>
+<div class="font-mono-sm text-mono-sm h-28 overflow-y-auto space-y-1 text-zinc-300 pr-1" id="telemetry-log-stream">
+<div class="flex items-start gap-2">
+<span class="text-zinc-600 select-none">10:42:01.104</span>
+<span class="text-sky-400 font-semibold">[INFO]</span>
+<span>Loaded remote DOM sequence table for Route: RTE-01 Galle Fort Bazaar. Total targets: 32.</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-zinc-600 select-none">10:42:01.890</span>
+<span class="text-emerald-400 font-semibold">[VALID]</span>
+<span>Key check OK: No duplicate sequence slots detected. Range strictly bounded 1..32.</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-zinc-600 select-none">10:42:15.340</span>
+<span class="text-amber-400 font-semibold">[QUEUE]</span>
+<span>In-memory reorder initiated. 6 sequence updates queued for Dry-Run synthesis.</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-zinc-600 select-none">10:42:15.342</span>
+<span class="text-sky-400 font-semibold">[SIMUL]</span>
+<span>OUT-GAL-1029: 03 -&gt; 01, OUT-GAL-1031: 01 -&gt; 02, OUT-GAL-1045: 04 -&gt; 03 ...</span>
+</div>
+<div class="flex items-start gap-2">
+<span class="text-zinc-600 select-none">10:42:15.350</span>
+<span class="text-emerald-400 font-semibold">[READY]</span>
+<span>Ready for user execution dispatch. Safety toggle state: ACTIVE.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Command Action Strip -->
+<div class="w-full bg-surface-container-lowest p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<button class="h-9 px-4 rounded bg-surface-container hover:bg-surface-dim font-label-md text-label-md text-secondary hover:text-on-surface font-semibold transition-colors flex items-center gap-2" onclick="resetToOriginal()" type="button">
+<span class="material-symbols-outlined text-[18px]">history</span>
+        Reset All Changes
+      </button>
+<button class="h-9 px-4 rounded bg-surface-container hover:bg-surface-dim font-label-md text-label-md text-on-surface font-semibold transition-colors flex items-center gap-2" onclick="reviewSequenceChanges()" type="button">
+<span class="material-symbols-outlined text-[18px]">preview</span>
+        Review Sequence Changes
+      </button>
+</div>
+<div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+<div class="px-3 py-1 rounded bg-error-container text-error font-mono-sm text-mono-sm font-semibold flex items-center gap-1.5" id="dry-run-badge">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+        Dry Run Simulation Active
+      </div>
+<button class="h-9 px-5 rounded bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-bold tracking-wide flex items-center gap-2 shadow-sm transition-colors cursor-pointer" id="execute-btn" onclick="executeSequenceUpdate()" type="button">
+<span class="material-symbols-outlined text-[18px]">publish</span>
+<span>Execute Sequence Update (6 changes)</span>
+</button>
+</div>
+</div>
+<!-- Micro Review Modal Dialog (Inline Hidden by Default) -->
+<div class="fixed inset-0 z-50 bg-[#1C1C1E]/60 backdrop-blur-xs hidden flex items-center justify-center p-4" id="review-modal">
+<div class="bg-surface-container-lowest rounded-xl max-w-lg w-full p-5 shadow-2xl flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 text-primary-container">
+<span class="material-symbols-outlined text-[24px]">verified</span>
+<span class="font-headline-md text-headline-md font-bold">Sequence Review Manifest</span>
+</div>
+<button class="text-secondary hover:text-on-surface" onclick="closeReviewModal()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-secondary">
+        Please audit the reordered sequence indices prior to batch payload dispatch to Lakmee SFA endpoint:
+      </p>
+<div class="p-3 bg-surface-container rounded-lg max-h-48 overflow-y-auto space-y-2 font-mono-sm text-mono-sm">
+<div class="flex justify-between items-center bg-surface-container-lowest p-2 rounded">
+<span class="font-bold text-on-surface">OUT-GAL-1029 (Perera Super Center)</span>
+<span class="text-tertiary font-bold">03 → 01</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-lowest p-2 rounded">
+<span class="font-bold text-on-surface">OUT-GAL-1031 (Nawaloka Grocery)</span>
+<span class="text-primary font-bold">01 → 02</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-lowest p-2 rounded">
+<span class="font-bold text-on-surface">OUT-GAL-1045 (Lanka Stores Hub)</span>
+<span class="text-tertiary font-bold">04 → 03</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-lowest p-2 rounded">
+<span class="font-bold text-on-surface">OUT-GAL-1052 (Ruhunu Family Mart)</span>
+<span class="text-primary font-bold">02 → 04</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-lowest p-2 rounded">
+<span class="font-bold text-on-surface">OUT-GAL-1074 (Siriwardena Pharmacy)</span>
+<span class="text-tertiary font-bold">08 → 06</span>
+</div>
+<div class="flex justify-between items-center bg-surface-container-lowest p-2 rounded">
+<span class="font-bold text-on-surface">OUT-GAL-1081 (Jayasinghe Traders)</span>
+<span class="text-primary font-bold">06 → 07</span>
+</div>
+</div>
+<div class="flex justify-end gap-3 pt-2">
+<button class="h-8 px-4 rounded bg-surface-container hover:bg-surface-dim font-label-md text-label-md text-secondary font-semibold" onclick="closeReviewModal()" type="button">
+          Dismiss
+        </button>
+<button class="h-8 px-4 rounded bg-primary-container text-on-primary font-label-md text-label-md font-bold shadow-sm" onclick="confirmExecutionFromModal()" type="button">
+          Acknowledge &amp; Proceed
+        </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Vanilla JS Client Interactivity -->
+<script>
+  let isDryRun = true;
+  let activeEnvironment = 'prod';
+
+  function setEnvironment(env) {
+    activeEnvironment = env;
+    const testBtn = document.getElementById('env-test-btn');
+    const prodBtn = document.getElementById('env-prod-btn');
+    const log = document.getElementById('telemetry-log-stream');
+
+    if (env === 'test') {
+      testBtn.className = 'px-3 py-1 rounded bg-[#0284C7] text-white font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5';
+      testBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span> Test SFA';
+      prodBtn.className = 'px-3 py-1 rounded text-secondary hover:text-on-surface font-label-md text-label-md transition-all';
+      prodBtn.innerHTML = 'Production SFA';
+      appendLog('[SWITCH] Active target pointed to TEST environment (sandbox mode).', 'sky');
+    } else {
+      prodBtn.className = 'px-3 py-1 rounded bg-primary-container text-on-primary font-label-md text-label-md shadow-sm transition-all flex items-center gap-1.5';
+      prodBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span> Production SFA';
+      testBtn.className = 'px-3 py-1 rounded text-secondary hover:text-on-surface font-label-md text-label-md transition-all';
+      testBtn.innerHTML = 'Test SFA';
+      appendLog('[SWITCH] Target environment switched to PRODUCTION (Lakmee SFA Live).', 'amber');
+    }
+  }
+
+  function toggleDryRunMode() {
+    const toggle = document.getElementById('dry-run-toggle');
+    const badge = document.getElementById('dry-run-badge');
+    const btn = document.getElementById('execute-btn');
+    isDryRun = toggle.checked;
+
+    if (isDryRun) {
+      badge.className = 'px-3 py-1 rounded bg-error-container text-error font-mono-sm text-mono-sm font-semibold flex items-center gap-1.5';
+      badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-error"></span> Dry Run Simulation Active';
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">publish</span><span>Execute Sequence Update (6 changes)</span>';
+      appendLog('[SAFETY] Dry Run safety interlock engaged. Direct schema writes inhibited.', 'amber');
+    } else {
+      badge.className = 'px-3 py-1 rounded bg-tertiary-container/20 text-tertiary font-mono-sm text-mono-sm font-semibold flex items-center gap-1.5';
+      badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span> DIRECT SFA COMMIT MODE';
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">bolt</span><span>Commit Direct to Lakmee SFA</span>';
+      appendLog('[CRITICAL] Dry Run safety interlock DISENGAGED. Updates will mutate remote SFA routes!', 'red');
+    }
+  }
+
+  function appendLog(message, tone) {
+    const container = document.getElementById('telemetry-log-stream');
+    const now = new Date().toTimeString().split(' ')[0] + '.' + Math.floor(Math.random() * 900 + 100);
+    const item = document.createElement('div');
+    item.className = 'flex items-start gap-2';
+
+    let tagColor = 'text-sky-400';
+    let tag = '[TELEMETRY]';
+    if (tone === 'amber') { tagColor = 'text-amber-400'; tag = '[WARN]'; }
+    if (tone === 'red') { tagColor = 'text-red-400'; tag = '[WARN-PROD]'; }
+    if (tone === 'green') { tagColor = 'text-emerald-400'; tag = '[SUCCESS]'; }
+
+    item.innerHTML = `<span class="text-zinc-600 select-none">${now}</span><span class="${tagColor} font-semibold">${tag}</span><span>${message}</span>`;
+    container.appendChild(item);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function filterOutletTable() {
+    const input = document.getElementById('outlet-search-input');
+    const filter = input.value.toUpperCase();
+    const table = document.getElementById('sequence-tbody');
+    const trs = table.getElementsByTagName('tr');
+
+    for (let i = 0; i < trs.length; i++) {
+      const text = trs[i].innerText || trs[i].textContent;
+      trs[i].style.display = text.toUpperCase().indexOf(filter) > -1 ? '' : 'none';
+    }
+  }
+
+  function autoRenumber() {
+    const rows = document.querySelectorAll('#sequence-tbody tr');
+    rows.forEach((row, index) => {
+      const input = row.querySelector('input[type="number"]');
+      if (input) {
+        input.value = index + 1;
+      }
+    });
+    appendLog('[OP] Auto-renumbered visible dataset index 1 through ' + rows.length + '.', 'green');
+  }
+
+  function sortByCurrentSeq() {
+    appendLog('[SORT] Table rows re-aligned strictly by historical Current Seq index.', 'sky');
+  }
+
+  function resetToOriginal() {
+    appendLog('[REVERT] Reverted all pending sequence changes. Buffer returned to original state.', 'amber');
+  }
+
+  function reviewSequenceChanges() {
+    document.getElementById('review-modal').classList.remove('hidden');
+  }
+
+  function closeReviewModal() {
+    document.getElementById('review-modal').classList.add('hidden');
+  }
+
+  function confirmExecutionFromModal() {
+    closeReviewModal();
+    executeSequenceUpdate();
+  }
+
+  function executeSequenceUpdate() {
+    if (isDryRun) {
+      appendLog('[DRY-RUN] Executed simulation run: 6 outlet order changes verified with status HTTP 200 simulation.', 'green');
+      alert('Dry Run Completed: 6 sequence updates simulated successfully without modifying production database.');
+    } else {
+      appendLog('[COMMIT] Payload dispatched to https://lakmee.salespro.lk/it/routes/sequence_order. Sequence updated on SFA!', 'green');
+      alert('Production Success: Lakmee SFA Sequence updated for RTE-01 Galle Fort Bazaar.');
+    }
+  }
+</script></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>

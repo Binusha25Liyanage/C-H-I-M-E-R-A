@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets &amp; Territories</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About &amp; Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full space-y-8 pb-10">
+<!-- Breadcrumb & Workspace Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary uppercase tracking-wider mb-1">
+<span>System</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-primary font-semibold">About &amp; Maintenance</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-on-surface">Diagnostics &amp; Core Specs</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Maintenance &amp; Developer Hub</h1>
+<p class="font-body-md text-body-md text-secondary mt-0.5">System diagnostic utilities, database retention pruning, and developer profile.</p>
+</div>
+<!-- Live Telemetry Pill Strip -->
+<div class="flex items-center gap-2 self-start md:self-auto bg-surface-container-lowest px-3 py-1.5 rounded-xl shadow-sm">
+<div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container font-mono-sm text-mono-sm text-on-surface">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<span>WAL ACTIVE</span>
+</div>
+<div class="h-3 w-px bg-surface-container-high"></div>
+<div class="flex items-center gap-1.5 font-mono-sm text-mono-sm text-secondary">
+<span class="material-symbols-outlined text-[14px]">memory</span>
+<span>MEM: 142 MB</span>
+</div>
+<div class="h-3 w-px bg-surface-container-high"></div>
+<div class="flex items-center gap-1 font-mono-sm text-mono-sm text-secondary">
+<span class="material-symbols-outlined text-[14px]">update</span>
+<span>00:14:22 UP</span>
+</div>
+</div>
+</div>
+<!-- SECTION 1: Top Diagnostics Grid (2 Cards) -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Card 1: Database Health & Local Storage -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-primary-container/5 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<!-- Header -->
+<div class="flex items-start justify-between gap-4 mb-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-primary-container shrink-0">
+<span class="material-symbols-outlined text-[22px]">database</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Database Health &amp; Local Storage</h2>
+<span class="font-mono-sm text-mono-sm text-secondary">Engine: SQLite 3.42.0 (WAL Journal Mode)</span>
+</div>
+</div>
+<!-- Integrity Badge -->
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span>
+<span class="font-semibold">Passed (0 Corruption)</span>
+</div>
+</div>
+<!-- Path Metainfo Block -->
+<div class="bg-surface-container-low rounded-lg p-3 mb-5 space-y-2">
+<div class="flex items-center justify-between text-secondary">
+<span class="font-label-sm text-label-sm uppercase tracking-wider">Absolute Physical Path</span>
+<button class="flex items-center gap-1 font-mono-sm text-mono-sm text-primary hover:underline" onclick="navigator.clipboard.writeText('C:\\Users\\Chimera\\AppData\\Local\\Chimera\\db\\chimera_v4.sqlite'); alert('Path copied to clipboard');" type="button">
+<span class="material-symbols-outlined text-[13px]">content_copy</span>
+<span>Copy</span>
+</button>
+</div>
+<div class="font-mono-sm text-mono-sm text-on-surface select-all break-all bg-surface-container-lowest px-2.5 py-1.5 rounded">
+            C:\Users\Chimera\AppData\Local\Chimera\db\chimera_v4.sqlite
+          </div>
+</div>
+<!-- Metric Bars -->
+<div class="space-y-3 mb-6">
+<div class="flex items-center justify-between font-label-md text-label-md">
+<span class="text-secondary">Allocated Footprint</span>
+<span class="font-mono-md text-mono-md text-on-surface font-semibold">48.6 MB <span class="text-secondary font-normal">/ 2.0 GB Cap (2.4%)</span></span>
+</div>
+<!-- Gauge Visual -->
+<div class="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 2.43%;"></div>
+</div>
+<div class="flex justify-between items-center font-mono-sm text-mono-sm text-secondary pt-1">
+<span>Pages: 12,442 (4096B)</span>
+<span>Fragmentation: 0.12%</span>
+<span>Write Cache: Flushed</span>
+</div>
+</div>
+</div>
+<!-- Action Button Group -->
+<div class="pt-4 mt-2 bg-surface-container-lowest flex flex-wrap items-center gap-2.5">
+<button class="inline-flex items-center gap-2 px-3.5 py-2 rounded bg-primary-container text-on-primary font-label-md text-label-md hover:bg-primary transition-colors shadow-sm active:scale-95" type="button">
+<span class="material-symbols-outlined text-[16px]">cleaning_services</span>
+<span>Vacuum Database</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">save</span>
+<span>Snapshot (.bak)</span>
+</button>
+<button class="inline-flex items-center gap-2 px-3 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">restore</span>
+<span>Restore</span>
+</button>
+</div>
+</div>
+<!-- Card 2: Automated Retention & Storage Pruning -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden group">
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-tertiary/5 rounded-full blur-2xl pointer-events-none"></div>
+<div>
+<!-- Header -->
+<div class="flex items-start justify-between gap-4 mb-5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[22px]">auto_delete</span>
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Retention &amp; Storage Pruning</h2>
+<span class="font-mono-sm text-mono-sm text-secondary">Daemon Lifecycle: Run nightly at 03:00 AM</span>
+</div>
+</div>
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container font-mono-sm text-mono-sm text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container"></span>
+<span>Cron: Active</span>
+</div>
+</div>
+<!-- Metrics Comparison List -->
+<div class="grid grid-cols-2 gap-3 mb-4">
+<div class="bg-surface-container-low p-3.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center gap-1.5 text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">receipt_long</span>
+<span>Scraper Raw Logs</span>
+</div>
+<div class="mt-2">
+<div class="font-headline-md text-headline-md text-on-surface font-semibold">90 Days</div>
+<div class="font-mono-sm text-mono-sm text-secondary">Rolling window trim</div>
+</div>
+</div>
+<div class="bg-surface-container-low p-3.5 rounded-lg flex flex-col justify-between">
+<div class="flex items-center gap-1.5 text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">file_present</span>
+<span>Temp Excel Dumps</span>
+</div>
+<div class="mt-2">
+<div class="font-headline-md text-headline-md text-on-surface font-semibold">7 Days</div>
+<div class="font-mono-sm text-mono-sm text-secondary">Auto-purged cache</div>
+</div>
+</div>
+</div>
+<!-- Recovered Gauge Banner -->
+<div class="bg-surface-container-high/40 rounded-lg p-3.5 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-surface-container-lowest flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined text-[20px]">recycling</span>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Storage Recovered (Current Month)</div>
+<div class="font-mono-lg text-mono-lg font-bold text-on-surface">1.24 GB <span class="text-tertiary font-label-sm font-semibold text-label-sm">(+410 MB vs Last Cycle)</span></div>
+</div>
+</div>
+<!-- Sparkline Mini Visualization -->
+<div class="w-20 h-7 flex items-end gap-1">
+<div class="w-2 bg-secondary/30 h-3 rounded-t-sm"></div>
+<div class="w-2 bg-secondary/30 h-4 rounded-t-sm"></div>
+<div class="w-2 bg-secondary/40 h-2.5 rounded-t-sm"></div>
+<div class="w-2 bg-secondary/50 h-5 rounded-t-sm"></div>
+<div class="w-2 bg-secondary/60 h-4.5 rounded-t-sm"></div>
+<div class="w-2 bg-primary-container h-7 rounded-t-sm"></div>
+</div>
+</div>
+</div>
+<!-- Action Button Group -->
+<div class="pt-4 mt-2 flex items-center justify-between">
+<button class="inline-flex items-center gap-2 px-3.5 py-2 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md transition-colors shadow-sm" type="button">
+<span class="material-symbols-outlined text-[16px]">mop</span>
+<span>Clear Old Outputs &amp; Cache Now</span>
+</button>
+<span class="font-mono-sm text-mono-sm text-secondary">Last run: 4h 12m ago</span>
+</div>
+</div>
+</div>
+<!-- SECTION 2: Architecture Banner (7-step Connected Pipeline) -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-6">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[20px]">account_tree</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">How Chimera Works — End-to-End Operational Pipeline</h2>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-0.5">Deterministic 7-phase ETL engine handling authentication, multi-tenant downloads, normalization, and automated delivery.</p>
+</div>
+<div class="flex items-center gap-2 self-start md:self-auto font-mono-sm text-mono-sm text-secondary bg-surface-container-low px-3 py-1 rounded-full">
+<span>Cycle SLA: ≤ 180s per distributor</span>
+</div>
+</div>
+<!-- Pipeline Flow Diagram -->
+<div class="relative w-full overflow-x-auto pb-2">
+<div class="min-w-[940px] flex items-center justify-between gap-1 relative">
+<!-- Connecting Horizontal Line Behind Steps -->
+<div class="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-0.5 bg-surface-container-high z-0"></div>
+<!-- Step 1 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold text-primary-container group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+            01
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">Headless Auth</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-0.5">Session cookies &amp; MFA handshake</span>
+</div>
+<!-- Step 2 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold text-primary-container group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+            02
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">Parallel Downloads</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-0.5">5 concurrent SFA worker queues</span>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold text-primary-container group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+            03
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">Ingest &amp; Validate</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-0.5">Schema parity &amp; checksum test</span>
+</div>
+<!-- Step 4 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold text-primary-container group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+            04
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">Report Compilation</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-0.5">SKU invoice pivots &amp; target metrics</span>
+</div>
+<!-- Step 5 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold text-primary-container group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+            05
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">Review &amp; Signoff</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-0.5">Interactive grid audit checkpoint</span>
+</div>
+<!-- Step 6 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-surface-container-lowest shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold text-primary-container group-hover:bg-primary-container group-hover:text-on-primary transition-colors">
+            06
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">WhatsApp Dispatch</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-0.5">Targeted group multi-payload broadcast</span>
+</div>
+<!-- Step 7 -->
+<div class="relative z-10 flex flex-col items-center text-center group w-32">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary shadow-sm flex items-center justify-center font-mono-md text-mono-md font-bold">
+            07
+          </div>
+<span class="font-label-md text-label-md text-on-surface font-semibold mt-2.5 leading-tight">Master Sync</span>
+<span class="font-mono-sm text-mono-sm text-tertiary mt-0.5">WAL commitment &amp; downstream push</span>
+</div>
+</div>
+</div>
+<!-- Diagnostic Micro Strip -->
+<div class="mt-4 pt-3 bg-surface-container-low px-4 py-2.5 rounded-lg flex flex-wrap items-center justify-between gap-3 text-secondary font-mono-sm text-mono-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span>All pipeline stage hooks healthy. No backpressure detected in thread pool.</span>
+</div>
+<div class="flex items-center gap-3">
+<span>Failover Strategy: Graceful Exponential Backoff (3x)</span>
+<span class="text-surface-container-high">•</span>
+<span>Worker Pool: 8 Dedicated Cores</span>
+</div>
+</div>
+</div>
+<!-- SECTION 3: Bottom Hero Card — About & Developer Profile -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="grid grid-cols-1 lg:grid-cols-12">
+<!-- Left Column: Chimera System Identity (7 cols) -->
+<div class="lg:col-span-7 p-8 flex flex-col justify-between bg-gradient-to-br from-surface-container-lowest via-surface-container-low/40 to-surface-container-lowest">
+<div>
+<!-- System Badge & Title -->
+<div class="flex items-center gap-3 mb-6">
+<div class="w-12 h-12 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[28px]">shield</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-wider">CHIMERA</span>
+<span class="px-2 py-0.5 rounded bg-surface-container text-on-surface font-mono-sm text-mono-sm font-semibold">v4.2.0</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high text-secondary font-mono-sm text-mono-sm">Build 2026.10</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary">Enterprise SFA Operational Utility · Windows Desktop Core</span>
+</div>
+</div>
+<!-- Description Paragraph -->
+<p class="font-body-lg text-body-lg text-on-surface leading-relaxed mb-6">
+            High-throughput desktop operational utility engineered for FMCG sales-operations and IT automation. Streamlines SFA data extraction, daily business intelligence synthesis, and WhatsApp multi-group delivery. Built to handle resilient local processing with zero cloud-latency bottlenecks.
+          </p>
+<!-- Core Architecture Badges -->
+<div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="font-label-sm text-label-sm text-secondary uppercase">Host Shell</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">WebView2 Core</div>
+<div class="font-mono-sm text-mono-sm text-secondary">Chromium 122 Embedded</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg">
+<div class="font-label-sm text-label-sm text-secondary uppercase">Storage Driver</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">SQLite WAL</div>
+<div class="font-mono-sm text-mono-sm text-secondary">ACID Compliant Local DB</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg col-span-2 sm:col-span-1">
+<div class="font-label-sm text-label-sm text-secondary uppercase">Runtime Env</div>
+<div class="font-headline-md text-headline-md text-on-surface font-semibold mt-0.5">Windows 11 / x64</div>
+<div class="font-mono-sm text-mono-sm text-secondary">Native Process Sandbox</div>
+</div>
+</div>
+</div>
+<!-- Diagnostic Check Footer -->
+<div class="flex items-center gap-4 pt-4 text-secondary font-mono-sm text-mono-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check</span>
+<span>Local SSL Root Validated</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check</span>
+<span>Binary Signature Verified</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-tertiary">check</span>
+<span>Telemetry Sandbox Active</span>
+</div>
+</div>
+</div>
+<!-- Right Column: Developer Profile Card (5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-low p-8 flex flex-col justify-between relative">
+<div class="space-y-6">
+<!-- Developer Overview Card -->
+<div class="flex items-start gap-4">
+<div class="relative shrink-0">
+<img class="w-16 h-16 rounded-xl object-cover shadow-sm bg-surface-container-high" data-alt="A refined minimalist high-contrast monochrome corporate portrait of a software engineer in modern minimalist office setting with soft directional lighting and clean industrial backdrop matching the grey and cherry red corporate theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZSdbnr4zXUvwtgNtZfaRiyeZKTfOn39qCl5oI6lEhXV8IPxF0nFGn3eafVciRN9KAw4iVTFE5yVnnzRF_lCACvyfp23ythfAMGtoQwA7IrE4DrtlOcXvctUiEpIbCU_hhf_-pd18_N2Xo0hN5zMmCq80110V1kNK1rswqeDXVnX9xTp0MCgvVYiJnY5NNODCjtaxBQ50H6Hamu9rUpJcNK7TPapHsW9Z2YJtvgesa"/>
+<span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-tertiary flex items-center justify-center text-on-tertiary text-[10px] font-bold shadow-sm">
+<span class="material-symbols-outlined text-[10px]">check</span>
+</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<h3 class="font-headline-lg text-headline-lg text-on-surface font-bold">Binusha</h3>
+<span class="px-2 py-0.5 rounded-full bg-primary-container/10 text-primary-container font-label-sm text-label-sm font-semibold">Lead Architect</span>
+</div>
+<div class="font-label-md text-label-md text-secondary font-medium">Full-Stack Software Engineer</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant mt-1 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-secondary">school</span>
+<span>BSc (Hons) in Software Engineering · NIBM</span>
+</div>
+</div>
+</div>
+<!-- Professional Bio Statement -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm space-y-1.5">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider block">Specialization Note</span>
+<p class="font-body-sm text-body-sm text-on-surface leading-normal">
+              Specialized in distributed workflow automation, desktop WebView architectures, and mission-critical enterprise FMCG systems.
+            </p>
+</div>
+<!-- Contact & Channels List -->
+<div class="space-y-2.5">
+<a class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high transition-colors group" href="mailto:binusha45liyanage@gmail.com">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center text-secondary group-hover:text-primary-container">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary">Direct Email</span>
+<span class="font-mono-sm text-mono-sm text-on-surface font-medium select-all">binusha45liyanage@gmail.com</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-secondary group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</a>
+<a class="flex items-center justify-between p-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high transition-colors group" href="tel:+94771234567">
+<div class="flex items-center gap-3">
+<div class="w-7 h-7 rounded bg-surface-container flex items-center justify-center text-secondary group-hover:text-primary-container">
+<span class="material-symbols-outlined text-[16px]">call</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary">Contact Line</span>
+<span class="font-mono-sm text-mono-sm text-on-surface font-medium">+94 77 123 4567</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-[16px] text-secondary group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</a>
+<div class="grid grid-cols-2 gap-2 pt-1">
+<a class="flex items-center gap-2 p-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface transition-colors font-label-md text-label-md" href="https://github.com/binusha45" target="_blank">
+<span class="material-symbols-outlined text-[18px] text-secondary">code</span>
+<span class="truncate">github.com/binusha45</span>
+</a>
+<a class="flex items-center gap-2 p-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container-high text-on-surface transition-colors font-label-md text-label-md" href="#" target="_blank">
+<span class="material-symbols-outlined text-[18px] text-primary-container">badge</span>
+<span>LinkedIn Profile</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Security & Author Signet -->
+<div class="mt-6 pt-4 flex items-center justify-between font-mono-sm text-mono-sm text-secondary">
+<span>GPG Key: 0x8FA47291B0</span>
+<span>Verified Contributor</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Console Status & Acknowledgement Ribbon -->
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+<div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span>Chimera SFA Core Services: ALL THREADS NOMINAL</span>
+</div>
+<div class="font-body-sm text-body-sm text-secondary">
+      Crafted by <span class="text-on-surface font-medium">Binusha</span> · Full-Stack Software Engineer · <a class="text-primary hover:underline" href="mailto:binusha45liyanage@gmail.com">binusha45liyanage@gmail.com</a>
+</div>
+</div>
+</div></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>

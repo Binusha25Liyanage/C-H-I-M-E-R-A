@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a class="flex items-center justify-between px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets &amp; Territories</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About &amp; Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full">
+<!-- Interactive Toast Notification Element (Hidden by default) -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 px-4 py-3 rounded-full bg-inverse-surface text-inverse-on-surface shadow-xl" id="toast-notification">
+<span class="material-symbols-outlined text-[18px] text-tertiary-fixed">check_circle</span>
+<span class="font-body-md text-body-md font-medium" id="toast-message">Action dispatched successfully</span>
+</div>
+<!-- Header & Breadcrumb Context Strip -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+<div class="flex flex-col">
+<div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary uppercase tracking-wider mb-1">
+<span>Delivery</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary font-bold">WhatsApp Distribution Engine</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight font-bold">WhatsApp Delivery</h1>
+<p class="font-body-md text-body-md text-secondary mt-0.5">
+        Configure automatic broadcast rules, group dispatch targets, and review live delivery audit telemetry.
+      </p>
+</div>
+<!-- Live Gateway Heartbeat Badge -->
+<div class="flex items-center gap-3 bg-surface-container-lowest px-4 py-2 rounded-full shadow-sm">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+</span>
+<span class="font-mono-sm text-mono-sm text-on-surface font-semibold">ENGINE: PID #38192 (Chromium Web v124)</span>
+</div>
+<span class="text-surface-container-highest">|</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Mem: 412 MB</span>
+</div>
+</div>
+<!-- TOP CONNECTION & STATUS STRIP (3 Cards) -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+<!-- Card 1: WHATSAPP GATEWAY CONNECTION -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 w-32 h-32 rounded-full bg-primary/5 pointer-events-none"></div>
+<div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">cell_tower</span>
+<span class="font-label-md text-label-md text-secondary uppercase tracking-wider">Gateway Connection</span>
+</div>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            CONNECTED
+          </span>
+</div>
+<div class="space-y-2 mt-4">
+<div class="p-3 bg-surface-container-low rounded-lg">
+<div class="font-label-sm text-label-sm text-secondary uppercase">Linked Device Endpoint</div>
+<div class="font-mono-lg text-mono-lg text-on-surface font-bold tracking-tight mt-0.5 flex items-center justify-between">
+<span>+94 77 123 4567</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-on-surface font-normal">SFA Automated Bot</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-1 font-mono-sm text-mono-sm">
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-secondary block font-label-sm text-label-sm">Session Handshake</span>
+<span class="text-on-surface font-semibold">Active Chromium</span>
+</div>
+<div class="bg-surface-container-low p-2 rounded">
+<span class="text-secondary block font-label-sm text-label-sm">Ping Latency</span>
+<span class="text-emerald-700 font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">speed</span> 120 ms
+              </span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 mt-5 pt-3">
+<button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface rounded font-label-md text-label-md transition-colors shadow-sm" onclick="showToast('Initiating QR hand-shake regen...')" type="button">
+<span class="material-symbols-outlined text-[16px]">qr_code_2</span>
+          Re-link QR
+        </button>
+<button class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-primary-container hover:bg-primary text-on-primary rounded font-label-md text-label-md font-semibold transition-colors shadow-sm" onclick="showToast('Dispatched test ping payload to Gateway Bot')" type="button">
+<span class="material-symbols-outlined text-[16px]">send</span>
+          Send Test Message
+        </button>
+</div>
+</div>
+<!-- Card 2: DISPATCH AUTOMATION PREFERENCES -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">tune</span>
+<span class="font-label-md text-label-md text-secondary uppercase tracking-wider">Dispatch Automation</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary">Rules Engine: v2.4</span>
+</div>
+<div class="space-y-4 mt-3">
+<!-- Toggle 1 -->
+<div class="flex items-center justify-between gap-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Immediate Approval Dispatch</span>
+<span class="font-body-sm text-body-sm text-secondary">Auto-send upon manager signoff</span>
+</div>
+<button aria-checked="true" class="w-10 h-5 bg-primary-container rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-end" role="switch" type="button">
+<span class="w-4 h-4 rounded-full bg-white shadow-sm block"></span>
+</button>
+</div>
+<!-- Toggle 2 -->
+<div class="flex items-center justify-between gap-3">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface">Mobile Snapshot Previews</span>
+<span class="font-body-sm text-body-sm text-secondary">Attach compressed high-res image previews</span>
+</div>
+<button aria-checked="true" class="w-10 h-5 bg-primary-container rounded-full p-0.5 transition-colors cursor-pointer flex items-center justify-end" role="switch" type="button">
+<span class="w-4 h-4 rounded-full bg-white shadow-sm block"></span>
+</button>
+</div>
+<!-- Segmented Control for Layout Theme -->
+<div class="pt-1">
+<span class="font-label-sm text-label-sm text-secondary uppercase block mb-1.5">Caption Styling Format</span>
+<div class="flex items-center p-1 bg-surface-container-low rounded-lg gap-1">
+<button class="flex-1 py-1 px-2 text-center rounded font-label-sm text-label-sm text-secondary hover:text-on-surface transition-colors" type="button">
+                Classic Grid
+              </button>
+<button class="flex-1 py-1 px-2 text-center rounded font-label-sm text-label-sm bg-surface-container-lowest text-primary font-bold shadow-sm transition-all" type="button">
+                Professional (Active)
+              </button>
+</div>
+</div>
+</div>
+</div>
+<div class="font-mono-sm text-mono-sm text-secondary text-right pt-2">
+        Auto-retry threshold: 3 attempts (exponential backoff)
+      </div>
+</div>
+<!-- Card 3: TODAY'S BROADCAST METRICS -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between mb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]">analytics</span>
+<span class="font-label-md text-label-md text-secondary uppercase tracking-wider">Today's Broadcast Metrics</span>
+</div>
+<span class="font-mono-sm text-mono-sm text-secondary">LIVE AUDIT</span>
+</div>
+<div class="mt-2 flex items-baseline justify-between">
+<div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl font-bold text-on-surface text-[32px] leading-tight">21</span>
+<span class="font-label-md text-label-md text-secondary uppercase font-semibold">Messages Sent</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-0.5">Distributed cleanly across <strong class="text-on-surface">7 key groups</strong></p>
+</div>
+<!-- Radial Completion Sparkline Ring -->
+<div class="relative w-14 h-14 flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
+<path class="text-primary-container" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="100, 100" stroke-linecap="round" stroke-width="3.5"></path>
+</svg>
+<span class="absolute font-mono-sm text-mono-sm font-bold text-on-surface">100%</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 mt-4 pt-3 bg-surface-container-low p-3 rounded-lg">
+<div>
+<span class="font-label-sm text-label-sm text-secondary block">Transmission Rate</span>
+<span class="font-mono-lg text-mono-lg font-bold text-emerald-700">100.0% Success</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-secondary block">Total Failures</span>
+<span class="font-mono-lg text-mono-lg font-bold text-on-surface">0 Dropped</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-2.5 mt-3 rounded bg-surface-container text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-primary">schedule</span>
+<span class="font-label-sm text-label-sm font-semibold">Next Queued Dispatch:</span>
+</div>
+<span class="font-mono-sm text-mono-sm font-bold text-primary">12:00 PM Mid-day Sync</span>
+</div>
+</div>
+</div>
+<!-- DELIVERY DISPATCH RULES TABLE SECTION -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 mb-6">
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-4">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-6 bg-primary rounded-full"></div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight uppercase">Active Chat Distribution Rules</h2>
+<p class="font-body-sm text-body-sm text-secondary">Target routing mappings for automated SFA scraping bundles</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container text-on-surface rounded font-label-md text-label-md transition-colors" onclick="showToast('Refreshing metadata from WhatsApp server...')" type="button">
+<span class="material-symbols-outlined text-[16px]">sync</span>
+          Re-check Group Permissions
+        </button>
+<button class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-primary-container hover:bg-primary text-on-primary rounded font-label-md text-label-md font-semibold transition-colors shadow-sm" onclick="showToast('Opening New Delivery Rule Modal...')" type="button">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+          + Add Delivery Rule
+        </button>
+</div>
+</div>
+<!-- Responsive Table Container -->
+<div class="overflow-x-auto rounded-lg">
+<table class="w-full text-left font-body-md text-body-md">
+<thead>
+<tr class="bg-primary-container text-on-primary font-label-sm text-label-sm uppercase tracking-wider">
+<th class="py-2.5 px-4">Chat / Group Target</th>
+<th class="py-2.5 px-4">Reports Attached</th>
+<th class="py-2.5 px-4">Recipient Managers</th>
+<th class="py-2.5 px-4">Caption Template Preview</th>
+<th class="py-2.5 px-4 text-center">Auto-Dispatch</th>
+<th class="py-2.5 px-4 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low font-body-md">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">National Sales Leadership</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Group: 14 verified members</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex flex-wrap gap-1 max-w-xs">
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">SKU Summary</span>
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Pivot Matrix</span>
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Hourly Trajectory</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">NSM</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">GM Sales</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-mono-sm text-mono-sm text-on-surface bg-surface-container-low p-2 rounded max-w-sm truncate">
+                📊 Lakmee Daily Sales Summary - {date} - All Island...
+              </div>
+</td>
+<td class="py-3 px-4 text-center">
+<button aria-checked="true" class="w-8 h-4.5 bg-primary-container rounded-full p-0.5 transition-colors inline-flex items-center justify-end" role="switch" type="button">
+<span class="w-3.5 h-3.5 rounded-full bg-white shadow-sm block"></span>
+</button>
+</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-1 font-label-sm text-label-sm">
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary hover:text-on-surface" title="Edit Rule" type="button">Edit</button>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-primary font-semibold" onclick="showToast('Dispatched test payload to National Sales Leadership')" title="Test Send" type="button">Test Send</button>
+<button class="px-1.5 py-1 rounded hover:bg-error-container text-error transition-colors" title="Delete Rule" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Western Province Territory Managers</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Group: 28 verified members</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex flex-wrap gap-1 max-w-xs">
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">SKU Report - Colombo &amp; Gampaha</span>
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Hourly BC</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">RSM Western</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">AM Colombo</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-mono-sm text-mono-sm text-on-surface bg-surface-container-low p-2 rounded max-w-sm truncate">
+                🚚 WP Van &amp; Pre Performance update as of {time}...
+              </div>
+</td>
+<td class="py-3 px-4 text-center">
+<button aria-checked="true" class="w-8 h-4.5 bg-primary-container rounded-full p-0.5 transition-colors inline-flex items-center justify-end" role="switch" type="button">
+<span class="w-3.5 h-3.5 rounded-full bg-white shadow-sm block"></span>
+</button>
+</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-1 font-label-sm text-label-sm">
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary hover:text-on-surface" type="button">Edit</button>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-primary font-semibold" onclick="showToast('Dispatched test payload to WP Managers')" type="button">Test Send</button>
+<button class="px-1.5 py-1 rounded hover:bg-error-container text-error transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Southern &amp; Central Operations</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Group: 22 verified members</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex flex-wrap gap-1 max-w-xs">
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Territory Pivot</span>
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Galle &amp; Kandy SKU</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">RSM South</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">AM Galle</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-mono-sm text-mono-sm text-on-surface bg-surface-container-low p-2 rounded max-w-sm truncate">
+                📈 Southern Hub Regional Rollup...
+              </div>
+</td>
+<td class="py-3 px-4 text-center">
+<button aria-checked="true" class="w-8 h-4.5 bg-primary-container rounded-full p-0.5 transition-colors inline-flex items-center justify-end" role="switch" type="button">
+<span class="w-3.5 h-3.5 rounded-full bg-white shadow-sm block"></span>
+</button>
+</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-1 font-label-sm text-label-sm">
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary hover:text-on-surface" type="button">Edit</button>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-primary font-semibold" onclick="showToast('Dispatched test payload to Southern &amp; Central')" type="button">Test Send</button>
+<button class="px-1.5 py-1 rounded hover:bg-error-container text-error transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Commercial Finance &amp; Audit</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Group: 8 verified members</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex flex-wrap gap-1 max-w-xs">
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Combined SKU + Invoice</span>
+<span class="px-2 py-0.5 bg-surface-container rounded font-label-sm text-label-sm text-on-surface">Pivot</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm">
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">CFO</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold">Head of Ops</span>
+</div>
+</td>
+<td class="py-3 px-4">
+<div class="font-mono-sm text-mono-sm text-on-surface bg-surface-container-low p-2 rounded max-w-sm truncate">
+                📁 Daily Invoiced vs SFA Extraction reconciled...
+              </div>
+</td>
+<td class="py-3 px-4 text-center">
+<button aria-checked="true" class="w-8 h-4.5 bg-primary-container rounded-full p-0.5 transition-colors inline-flex items-center justify-end" role="switch" type="button">
+<span class="w-3.5 h-3.5 rounded-full bg-white shadow-sm block"></span>
+</button>
+</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-1 font-label-sm text-label-sm">
+<button class="px-2 py-1 rounded hover:bg-surface-container text-secondary hover:text-on-surface" type="button">Edit</button>
+<button class="px-2 py-1 rounded hover:bg-surface-container text-primary font-semibold" onclick="showToast('Dispatched test payload to Finance &amp; Audit')" type="button">Test Send</button>
+<button class="px-1.5 py-1 rounded hover:bg-error-container text-error transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- RECENT DISPATCH LOGS SECTION (AUDIT TRAIL) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 mb-6">
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 gap-2">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-6 bg-secondary rounded-full"></div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight uppercase">Recent Dispatch Logs</h2>
+<p class="font-body-sm text-body-sm text-secondary">Chronological telemetry of deliveries performed today</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary">Auto-refresh: 30s</span>
+<button class="w-8 h-8 rounded bg-surface-container-low hover:bg-surface-container flex items-center justify-center text-secondary transition-colors" onclick="showToast('Audit trails refreshed')" type="button">
+<span class="material-symbols-outlined text-[18px]">refresh</span>
+</button>
+</div>
+</div>
+<!-- Logs Table -->
+<div class="overflow-x-auto rounded-lg">
+<table class="w-full text-left font-body-md text-body-md">
+<thead>
+<tr class="bg-surface-container text-secondary font-label-sm text-label-sm uppercase tracking-wider">
+<th class="py-2.5 px-4">Timestamp</th>
+<th class="py-2.5 px-4">Run ID</th>
+<th class="py-2.5 px-4">Target Chat</th>
+<th class="py-2.5 px-4">Payload Bundled</th>
+<th class="py-2.5 px-4">Transmission Status</th>
+<th class="py-2.5 px-4">Dispatched By</th>
+<th class="py-2.5 px-4 text-right">Audit</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low font-body-md">
+<!-- Log 1 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-on-surface font-medium">08:36:14 AM</td>
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-primary font-bold">Run #42</td>
+<td class="py-3 px-4 font-label-md text-label-md text-on-surface">National Sales Leadership</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 font-mono-sm text-mono-sm text-secondary bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">attachment</span> 3 PDFs + 7 Images
+              </span>
+</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Success
+              </span>
+</td>
+<td class="py-3 px-4 font-label-sm text-label-sm text-on-surface">Binusha (Admin)</td>
+<td class="py-3 px-4 text-right">
+<button class="font-label-sm text-label-sm text-primary hover:underline font-semibold" onclick="showToast('Viewing Raw Hex Logs for Run #42...')" type="button">View Audit</button>
+</td>
+</tr>
+<!-- Log 2 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-on-surface font-medium">08:36:18 AM</td>
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-primary font-bold">Run #42</td>
+<td class="py-3 px-4 font-label-md text-label-md text-on-surface">Western Province Territory</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 font-mono-sm text-mono-sm text-secondary bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">attachment</span> 2 PDFs + 4 Images
+              </span>
+</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Success
+              </span>
+</td>
+<td class="py-3 px-4 font-label-sm text-label-sm text-secondary">Automated</td>
+<td class="py-3 px-4 text-right">
+<button class="font-label-sm text-label-sm text-primary hover:underline font-semibold" onclick="showToast('Viewing Raw Hex Logs for Run #42...')" type="button">View Audit</button>
+</td>
+</tr>
+<!-- Log 3 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-on-surface font-medium">08:36:22 AM</td>
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-primary font-bold">Run #42</td>
+<td class="py-3 px-4 font-label-md text-label-md text-on-surface">Southern &amp; Central Operations</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 font-mono-sm text-mono-sm text-secondary bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">attachment</span> 2 PDFs + 4 Images
+              </span>
+</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Success
+              </span>
+</td>
+<td class="py-3 px-4 font-label-sm text-label-sm text-secondary">Automated</td>
+<td class="py-3 px-4 text-right">
+<button class="font-label-sm text-label-sm text-primary hover:underline font-semibold" onclick="showToast('Viewing Raw Hex Logs for Run #42...')" type="button">View Audit</button>
+</td>
+</tr>
+<!-- Log 4 -->
+<tr class="hover:bg-surface-container-low/60 transition-colors">
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-on-surface font-medium">08:36:25 AM</td>
+<td class="py-3 px-4 font-mono-sm text-mono-sm text-primary font-bold">Run #42</td>
+<td class="py-3 px-4 font-label-md text-label-md text-on-surface">Commercial Finance &amp; Audit</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1 font-mono-sm text-mono-sm text-secondary bg-surface-container px-2 py-0.5 rounded">
+<span class="material-symbols-outlined text-[14px]">table_view</span> 2 Workbooks (XLSX)
+              </span>
+</td>
+<td class="py-3 px-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Success
+              </span>
+</td>
+<td class="py-3 px-4 font-label-sm text-label-sm text-secondary">Automated</td>
+<td class="py-3 px-4 text-right">
+<button class="font-label-sm text-label-sm text-primary hover:underline font-semibold" onclick="showToast('Viewing Raw Hex Logs for Run #42...')" type="button">View Audit</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Operational Health Diagnostic Footnote -->
+<div class="flex items-center justify-between px-2 text-secondary font-mono-sm text-mono-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+<span>WhatsApp Chromium Sandbox Isolation: SECURE (Enforced via Puppeteer headless args)</span>
+</div>
+<span>E2E Message Delivery SLA: &lt; 2.5s</span>
+</div>
+</div>
+<script>
+  // Ensure WhatsApp navigation link is highlighted as active in the global shell sidebar
+  document.addEventListener('DOMContentLoaded', () => {
+    const navItems = document.querySelectorAll('aside nav a');
+    navItems.forEach(item => {
+      if (item.getAttribute('data-path') === 'whatsapp-delivery') {
+        item.classList.remove('text-[#D0D0D0]', 'hover:bg-[#2C2C2E]');
+        item.classList.add('bg-primary-container', 'text-on-primary', 'font-bold', 'shadow-sm');
+      }
+    });
+  });
+
+  // Client-side Toast notification feedback
+  function showToast(msg) {
+    const toast = document.getElementById('toast-notification');
+    const toastMsg = document.getElementById('toast-message');
+    if (!toast || !toastMsg) return;
+    
+    toastMsg.textContent = msg;
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3200);
+  }
+</script></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>

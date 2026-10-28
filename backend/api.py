@@ -28,6 +28,7 @@ import sfa_connection
 import sfa_store
 import report_pipeline
 import automation_store
+import schedule_store
 import scheduler
 import notifications
 import whatsapp_sender
@@ -40,6 +41,7 @@ class Api:
         report_pipeline.init_schema()
         automation_store.init_schema()
         automation_store.mark_interrupted_runs()
+        schedule_store.init_schema()
         whatsapp_sender.init_schema()
         # IMPORTANT: anything that is not an API method must start with "_".
         # pywebview walks every public attribute of this object to build
@@ -348,13 +350,15 @@ class Api:
     def get_automation_overview(self):
         import sfa_automation
         settings = automation_store.get_automation_settings()
-        nxt = scheduler.next_run(settings=settings)
+        nxt_o = scheduler.next_occurrence(settings=settings)
+        nxt = nxt_o["at"] if nxt_o else None
         cfg = sfa_config.load_config()
         runs = automation_store.list_runs(1)
         return {
             "profiles": automation_store.list_profiles(),
             "settings": settings,
             "next_run": nxt.strftime("%a %d %b, %H:%M") if nxt else None,
+            "next_job": nxt_o["job"]["name"] if nxt_o else None,
             "last_run": runs[0] if runs else None,
             "live_active": sfa_automation.LIVE.snapshot().get("active", False),
             "login_ready": bool(cfg.get("login_url") and cfg.get("username") and cfg.get("password")),
@@ -420,7 +424,7 @@ class Api:
         if not ok:
             return {"ok": False, "message": message}
         after = automation_store.get_automation_settings()
-        task_keys = ("run_times", "weekdays", "paused", "use_task_scheduler")
+        task_keys = ("paused", "use_task_scheduler")
         sync = None
         if os.name == "nt" and (after["use_task_scheduler"] == "1" or before["use_task_scheduler"] == "1") \
                 and any(before[k] != after[k] for k in task_keys):
@@ -431,6 +435,116 @@ class Api:
 
     def sync_windows_tasks(self):
         return scheduler.sync_windows_tasks()
+
+    # ------------------------------------------------------------
+    # Schedules: jobs, holiday calendar, clock
+    # ------------------------------------------------------------
+    @staticmethod
+    def _fmt_dt(dt):
+        return dt.strftime("%a %d %b, %H:%M") if dt else None
+
+    def _sync_tasks_if_used(self):
+        s = automation_store.get_automation_settings()
+        if os.name == "nt" and s["use_task_scheduler"] == "1":
+            return scheduler.sync_windows_tasks(s)
+        return None
+
+    def get_schedule_overview(self, week_offset=0):
+        from datetime import date, datetime, timedelta
+        settings = automation_store.get_automation_settings()
+        per_job = scheduler.next_run_per_job(settings=settings)
+        jobs = schedule_store.list_jobs()
+        fires = schedule_store.last_fires(200)
+        for j in jobs:
+            j["next_at"] = per_job.get(j["id"]).isoformat() if per_job.get(j["id"]) else None
+            j["next_label"] = self._fmt_dt(per_job.get(j["id"]))
+            last = next((f for f in fires if f["job_id"] == j["id"]), None)
+            j["last_fire"] = last
+        start = datetime.combine(date.today() - timedelta(days=date.today().weekday())
+                                 + timedelta(weeks=int(week_offset or 0)), datetime.min.time())
+        week = schedule_store.occurrences(start, start + timedelta(days=7, seconds=-1), include_skipped=True)
+        hol = {h["day"]: h["name"] for h in schedule_store.list_holidays()}
+        nxt = scheduler.next_occurrence(settings=settings)
+        this_year = date.today().year
+        return {
+            "jobs": jobs,
+            "job_types": schedule_store.JOB_TYPES,
+            "week_start": start.date().isoformat(),
+            "week": [{"job_id": o["job"]["id"], "job": o["job"]["name"], "type": o["job"]["job_type"],
+                      "at": o["at"].isoformat(), "slot": o["slot"], "holiday": o["holiday"],
+                      "skipped_today": settings["skip_date"] == o["at"].date().isoformat()} for o in week],
+            "week_holidays": {d: n for d, n in hol.items() if start.date().isoformat() <= d
+                              <= (start.date() + timedelta(days=6)).isoformat()},
+            "holidays": [h for h in schedule_store.list_holidays() if int(h["day"][:4]) >= this_year - 1],
+            "today": date.today().isoformat(),
+            "now": datetime.now().isoformat(timespec="seconds"),
+            "next": {"job": nxt["job"]["name"], "at": nxt["at"].isoformat(), "label": self._fmt_dt(nxt["at"])}
+                    if nxt else None,
+            "controls": {k: settings[k] for k in ("paused", "skip_date", "use_task_scheduler")},
+            "clock": scheduler.clock_status(settings),
+            "task_times": scheduler.wanted_task_times(),
+            "is_windows": os.name == "nt",
+            "profiles": [{"id": p["id"], "name": p["name"], "enabled": p["enabled"]}
+                         for p in automation_store.list_profiles()],
+            "fires": fires[:30],
+        }
+
+    def save_schedule_job(self, job):
+        ok, msg, saved = schedule_store.save_job(job or {})
+        if not ok:
+            return {"ok": False, "message": msg}
+        return {"ok": True, "message": f"Saved — {saved['summary']}.", "job": saved,
+                "task_sync": self._sync_tasks_if_used()}
+
+    def set_schedule_job_enabled(self, job_id, enabled):
+        schedule_store.set_job_enabled(int(job_id), bool(enabled))
+        return {"ok": True, "task_sync": self._sync_tasks_if_used()}
+
+    def delete_schedule_job(self, job_id):
+        schedule_store.delete_job(int(job_id))
+        return {"ok": True, "task_sync": self._sync_tasks_if_used()}
+
+    def run_schedule_job_now(self, job_id):
+        """Runs a job immediately, exactly as its schedule would (doesn't use up a scheduled slot)."""
+        from datetime import date, timedelta
+        job = schedule_store.get_job(int(job_id))
+        if not job:
+            return {"ok": False, "message": "That job no longer exists."}
+        if job["job_type"] != "sfa_downloads":
+            return {"ok": False, "message": f"{job['type_label']} isn't available yet."}
+        import sfa_automation
+        day = date.today() - timedelta(days=1 if job["options"].get("report_day") == "yesterday" else 0)
+        return sfa_automation.start_background(report_date=day.isoformat(), trigger="manual",
+                                               profile_ids=job["options"].get("profile_ids") or None)
+
+    def add_holidays(self, text):
+        n, problems = schedule_store.add_holidays(text or "")
+        msg = f"{n} holiday(s) saved." if n else "No holidays added."
+        return {"ok": n > 0 and not problems, "added": n, "problems": problems,
+                "message": msg + (f" {len(problems)} line(s) skipped." if problems else "")}
+
+    def delete_holiday(self, day):
+        schedule_store.delete_holiday(day)
+        return {"ok": True}
+
+    def check_clock(self):
+        return scheduler.check_clock_now()
+
+    def get_clock(self):
+        """Small and cheap: polled by the top-bar clock."""
+        settings = automation_store.get_automation_settings()
+        nxt = scheduler.next_occurrence(settings=settings)
+        c = scheduler.clock_status(settings)
+        return {"now": c["now"], "level": c["level"], "message": c["message"],
+                "paused": settings["paused"] == "1",
+                "next": {"job": nxt["job"]["name"], "at": nxt["at"].isoformat(), "label": self._fmt_dt(nxt["at"])}
+                        if nxt else None}
+
+    def get_data_usage(self):
+        """Settings > Network & Data: data saver state + measured usage."""
+        out = automation_store.data_usage_summary()
+        out["data_saver"] = automation_store.get_automation_settings().get("data_saver") == "1"
+        return out
 
     # ------------------------------------------------------------
     # Notifications (bell), Overview feed, report previews, WhatsApp, About

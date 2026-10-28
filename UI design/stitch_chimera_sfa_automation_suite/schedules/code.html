@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a class="flex items-center justify-between px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets & Territories</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About & Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full gap-6">
+<!-- Orchestration Header Bar -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-2">
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Schedules</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container font-mono-sm text-mono-sm text-secondary">CRON-DAEMON v2.4</span>
+</div>
+<p class="font-body-md text-body-md text-secondary mt-1">Unified master orchestration calendar and execution triggers for all automated jobs.</p>
+</div>
+<div class="flex items-center gap-3 shrink-0">
+<button class="h-8 px-3 rounded-lg bg-surface-container-lowest text-on-surface hover:bg-surface-container shadow-sm flex items-center gap-2 transition-all" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">terminal</span>
+<span class="font-label-md text-label-md">View Task Scheduler daemon</span>
+</button>
+<button class="h-8 px-3.5 rounded-lg bg-primary-container text-on-primary hover:opacity-90 shadow-sm flex items-center gap-1.5 transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">add_circle</span>
+<span class="font-label-md text-label-md font-semibold">+ Add scheduled job</span>
+</button>
+</div>
+</div>
+<!-- Master Automation Status Card -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 relative overflow-hidden">
+<div class="absolute -right-16 -top-16 w-56 h-56 bg-primary-container/5 rounded-full pointer-events-none blur-2xl"></div>
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-5 z-10">
+<!-- Big Automation Switch -->
+<label class="inline-flex items-center gap-3 cursor-pointer select-none">
+<div class="relative">
+<input checked="" class="sr-only peer" id="masterToggle" type="checkbox"/>
+<div class="w-12 h-6 bg-surface-container-highest rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="dot absolute left-1 top-1 bg-on-primary w-4 h-4 rounded-full transition-transform peer-checked:translate-x-6"></div>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md text-on-surface">Automation Active</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Hook #PID-88914</span>
+</div>
+</label>
+<div class="h-8 w-[1px] bg-surface-container-high hidden sm:block"></div>
+<!-- State telemetry pill -->
+<div class="flex flex-col gap-1">
+<div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface-container text-on-surface">
+<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+<span class="font-label-sm text-label-sm font-semibold tracking-wide">Daemon Healthy · Windows Task Scheduler Hook Active</span>
+</div>
+<div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary">
+<span class="material-symbols-outlined text-[14px]">bolt</span>
+<span>Next trigger in <strong class="text-primary font-bold">18 minutes</strong> (10:00 AM) — Run #42 Daily Reports</span>
+</div>
+</div>
+</div>
+<!-- Quick Manual Intervention Controls -->
+<div class="flex flex-wrap items-center gap-2 z-10">
+<button class="h-8 px-3 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">fast_forward</span>
+<span class="font-label-md text-label-md">Skip today</span>
+</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-low text-error hover:bg-error-container/40 shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px]">cancel</span>
+<span class="font-label-md text-label-md font-semibold">Cancel current run</span>
+</button>
+<button class="h-8 px-3 rounded-lg bg-surface-container-low text-on-surface hover:bg-surface-container shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">pause_circle</span>
+<span class="font-label-md text-label-md">Pause all automations</span>
+</button>
+</div>
+</div>
+<!-- View Toggle & Category Filters -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+<!-- View Switcher -->
+<div class="inline-flex p-1 bg-surface-container rounded-xl">
+<button class="px-4 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-bold shadow-sm transition-all flex items-center gap-2" id="btnTimeline" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">calendar_view_week</span>
+        Week Timeline View
+      </button>
+<button class="px-4 py-1.5 rounded-lg text-secondary hover:text-on-surface font-label-md text-label-md transition-all flex items-center gap-2" id="btnList" type="button">
+<span class="material-symbols-outlined text-[16px]">format_list_bulleted</span>
+        List View
+      </button>
+</div>
+<!-- Category Filter Pills -->
+<div class="flex flex-wrap items-center gap-1.5">
+<button class="px-3 py-1 rounded-full bg-on-surface text-on-primary font-label-sm text-label-sm shadow-sm flex items-center gap-1.5" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-on-primary"></span>
+        All Jobs (6)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-sm text-label-sm shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+        Downloads (Crimson)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-sm text-label-sm shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+        Master Data (Dark Grey)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-sm text-label-sm shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="w-2 h-2 rounded-full bg-amber-500"></span>
+        Visit State (Amber)
+      </button>
+<button class="px-3 py-1 rounded-full bg-surface-container-lowest text-on-surface hover:bg-surface-container font-label-sm text-label-sm shadow-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="w-2 h-2 rounded-full bg-blue-600"></span>
+        Sequence (Blue)
+      </button>
+</div>
+</div>
+<!-- Week Timeline Calendar Widget -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[18px]">schedule</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md text-on-surface">Weekly Orchestration Grid</span>
+<p class="font-body-sm text-body-sm text-secondary">Hourly trigger allocation window (06:00 — 20:00 Daily)</p>
+</div>
+</div>
+<div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary">
+<span class="px-2 py-1 rounded bg-surface-container text-on-surface font-semibold">UTC+05:30 Colombo</span>
+<span>• Auto-sync enabled</span>
+</div>
+</div>
+<!-- Calendar Table Grid -->
+<div class="overflow-x-auto w-full">
+<div class="min-w-[940px] flex flex-col">
+<!-- Week Header Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] bg-surface-container text-secondary rounded-lg mb-2 py-2">
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Time</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase text-primary">Mon (Today)</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Tue</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Wed</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Thu</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Fri</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Sat</div>
+<div class="text-center font-label-sm text-label-sm font-bold uppercase">Sun</div>
+</div>
+<!-- 06:00 Hourly Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">06:00</span>
+<!-- Mon: Master Data Sync (Monthly 1st) -->
+<div class="px-1">
+<div class="relative group cursor-pointer p-1.5 rounded bg-[#2C2C2E] text-white hover:opacity-90 shadow-sm transition-all">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-bold truncate">Master Data Sync</span>
+<span class="material-symbols-outlined text-[12px] opacity-70">sync</span>
+</div>
+<span class="font-mono-sm text-mono-sm opacity-70">1st of Month</span>
+<!-- Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col bg-[#1E1E20] text-white p-2 rounded shadow-xl z-30 min-w-[200px] pointer-events-none">
+<span class="font-label-sm text-label-sm font-bold text-on-primary">Master Data Pipeline</span>
+<span class="font-mono-sm text-mono-sm text-white/70">Runs 06:00 AM on 1st</span>
+<span class="font-body-sm text-body-sm text-tertiary-fixed mt-1">Click to edit schedule timers</span>
+</div>
+</div>
+</div>
+<div></div><div></div><div></div><div></div><div></div><div></div>
+</div>
+<!-- 08:30 Hourly Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">08:30</span>
+<!-- Mon to Sun: Daily Morning Batch -->
+<div class="px-1 col-span-7 grid grid-cols-7 gap-1">
+<div class="group cursor-pointer p-1.5 rounded bg-primary-container text-on-primary shadow-sm hover:opacity-90">
+<span class="font-label-sm text-label-sm font-semibold truncate block">Daily SFA Downloads</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Morning Batch</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm opacity-75">
+<span class="font-label-sm text-label-sm font-semibold truncate block">Daily SFA Downloads</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Morning Batch</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm opacity-75">
+<span class="font-label-sm text-label-sm font-semibold truncate block">Daily SFA Downloads</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Morning Batch</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm opacity-75">
+<span class="font-label-sm text-label-sm font-semibold truncate block">Daily SFA Downloads</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Morning Batch</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm opacity-75">
+<span class="font-label-sm text-label-sm font-semibold truncate block">Daily SFA Downloads</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Morning Batch</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm opacity-75">
+<span class="font-label-sm text-label-sm font-semibold truncate block">Daily SFA Downloads</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Morning Batch</span>
+</div>
+<div class="p-1.5 rounded bg-surface-container text-secondary text-center">
+<span class="font-mono-sm text-mono-sm">Weekend off</span>
+</div>
+</div>
+</div>
+<!-- 10:00 Hourly Row (NEXT TRIGGER) -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[50px] items-center py-1 bg-primary/5 rounded-lg">
+<span class="text-center font-mono-sm text-mono-sm font-bold text-primary">10:00</span>
+<!-- Active Next block with pulse highlight -->
+<div class="px-1">
+<div class="relative group cursor-pointer p-1.5 rounded bg-primary-container text-on-primary shadow-md ring-2 ring-primary animate-pulse">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-bold truncate">Midday Refresh</span>
+<span class="px-1 rounded bg-on-primary text-primary-container font-mono-sm text-mono-sm font-black">NEXT</span>
+</div>
+<span class="font-mono-sm text-mono-sm opacity-90">Daily SFA Downloads</span>
+<!-- Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col bg-[#1E1E20] text-white p-2.5 rounded shadow-xl z-30 min-w-[220px] pointer-events-none">
+<span class="font-label-sm text-label-sm font-bold text-error-container">NEXT IMMEDIATE TRIGGER</span>
+<span class="font-mono-sm text-mono-sm text-white/80">Scheduled: 10:00 AM Colombo</span>
+<span class="font-mono-sm text-mono-sm text-tertiary-fixed mt-1">Click to edit schedule timers</span>
+</div>
+</div>
+</div>
+<!-- Other days in week for 10:00 AM -->
+<div class="px-1"><div class="p-1.5 rounded bg-primary-container text-on-primary opacity-60"><span class="font-label-sm text-label-sm truncate block">Midday Refresh</span></div></div>
+<div class="px-1"><div class="p-1.5 rounded bg-primary-container text-on-primary opacity-60"><span class="font-label-sm text-label-sm truncate block">Midday Refresh</span></div></div>
+<div class="px-1"><div class="p-1.5 rounded bg-primary-container text-on-primary opacity-60"><span class="font-label-sm text-label-sm truncate block">Midday Refresh</span></div></div>
+<div class="px-1"><div class="p-1.5 rounded bg-primary-container text-on-primary opacity-60"><span class="font-label-sm text-label-sm truncate block">Midday Refresh</span></div></div>
+<div class="px-1"><div class="p-1.5 rounded bg-primary-container text-on-primary opacity-60"><span class="font-label-sm text-label-sm truncate block">Midday Refresh</span></div></div>
+<div></div>
+</div>
+<!-- 12:00 Hourly Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">12:00</span>
+<div class="px-1 col-span-7 grid grid-cols-7 gap-1">
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm hover:opacity-90 cursor-pointer">
+<span class="font-label-sm text-label-sm truncate block">Noon Sync</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Daily SFA</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Noon Sync</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Noon Sync</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Noon Sync</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Noon Sync</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Noon Sync</span></div>
+<div></div>
+</div>
+</div>
+<!-- 15:00 Hourly Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">15:00</span>
+<div class="px-1 col-span-7 grid grid-cols-7 gap-1">
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm hover:opacity-90 cursor-pointer">
+<span class="font-label-sm text-label-sm truncate block">Afternoon Batch</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Daily SFA</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Afternoon Batch</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Afternoon Batch</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Afternoon Batch</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Afternoon Batch</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Afternoon Batch</span></div>
+<div></div>
+</div>
+</div>
+<!-- 17:30 Hourly Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">17:30</span>
+<div class="px-1 col-span-7 grid grid-cols-7 gap-1">
+<div class="p-1.5 rounded bg-primary-container text-on-primary shadow-sm hover:opacity-90 cursor-pointer">
+<span class="font-label-sm text-label-sm truncate block">Evening Final</span>
+<span class="font-mono-sm text-mono-sm opacity-80">Daily SFA</span>
+</div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Evening Final</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Evening Final</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Evening Final</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Evening Final</span></div>
+<div class="p-1.5 rounded bg-primary-container text-on-primary opacity-70"><span class="font-label-sm text-label-sm truncate block">Evening Final</span></div>
+<div></div>
+</div>
+</div>
+<!-- 18:00 Hourly Row (Amber Block Weekly Mon) -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">18:00</span>
+<!-- Mon: Route Visit State Sync -->
+<div class="px-1">
+<div class="relative group cursor-pointer p-1.5 rounded bg-amber-500 text-on-primary shadow-sm hover:opacity-90">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm font-bold truncate">Route Validation</span>
+<span class="material-symbols-outlined text-[12px]">directions_walk</span>
+</div>
+<span class="font-mono-sm text-mono-sm opacity-90">Weekly Mon</span>
+<!-- Tooltip -->
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:flex flex-col bg-[#1E1E20] text-white p-2 rounded shadow-xl z-30 min-w-[210px] pointer-events-none">
+<span class="font-label-sm text-label-sm font-bold text-amber-300">Visit State Route Validation</span>
+<span class="font-mono-sm text-mono-sm text-white/70">Every Monday @ 18:00 PM</span>
+<span class="font-body-sm text-body-sm text-tertiary-fixed mt-1">Click to edit schedule timers</span>
+</div>
+</div>
+</div>
+<div></div><div></div><div></div><div></div><div></div><div></div>
+</div>
+<!-- 20:00 Hourly Row -->
+<div class="grid grid-cols-[80px_repeat(7,1fr)] min-h-[46px] items-center py-1">
+<span class="text-center font-mono-sm text-mono-sm text-secondary">20:00</span>
+<div></div><div></div><div></div><div></div><div></div><div></div>
+<!-- Sun / Monthly Sequence Update -->
+<div class="px-1">
+<div class="relative group cursor-pointer p-1.5 rounded bg-blue-600 text-white shadow-sm hover:opacity-90">
+<span class="font-label-sm text-label-sm font-bold truncate block">Sequence Check</span>
+<span class="font-mono-sm text-mono-sm opacity-90">Monthly (25th)</span>
+<!-- Tooltip -->
+<div class="absolute bottom-full right-0 mb-1.5 hidden group-hover:flex flex-col bg-[#1E1E20] text-white p-2 rounded shadow-xl z-30 min-w-[200px] pointer-events-none">
+<span class="font-label-sm text-label-sm font-bold text-blue-200">Sequence Renumbering</span>
+<span class="font-mono-sm text-mono-sm text-white/70">Scheduled 25th of month</span>
+<span class="font-body-sm text-body-sm text-tertiary-fixed mt-1">Click to edit schedule timers</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- List of Configured Scheduled Jobs -->
+<div class="bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">format_list_numbered</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md text-on-surface">Configured Scheduled Jobs</span>
+<p class="font-body-sm text-body-sm text-secondary">Active daemon hooks mapped directly to Windows Task Scheduler services</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary">Total: 4 Managed Profiles</span>
+</div>
+</div>
+<!-- Table Responsive Container -->
+<div class="overflow-x-auto w-full">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="h-9 bg-surface-container-low text-secondary font-label-sm text-label-sm uppercase">
+<th class="px-4 font-semibold">Job Name</th>
+<th class="px-3 font-semibold">Category</th>
+<th class="px-3 font-semibold">Schedule Frequency</th>
+<th class="px-3 font-semibold">Next Execution</th>
+<th class="px-3 font-semibold text-center">Task Scheduler Daemon</th>
+<th class="px-3 font-semibold text-center">Status</th>
+<th class="px-4 font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md text-on-surface">
+<!-- Row 1: Daily SFA Report Downloads -->
+<tr class="h-12 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-4 py-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-primary-container shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Daily SFA Report Downloads</span>
+<span class="font-mono-sm text-mono-sm text-secondary">CHIMERA-JOB-001 • Multi-thread worker</span>
+</div>
+</div>
+</td>
+<td class="px-3 py-2">
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-label-sm text-label-sm font-semibold">Downloads</span>
+</td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm">
+              Daily (08:30, 10:00, 12:00, 15:00, 17:30)
+            </td>
+<td class="px-3 py-2">
+<div class="flex items-center gap-1.5 font-mono-sm text-mono-sm font-bold text-primary">
+<span class="material-symbols-outlined text-[14px]">alarm</span>
+                Today at 10:00 AM
+              </div>
+</td>
+<td class="px-3 py-2 text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-highest rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="dot absolute ml-0.5 bg-on-primary w-3 h-3 rounded-full transition-transform peer-checked:translate-x-4"></div>
+</label>
+</td>
+<td class="px-3 py-2 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                Active
+              </span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="h-7 px-2.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">Edit</button>
+<button class="h-7 px-2.5 rounded bg-primary-container text-on-primary hover:opacity-90 font-label-sm text-label-sm font-semibold transition-all" type="button">Run now</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Master Data Sync (Itinerary & Outlets) -->
+<tr class="h-12 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-4 py-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Master Data Sync (Itinerary & Outlets)</span>
+<span class="font-mono-sm text-mono-sm text-secondary">CHIMERA-JOB-002 • Full DB re-index</span>
+</div>
+</div>
+</td>
+<td class="px-3 py-2">
+<span class="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container font-label-sm text-label-sm font-semibold">Master Data</span>
+</td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm">
+              Monthly (1st at 06:00)
+            </td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm text-secondary">
+              2026-11-01 at 06:00 AM
+            </td>
+<td class="px-3 py-2 text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-highest rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="dot absolute ml-0.5 bg-on-primary w-3 h-3 rounded-full transition-transform peer-checked:translate-x-4"></div>
+</label>
+</td>
+<td class="px-3 py-2 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                Active
+              </span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="h-7 px-2.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">Edit</button>
+<button class="h-7 px-2.5 rounded bg-primary-container text-on-primary hover:opacity-90 font-label-sm text-label-sm font-semibold transition-all" type="button">Run now</button>
+</div>
+</td>
+</tr>
+<!-- Row 3: Route Visit State Sync -->
+<tr class="h-12 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-4 py-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Route Visit State Sync</span>
+<span class="font-mono-sm text-mono-sm text-secondary">CHIMERA-JOB-003 • GPS Polygon crosscheck</span>
+</div>
+</div>
+</td>
+<td class="px-3 py-2">
+<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-label-sm text-label-sm font-semibold">Automation</span>
+</td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm">
+              Weekly (Monday 18:00)
+            </td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm text-secondary">
+              2026-11-03 at 18:00
+            </td>
+<td class="px-3 py-2 text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-highest rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="dot absolute ml-0.5 bg-on-primary w-3 h-3 rounded-full transition-transform peer-checked:translate-x-4"></div>
+</label>
+</td>
+<td class="px-3 py-2 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                Active
+              </span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="h-7 px-2.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">Edit</button>
+<button class="h-7 px-2.5 rounded bg-primary-container text-on-primary hover:opacity-90 font-label-sm text-label-sm font-semibold transition-all" type="button">Run now</button>
+</div>
+</td>
+</tr>
+<!-- Row 4: Sequence Renumbering Validation -->
+<tr class="h-12 hover:bg-surface-container-low/60 transition-colors">
+<td class="px-4 py-2">
+<div class="flex items-center gap-2.5">
+<span class="w-2.5 h-2.5 rounded-full bg-secondary-fixed shrink-0"></span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-on-surface">Sequence Renumbering Validation</span>
+<span class="font-mono-sm text-mono-sm text-secondary">CHIMERA-JOB-004 • Anomaly auto-repair</span>
+</div>
+</div>
+</td>
+<td class="px-3 py-2">
+<span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-semibold">Automation</span>
+</td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm">
+              Monthly (25th at 20:00)
+            </td>
+<td class="px-3 py-2 font-mono-sm text-mono-sm text-secondary">
+              2026-11-25 at 20:00
+            </td>
+<td class="px-3 py-2 text-center">
+<label class="inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-8 h-4 bg-surface-container-highest rounded-full peer peer-checked:bg-primary-container transition-colors"></div>
+<div class="dot absolute ml-0.5 bg-on-primary w-3 h-3 rounded-full transition-transform peer-checked:translate-x-4"></div>
+</label>
+</td>
+<td class="px-3 py-2 text-center">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                Standby
+              </span>
+</td>
+<td class="px-4 py-2 text-right">
+<div class="inline-flex items-center gap-1.5">
+<button class="h-7 px-2.5 rounded bg-surface-container text-on-surface hover:bg-surface-container-high font-label-sm text-label-sm transition-colors" type="button">Edit</button>
+<button class="h-7 px-2.5 rounded bg-primary-container text-on-primary hover:opacity-90 font-label-sm text-label-sm font-semibold transition-all" type="button">Run now</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Telemetry Diagnostic Strip -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">timer</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-bold">Execution Precision</span>
+<span class="font-headline-md text-headline-md text-on-surface">±0.42s Drift</span>
+<span class="font-mono-sm text-mono-sm text-tertiary">Real-time local clock synced</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[20px]">layers</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-bold">Active Threads</span>
+<span class="font-headline-md text-headline-md text-on-surface">8 Available</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Pool 12% Allocated</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-emerald-600">
+<span class="material-symbols-outlined text-[20px]">verified_user</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-bold">Health Audits</span>
+<span class="font-headline-md text-headline-md text-on-surface">100% Passed</span>
+<span class="font-mono-sm text-mono-sm text-tertiary">All Task Hooks Bound</span>
+</div>
+</div>
+</div>
+<!-- Centered Footer -->
+<div class="pt-4 pb-2 text-center">
+<span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span>
+</div>
+</div>
+<script>
+  (function() {
+    const btnTimeline = document.getElementById('btnTimeline');
+    const btnList = document.getElementById('btnList');
+
+    if (btnTimeline && btnList) {
+      btnTimeline.addEventListener('click', () => {
+        btnTimeline.className = "px-4 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-bold shadow-sm transition-all flex items-center gap-2";
+        btnList.className = "px-4 py-1.5 rounded-lg text-secondary hover:text-on-surface font-label-md text-label-md transition-all flex items-center gap-2";
+      });
+
+      btnList.addEventListener('click', () => {
+        btnList.className = "px-4 py-1.5 rounded-lg bg-surface-container-lowest text-on-surface font-label-md text-label-md font-bold shadow-sm transition-all flex items-center gap-2";
+        btnTimeline.className = "px-4 py-1.5 rounded-lg text-secondary hover:text-on-surface font-label-md text-label-md transition-all flex items-center gap-2";
+      });
+    }
+
+    const masterToggle = document.getElementById('masterToggle');
+    if (masterToggle) {
+      masterToggle.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        const statusText = document.querySelector('#masterToggle ~ div span');
+        if (statusText) {
+          statusText.textContent = checked ? 'Automation Active' : 'Automation Paused';
+        }
+      });
+    }
+  })();
+</script></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>

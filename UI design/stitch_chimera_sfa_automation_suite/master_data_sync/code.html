@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a class="flex items-center justify-between px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets & Territories</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About & Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full space-y-6">
+<!-- Top Utility Context Strip -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
+<div>
+<p class="font-body-md text-body-md text-secondary tracking-tight">
+        Automated monthly & scheduled synchronization for Itinerary, Territories, and Outlet Master hierarchies.
+      </p>
+</div>
+<div class="flex items-center gap-3 shrink-0">
+<div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container shadow-sm">
+<span class="font-mono-sm text-mono-sm text-secondary uppercase font-semibold">Warehouse:</span>
+<span class="font-mono-sm text-mono-sm font-medium text-on-surface">SQLite v3.42.0 (Local Replica)</span>
+</div>
+<button class="inline-flex items-center gap-2 px-3.5 py-2 bg-primary-container hover:bg-primary text-on-primary rounded-xl font-label-md text-label-md shadow-sm transition-all transform active:scale-95" type="button">
+<span class="material-symbols-outlined text-[18px]">auto_fix_high</span>
+<span>+ Add data source</span>
+</button>
+</div>
+</div>
+<!-- Section 1: Three Primary Master Data Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Card 1: Itinerary Sync -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between transition-shadow hover:shadow-md">
+<div>
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary-container shadow-inner">
+<span class="material-symbols-outlined text-[26px]">alt_route</span>
+</div>
+<div class="flex flex-col items-end gap-1.5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[13px]">schedule</span>
+              Monthly · 1st at 06:00
+            </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+              Healthy · 0 discrepancies
+            </span>
+</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-semibold">Dataset Registry</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">ITINERARY SYNC</h2>
+</div>
+<div class="mt-4 p-3 rounded-lg bg-surface-container-low flex items-baseline justify-between">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Record Count</span>
+<div class="text-right">
+<span class="font-mono-lg text-mono-lg font-bold text-on-surface">124</span>
+<span class="font-body-sm text-body-sm text-secondary ml-1">Assigned Routes</span>
+</div>
+</div>
+<div class="mt-5 space-y-2.5 font-mono-sm text-mono-sm">
+<div class="flex items-center justify-between text-secondary">
+<span>Last Synced:</span>
+<div class="flex items-center gap-1.5 text-on-surface font-medium">
+<span>2026-10-01 06:00 AM</span>
+<span class="inline-flex items-center text-tertiary text-[16px] material-symbols-outlined">check_circle</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<span>Next Target:</span>
+<span class="text-on-surface font-medium">2026-11-01 06:00 AM</span>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<span>Integrity Key:</span>
+<span class="text-on-surface font-mono-sm text-secondary truncate max-w-[140px]">sha256:d82e1c9a</span>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-5 flex items-center gap-2">
+<button class="flex-1 py-1.5 px-3 bg-primary-container hover:bg-primary text-on-primary rounded-lg font-label-md text-label-md font-semibold text-center transition-colors shadow-sm" onclick="triggerSingleSync('Itinerary Master')" type="button">
+          Sync now
+        </button>
+<button class="py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors" type="button">
+          Edit job
+        </button>
+<button class="py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors" onclick="openDiffModal('Itinerary Master Data Diff', 'Gampaha North Route Sequence Shift')" type="button">
+          View data
+        </button>
+</div>
+</div>
+<!-- Card 2: Territories Master -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between transition-shadow hover:shadow-md">
+<div>
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary-container shadow-inner">
+<span class="material-symbols-outlined text-[26px]">public</span>
+</div>
+<div class="flex flex-col items-end gap-1.5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[13px]">schedule</span>
+              Monthly · 1st at 06:00
+            </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+              Healthy · Exact match
+            </span>
+</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-semibold">Hierarchy Engine</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">TERRITORIES MASTER</h2>
+</div>
+<div class="mt-4 p-3 rounded-lg bg-surface-container-low flex items-baseline justify-between">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Record Count</span>
+<div class="text-right">
+<span class="font-mono-lg text-mono-lg font-bold text-on-surface">28</span>
+<span class="font-body-sm text-body-sm text-secondary ml-1">Active Territories</span>
+</div>
+</div>
+<div class="mt-5 space-y-2.5 font-mono-sm text-mono-sm">
+<div class="flex items-center justify-between text-secondary">
+<span>Last Synced:</span>
+<div class="flex items-center gap-1.5 text-on-surface font-medium">
+<span>2026-10-01 06:02 AM</span>
+<span class="inline-flex items-center text-tertiary text-[16px] material-symbols-outlined">check_circle</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<span>Next Target:</span>
+<span class="text-on-surface font-medium">2026-11-01 06:02 AM</span>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<span>Integrity Key:</span>
+<span class="text-on-surface font-mono-sm text-secondary truncate max-w-[140px]">sha256:f410c5bc</span>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-5 flex items-center gap-2">
+<button class="flex-1 py-1.5 px-3 bg-primary-container hover:bg-primary text-on-primary rounded-lg font-label-md text-label-md font-semibold text-center transition-colors shadow-sm" onclick="triggerSingleSync('Territories Master')" type="button">
+          Sync now
+        </button>
+<button class="py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors" type="button">
+          Edit job
+        </button>
+<button class="py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors" onclick="openDiffModal('Territories Diff Inspector', 'Kandy Metro Rep Name Assignment')" type="button">
+          View data
+        </button>
+</div>
+</div>
+<!-- Card 3: Outlet Master -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between transition-shadow hover:shadow-md">
+<div>
+<div class="flex items-start justify-between mb-4">
+<div class="w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center text-primary-container shadow-inner">
+<span class="material-symbols-outlined text-[26px]">storefront</span>
+</div>
+<div class="flex flex-col items-end gap-1.5">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[13px]">update</span>
+              Bi-Weekly · 1st & 15th
+            </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed-variant font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+              Delta detected (14 changed)
+            </span>
+</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-semibold">Spatial Outlet Hub</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">OUTLET MASTER</h2>
+</div>
+<div class="mt-4 p-3 rounded-lg bg-surface-container-low flex items-baseline justify-between">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Record Count</span>
+<div class="text-right">
+<span class="font-mono-lg text-mono-lg font-bold text-on-surface">8,452</span>
+<span class="font-body-sm text-body-sm text-secondary ml-1">(8,120 Act · 332 Inact)</span>
+</div>
+</div>
+<div class="mt-5 space-y-2.5 font-mono-sm text-mono-sm">
+<div class="flex items-center justify-between text-secondary">
+<span>Last Synced:</span>
+<div class="flex items-center gap-1.5 text-on-surface font-medium">
+<span>2026-10-15 06:00 AM</span>
+<span class="inline-flex items-center text-tertiary text-[16px] material-symbols-outlined">check_circle</span>
+</div>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<span>Next Target:</span>
+<span class="text-on-surface font-medium">2026-11-01 06:00 AM</span>
+</div>
+<div class="flex items-center justify-between text-secondary">
+<span>Integrity Key:</span>
+<span class="text-on-surface font-mono-sm text-secondary truncate max-w-[140px]">sha256:7b91ee42</span>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-5 flex items-center gap-2">
+<button class="flex-1 py-1.5 px-3 bg-primary-container hover:bg-primary text-on-primary rounded-lg font-label-md text-label-md font-semibold text-center transition-colors shadow-sm" onclick="triggerSingleSync('Outlet Master')" type="button">
+          Sync now
+        </button>
+<button class="py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors" type="button">
+          Edit job
+        </button>
+<button class="py-1.5 px-3 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors" onclick="openDiffModal('Outlet Master Audit Inspector', 'Galle Territory Deactivations & Registrations')" type="button">
+          View data
+        </button>
+</div>
+</div>
+</div>
+<!-- Section 2: Changes From Last Sync (Delta Audit) Table Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-[20px]">difference</span>
+<h3 class="font-headline-md text-headline-md text-on-surface font-bold tracking-tight">CHANGES FROM LAST SYNC (DELTA AUDIT)</h3>
+</div>
+<p class="font-body-sm text-body-sm text-secondary mt-0.5">
+          Detected differences between SFA live database and local Chimera SQLite warehouse.
+        </p>
+</div>
+<button class="inline-flex items-center gap-2 px-3 py-1.5 bg-surface-container hover:bg-surface-container-high text-on-surface rounded-lg font-label-md text-label-md transition-colors shrink-0" onclick="openDiffModal('Consolidated Delta Inspector', 'All Pending Sync Changes')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span>View full diff modal</span>
+</button>
+</div>
+<!-- Table Container -->
+<div class="overflow-x-auto rounded-lg shadow-sm">
+<table class="w-full text-left font-body-sm text-body-sm">
+<thead>
+<tr class="bg-primary-container text-on-primary font-label-md text-label-md uppercase tracking-wider h-9">
+<th class="px-4 py-2 font-semibold">Dataset</th>
+<th class="px-4 py-2 font-semibold">Sync Timestamp</th>
+<th class="px-4 py-2 font-semibold text-right">Added (+)</th>
+<th class="px-4 py-2 font-semibold text-right">Removed (-)</th>
+<th class="px-4 py-2 font-semibold text-right">Changed (Δ)</th>
+<th class="px-4 py-2 font-semibold">Impact Summary</th>
+<th class="px-4 py-2 font-semibold text-center">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Row 1: Outlet Master -->
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low transition-colors h-10">
+<td class="px-4 py-2.5 font-semibold text-on-surface">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span>Outlet Master</span>
+</div>
+</td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-secondary">
+              2026-10-15 06:12 AM
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-bold text-tertiary">
+              +12 new
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-bold text-error">
+              -3 closed
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-bold text-on-primary-fixed-variant">
+              14 updated
+            </td>
+<td class="px-4 py-2.5 text-on-surface">
+<span class="font-medium text-error">14 outlets changed status to Inactive in Galle</span>
+</td>
+<td class="px-4 py-2.5 text-center">
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors" onclick="openDiffModal('Outlet Master - Galle Delta', '12 created, 3 deleted, 14 marked inactive')" type="button">
+                View changes
+              </button>
+</td>
+</tr>
+<!-- Row 2: Itinerary -->
+<tr class="bg-surface-container-low hover:bg-surface-container transition-colors h-10">
+<td class="px-4 py-2.5 font-semibold text-on-surface">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span>Itinerary</span>
+</div>
+</td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-secondary">
+              2026-10-01 06:04 AM
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-bold text-tertiary">
+              +2 routes
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-mono-sm text-secondary">
+              0 removed
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-bold text-on-surface">
+              5 modified
+            </td>
+<td class="px-4 py-2.5 text-on-surface">
+<span>Sequence shifts in Gampaha North</span>
+</td>
+<td class="px-4 py-2.5 text-center">
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors" onclick="openDiffModal('Itinerary - Gampaha Delta', '2 routes added, 5 sequences reordered')" type="button">
+                View changes
+              </button>
+</td>
+</tr>
+<!-- Row 3: Territories -->
+<tr class="bg-surface-container-lowest hover:bg-surface-container-low transition-colors h-10">
+<td class="px-4 py-2.5 font-semibold text-on-surface">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span>Territories</span>
+</div>
+</td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-secondary">
+              2026-10-01 06:01 AM
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-mono-sm text-secondary">
+              0 new
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-mono-sm text-secondary">
+              0 removed
+            </td>
+<td class="px-4 py-2.5 font-mono-sm text-mono-sm text-right font-bold text-on-surface">
+              1 updated
+            </td>
+<td class="px-4 py-2.5 text-on-surface">
+<span>Rep name updated for Kandy Metro</span>
+</td>
+<td class="px-4 py-2.5 text-center">
+<button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold transition-colors" onclick="openDiffModal('Territories - Kandy Metro Update', 'Representative assignation: S. Fernando → K. Perera')" type="button">
+                View changes
+              </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Section 3: Live Embedded Diff Inspector Panel -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 space-y-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2">
+<div class="flex items-center gap-3">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+<h4 class="font-headline-md text-headline-md font-bold text-on-surface">LIVE DIFF AUDIT PREVIEW: GALLE DISTRICT (LATEST SYNC BATCH #9812)</h4>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm text-secondary uppercase font-semibold">Filter:</span>
+<span class="px-2 py-0.5 rounded bg-surface-container font-mono-sm text-mono-sm text-on-surface">Territory == 'GAL-04'</span>
+</div>
+</div>
+<!-- Telemetry Diff Viewport -->
+<div class="rounded-lg bg-[#18181B] p-4 font-mono-sm text-mono-sm space-y-1 overflow-x-auto shadow-inner">
+<div class="flex items-center justify-between text-[#8E8E93] pb-2 font-mono-sm text-[10px] tracking-widest uppercase">
+<span>ACTION / FIELD MAP</span>
+<span>RECORD IDENTIFIER & VALUE MIGRATION</span>
+<span>STATE</span>
+</div>
+<!-- Green Row (+) Newly Created Outlet -->
+<div class="flex items-center justify-between p-2 rounded bg-emerald-950/40 text-emerald-300">
+<div class="flex items-center gap-3 min-w-[200px]">
+<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold">+ INSERT</span>
+<span class="text-white font-semibold">Lanka Traders #9201</span>
+</div>
+<div class="flex-1 px-4 truncate text-emerald-200">
+          OUTLET_ID: OUT-GAL-9201 | Terr: Galle Central | Route: GT-02 | Category: Tier-1 General Merchant | Geo: 6.0535° N, 80.2210° E
+        </div>
+<div class="shrink-0 text-right">
+<span class="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 font-label-sm text-[10px]">COMMITTED</span>
+</div>
+</div>
+<!-- Red Row (-) Decommissioned Outlet -->
+<div class="flex items-center justify-between p-2 rounded bg-rose-950/40 text-rose-300">
+<div class="flex items-center gap-3 min-w-[200px]">
+<span class="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold">- DELETE</span>
+<span class="text-white line-through font-semibold">City Stores</span>
+</div>
+<div class="flex-1 px-4 truncate text-rose-200">
+          OUTLET_ID: OUT-GAL-8104 | Reason: Commercial closure validated by Area Manager #04 | Prior Volume: 0 LKR (90d)
+        </div>
+<div class="shrink-0 text-right">
+<span class="px-2 py-0.5 rounded-full bg-rose-400/20 text-rose-300 font-label-sm text-[10px]">PURGED</span>
+</div>
+</div>
+<!-- Amber Field Mutation Rows (Status changed: Active -> Inactive) -->
+<div class="flex items-center justify-between p-2 rounded bg-amber-950/40 text-amber-300">
+<div class="flex items-center gap-3 min-w-[200px]">
+<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">Δ MUTATE</span>
+<span class="text-white font-semibold">Ruhunu Super Mart</span>
+</div>
+<div class="flex-1 px-4 truncate text-amber-100 flex items-center gap-2">
+<span>OUT-GAL-7440 | STATUS:</span>
+<span class="px-1 bg-emerald-900/50 text-emerald-300 rounded line-through">Active</span>
+<span>→</span>
+<span class="px-1 bg-amber-400 text-black font-bold rounded">Inactive (Seasonal Pause)</span>
+</div>
+<div class="shrink-0 text-right">
+<span class="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-label-sm text-[10px]">APPLIED</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-amber-950/40 text-amber-300">
+<div class="flex items-center gap-3 min-w-[200px]">
+<span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold">Δ MUTATE</span>
+<span class="text-white font-semibold">Fort Vista Groceries</span>
+</div>
+<div class="flex-1 px-4 truncate text-amber-100 flex items-center gap-2">
+<span>OUT-GAL-7892 | STATUS:</span>
+<span class="px-1 bg-emerald-900/50 text-emerald-300 rounded line-through">Active</span>
+<span>→</span>
+<span class="px-1 bg-amber-400 text-black font-bold rounded">Inactive (Licence Renewal)</span>
+</div>
+<div class="shrink-0 text-right">
+<span class="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 font-label-sm text-[10px]">APPLIED</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive Modal (Diff Inspector) -->
+<div class="fixed inset-0 z-50 bg-[#1C1C1E]/60 backdrop-blur-sm hidden items-center justify-center p-4" id="diffModalBackdrop">
+<div class="bg-surface-container-lowest rounded-xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[870px] animate-in fade-in zoom-in-95 duration-150">
+<!-- Modal Header -->
+<div class="px-6 py-4 bg-primary-container text-on-primary flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-[22px]">find_in_page</span>
+<span class="font-headline-md text-headline-md font-bold" id="diffModalTitle">DIFF INSPECTOR DETAIL</span>
+</div>
+<button class="w-7 h-7 rounded-lg bg-black/20 hover:bg-black/30 flex items-center justify-center text-on-primary transition-colors" onclick="closeDiffModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Modal Body -->
+<div class="p-6 space-y-4 overflow-y-auto">
+<div class="p-3 bg-surface-container rounded-lg flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-secondary font-medium">Context:</span>
+<span class="font-mono-sm text-mono-sm text-on-surface font-semibold" id="diffModalSubtitle">Galle Territory Delta Inspection</span>
+</div>
+<div class="space-y-3 font-mono-sm text-mono-sm">
+<div class="p-3 rounded-lg bg-emerald-50 text-emerald-950 flex flex-col gap-1">
+<div class="flex items-center justify-between font-bold text-emerald-800">
+<span>+ CREATION EVENT (1 RECORD)</span>
+<span class="font-label-sm text-label-sm">SYNCHRONIZED</span>
+</div>
+<p class="font-body-sm text-body-sm">
+              Outlet <strong class="font-mono-sm">"Lanka Traders #9201"</strong> verified in Galle Route 2. Assigned Rep ID #302. Added to master schema with geo-coordinates (6.0535° N, 80.2210° E).
+            </p>
+</div>
+<div class="p-3 rounded-lg bg-rose-50 text-rose-950 flex flex-col gap-1">
+<div class="flex items-center justify-between font-bold text-rose-800">
+<span>- DECOMMISSION EVENT (1 RECORD)</span>
+<span class="font-label-sm text-label-sm">PURGED</span>
+</div>
+<p class="font-body-sm text-body-sm">
+              Outlet <strong class="font-mono-sm line-through">"City Stores"</strong> removed from active roster per SFA supervisor mandate #104. Sequence order compacted for route Galle-02.
+            </p>
+</div>
+<div class="p-3 rounded-lg bg-amber-50 text-amber-950 flex flex-col gap-1">
+<div class="flex items-center justify-between font-bold text-amber-800">
+<span>Δ STATE SHIFTS (14 RECORDS AFFECTED)</span>
+<span class="font-label-sm text-label-sm">MUTATED</span>
+</div>
+<p class="font-body-sm text-body-sm">
+              14 outlets updated status from <span class="px-1.5 py-0.5 rounded bg-white text-emerald-700 font-semibold font-mono-sm">Active</span> to <span class="px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-semibold font-mono-sm">Inactive</span> across Galle Municipal Council division following non-order threshold trigger.
+            </p>
+</div>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="px-6 py-3.5 bg-surface-container flex items-center justify-end gap-3">
+<button class="px-4 py-2 bg-surface-container-highest hover:bg-surface-dim text-on-surface rounded-lg font-label-md text-label-md transition-colors" onclick="closeDiffModal()" type="button">
+          Dismiss
+        </button>
+<button class="px-4 py-2 bg-primary-container hover:bg-primary text-on-primary rounded-lg font-label-md text-label-md font-semibold transition-colors shadow-sm" onclick="closeDiffModal()" type="button">
+          Confirm Reconciliation
+        </button>
+</div>
+</div>
+</div>
+<!-- Notification Toast for Trigger Action -->
+<div class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none" id="syncToast">
+<div class="bg-surface-container-lowest text-on-surface px-4 py-3 rounded-xl shadow-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary text-[20px]">sync</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold" id="syncToastTitle">Sync Job Initiated</span>
+<span class="font-body-sm text-body-sm text-secondary">Dispatcher queued request for pipeline workers.</span>
+</div>
+</div>
+</div>
+<script>
+    function openDiffModal(title, subtitle) {
+      const modal = document.getElementById('diffModalBackdrop');
+      if (modal) {
+        document.getElementById('diffModalTitle').innerText = title || 'DIFF INSPECTOR DETAIL';
+        document.getElementById('diffModalSubtitle').innerText = subtitle || 'Inspection view';
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeDiffModal() {
+      const modal = document.getElementById('diffModalBackdrop');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function triggerSingleSync(dataset) {
+      const toast = document.getElementById('syncToast');
+      const title = document.getElementById('syncToastTitle');
+      if (toast && title) {
+        title.innerText = 'Syncing ' + dataset + '...';
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        setTimeout(() => {
+          toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3200);
+      }
+    }
+  </script>
+</div></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>

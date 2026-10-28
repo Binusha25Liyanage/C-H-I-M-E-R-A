@@ -68,7 +68,7 @@ function renderStats() {
   document.getElementById("au-stat-last").innerHTML = lr ? `${esc(lr.started_at.slice(11, 16))} ${chip(lr.status)}` : "Never";
   document.getElementById("au-stat-last-foot").textContent = lr ? `${lr.report_date} · ${lr.message || lr.trigger}` : "no runs yet";
   document.getElementById("au-stat-next").textContent = ov.settings.paused === "1" ? "Paused" : (ov.next_run || "—");
-  document.getElementById("au-stat-next-foot").textContent = ov.settings.paused === "1" ? "resume in Schedule & Control" : (ov.settings.run_times_list.join(" · ") || "no run times");
+  document.getElementById("au-stat-next-foot").textContent = ov.settings.paused === "1" ? "resume on the Schedules screen" : (ov.next_job || "nothing scheduled");
   document.getElementById("au-stat-tabs").textContent = ov.settings.parallel_tabs;
   document.getElementById("au-login-warning").innerHTML = ov.login_ready ? "" :
     `<div class="problem-box">SFA login isn't set up yet — Chimera can't download anything until it is.
@@ -411,7 +411,7 @@ function renderMonitor(s) {
       : `<li>${chip("failed")} <b>${esc(r.label)}</b> — ${esc(r.reason)}</li>`).join("")}</ul>${rr.folder ? `<p class="hint">${openPathButton(rr.folder, "Open output folder")}</p>` : ""}`;
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div><b>${esc(phase)}</b> <span class="hint">· report date ${esc(s.report_date || "")} · ${esc(s.trigger || "")}${s.slot ? " " + esc(s.slot) : ""}${s.run_id ? ` · run #${s.run_id}` : ""}</span></div>
+      <div><b>${esc(phase)}</b> <span class="hint">· report date ${esc(s.report_date || "")} · ${esc(s.trigger || "")}${s.slot ? " " + esc(s.slot) : ""}${s.run_id ? ` · run #${s.run_id}` : ""}${s.data_bytes != null ? ` · data ${fmtBytes(s.data_bytes)}${s.data_saver ? ` (data saver on${s.blocked ? `, ${s.blocked} skipped` : ""})` : ""}` : ""}</span></div>
       <div>${s.result ? chip(s.result.status) : ""}</div></div>
     <div class="progress"><div style="width:${pct}%"></div></div>
     ${s.result && s.result.message && !s.result.ok ? `<div class="problem-box">${esc(s.result.message)}</div>` : ""}
@@ -472,21 +472,14 @@ function renderTest(s) {
   const go = document.getElementById("tr-go"); if (go) { go.disabled = !!s.active; go.textContent = s.active ? "Running…" : "▶ Run test again"; }
 }
 
-// ---------------------------------------------------------------- schedule & control
+// ---------------------------------------------------------------- run settings
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 function renderSchedule() {
   const s = AU.ov.settings;
   const paused = s.paused === "1", skipping = s.skip_date === localToday();
-  document.getElementById("au-paused-switch").checked = paused;
-  document.getElementById("au-paused-label").textContent = paused ? "Paused" : "Running";
   document.getElementById("au-state-chip").className = "chip " + (paused ? "chip-grey" : skipping ? "chip-warn" : "chip-ok");
   document.getElementById("au-state-chip").textContent = paused ? "Paused" : skipping ? "Skipping today" : "Running on schedule";
-  document.getElementById("au-state-hint").textContent = paused ? "No scheduled runs will happen." : (AU.ov.next_run ? `Next run: ${AU.ov.next_run}` : "No run times set.");
-  document.getElementById("au-skip-btn").textContent = skipping ? "Undo skip today" : "Skip today";
-  document.getElementById("au-times").innerHTML = s.run_times_list.map(t => `<span class="time-chip">${esc(t)}<button data-rm-time="${esc(t)}" title="Remove">×</button></span>`).join("") || '<span class="empty-note">No run times yet.</span>';
-  document.getElementById("au-weekdays").innerHTML = DAY_NAMES.map((d, i) => `<button class="day-pill ${s.weekdays[i] === "1" ? "on" : ""}" data-day="${i}">${d}</button>`).join("");
-  const ts = document.getElementById("au-task-switch"); ts.checked = s.use_task_scheduler === "1"; ts.disabled = !AU.ov.is_windows;
-  if (!AU.ov.is_windows) document.getElementById("au-task-result").innerHTML = `<p class="hint">Available when Chimera runs on Windows.</p>`;
+  document.getElementById("au-state-hint").textContent = paused ? "No scheduled runs will happen." : (AU.ov.next_run ? `Next: ${AU.ov.next_job ? AU.ov.next_job + " · " : ""}${AU.ov.next_run}` : "Nothing scheduled.");
   document.getElementById("au-parallel").value = s.parallel_tabs; document.getElementById("au-parallel-val").textContent = s.parallel_tabs; parallelWarn(s.parallel_tabs);
   document.getElementById("au-retries").value = s.retries; document.getElementById("au-timeout").value = s.page_timeout_seconds;
   document.getElementById("au-headless").checked = s.headless === "1";
@@ -503,23 +496,7 @@ async function saveAuto(values, resultId) {
   if (r.ok) await loadAutomationQuiet().then(renderSchedule);
   return r;
 }
-document.getElementById("au-paused-switch").addEventListener("change", (e) => saveAuto({ paused: e.target.checked ? "1" : "0" }, "au-task-result"));
-document.getElementById("au-skip-btn").addEventListener("click", () => saveAuto({ skip_date: AU.ov.settings.skip_date === localToday() ? "" : localToday() }, "au-task-result"));
 document.getElementById("au-cancel-btn").addEventListener("click", () => confirmModal("Cancel current run", "Stop the run that's in progress? Reports already downloaded stay imported.", "Cancel run", async () => { await API().cancel_automation_run(); }, true));
-document.getElementById("au-time-add").addEventListener("click", () => {
-  const v = document.getElementById("au-time-input").value; if (!v) return;
-  saveAuto({ run_times: AU.ov.settings.run_times_list.concat([v]) }, "au-task-result");
-});
-document.getElementById("au-times").addEventListener("click", (e) => {
-  const t = e.target.dataset.rmTime; if (!t) return;
-  saveAuto({ run_times: AU.ov.settings.run_times_list.filter(x => x !== t) }, "au-task-result");
-});
-document.getElementById("au-weekdays").addEventListener("click", (e) => {
-  const i = e.target.dataset.day; if (i === undefined) return;
-  const w = AU.ov.settings.weekdays.split(""); w[Number(i)] = w[Number(i)] === "1" ? "0" : "1";
-  saveAuto({ weekdays: w.join("") }, "au-task-result");
-});
-document.getElementById("au-task-switch").addEventListener("change", (e) => saveAuto({ use_task_scheduler: e.target.checked ? "1" : "0" }, "au-task-result"));
 function parallelWarn(v) {
   document.getElementById("au-parallel-warn").innerHTML = Number(v) > 8
     ? `<span style="color:#9a6a00;">${v} tabs is heavy: each tab is a full SFA page (~150–250 MB of memory). Use it only if the PC and SFA stay responsive; reports that fail retry on their own.</span>`
@@ -537,9 +514,10 @@ async function loadHistory() {
   const el = document.getElementById("au-history");
   let runs = []; try { runs = await API().get_automation_runs(25); } catch (e) { return; }
   AU.runs = runs;
-  el.innerHTML = runs.length ? `<table class="report-table"><thead><tr><th>#</th><th>Started</th><th>Report date</th><th>Trigger</th><th>Status</th><th>Reports</th><th>Summary</th><th></th></tr></thead><tbody>${runs.map(r => `
+  el.innerHTML = runs.length ? `<table class="report-table"><thead><tr><th>#</th><th>Started</th><th>Report date</th><th>Trigger</th><th>Status</th><th>Reports</th><th>Data</th><th>Summary</th><th></th></tr></thead><tbody>${runs.map(r => `
     <tr><td>${r.id}</td><td>${esc((r.started_at || "").replace("T", " "))}</td><td>${esc(r.report_date)}</td><td>${esc(r.trigger)}${r.slot ? " " + esc(r.slot) : ""}</td><td>${chip(r.status)}</td>
       <td style="font-size:12px;">${(r.lanes || []).map(l => `${["done", "empty"].includes(l.status) ? "✓" : "✗"} ${esc(l.name)}`).join("<br>")}</td>
+      <td style="font-size:12px;white-space:nowrap;">${r.data_bytes != null ? fmtBytes(r.data_bytes) + (r.data_saver ? ' <span class="hint" title="Data saver was on">· saver</span>' : "") : '<span class="hint">—</span>'}</td>
       <td style="font-size:12px;">${esc(r.message || "")}</td><td><button class="icon-action" data-run="${r.id}">Details</button></td></tr>`).join("")}</tbody></table>`
     : `<p class="hint" style="padding:18px;">No automation runs yet.</p>`;
 }

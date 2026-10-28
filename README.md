@@ -141,3 +141,29 @@ Headless: `py backend\run_scheduled.py --now` runs every enabled profile immedia
 * **Bell** — automation runs, reports waiting for approval, WhatsApp deliveries. **?** — help for the current screen.
   **Support** — About page. Overview shows recent activity and today's data-source health.
 * Up to **12** parallel browser tabs (above 8 needs a capable PC).
+
+## Network & data (Settings → Network & Data)
+
+- **Data saver**: when on, automated SFA runs don't download images, icons, fonts or media. Blocking happens inside
+  Chrome (DevTools `Network.setBlockedURLs`), so the browser cache keeps working; filters, Search and Export are
+  unaffected. On Firefox the same resource types are blocked through Playwright routing.
+- **Data meter**: every run counts the bytes it actually transfers (Chrome's network counters plus the size of each
+  downloaded report). It is shown in the live monitor, in Run History, and as last run / today / last 7 days /
+  average (saver on vs off) totals in Settings.
+
+## Schedules (jobs, holidays, clock)
+
+- **Jobs**: each scheduled job has its own times and frequency: daily, chosen weekdays, chosen days of the month
+  (1–31 or "last day"; 29–31 fall back to the month's last day), or once on a date. SFA download jobs can run for
+  today or yesterday, for all enabled report profiles or a chosen few. The first version's single schedule is
+  migrated into a "Daily SFA downloads" job automatically.
+- **Global controls**: Pause stops every job; Skip today skips today only. A slot is due for 45 minutes after its
+  time (PC asleep / busy) and fires once, whichever trigger sees it first (`schedule_fires`).
+- **Holidays**: dates in the holiday calendar are skipped by every job unless that job is set to run on holidays.
+  Lists can be pasted (`2026-11-24 Poya` or `24/11/2026, Poya`, one per line).
+- **Closed-app runs**: Windows Task Scheduler gets one daily task per distinct run time ("Chimera run HHMM"); it only
+  wakes Chimera, and the same rules decide what is due — so weekly, monthly and one-time jobs need no special tasks.
+- **Clock check**: the PC clock is compared with the SFA server's `Date` header on every SFA login (and on demand);
+  the top bar shows the PC time, the next run and a warning dot if the clocks differ by more than a minute.
+- Job types "Master data sync", "Visit state update" and "Sequence update" are listed but can't be scheduled until
+  those features are built.

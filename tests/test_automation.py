@@ -97,26 +97,6 @@ class AutomationStoreTest(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(AS.get_automation_settings()["run_times_list"], ["09:05", "17:30"])
 
-    def test_scheduler_rules(self):
-        AS.save_automation_settings({"paused": "0", "run_times": "10:00,15:00", "weekdays": "1111100", "skip_date": ""})
-        mon_1010 = datetime(2026, 10, 26, 10, 10)        # a Monday
-        self.assertEqual(scheduler.due_slot(mon_1010)[0], "10:00")
-        self.assertIsNone(scheduler.due_slot(datetime(2026, 10, 26, 9, 59))[0])
-        self.assertIsNone(scheduler.due_slot(datetime(2026, 10, 26, 11, 0))[0])     # past the grace window
-        self.assertIsNone(scheduler.due_slot(datetime(2026, 10, 31, 10, 5))[0])     # Saturday is off
-        AS.save_automation_settings({"skip_date": "2026-10-26"})
-        self.assertIsNone(scheduler.due_slot(mon_1010)[0])
-        AS.save_automation_settings({"skip_date": "", "paused": "1"})
-        self.assertIsNone(scheduler.due_slot(mon_1010)[0])
-        self.assertIsNone(scheduler.next_run(mon_1010))
-        AS.save_automation_settings({"paused": "0"})
-        self.assertEqual(scheduler.next_run(mon_1010), datetime(2026, 10, 26, 15, 0))
-        self.assertEqual(scheduler.next_run(datetime(2026, 10, 30, 16, 0)), datetime(2026, 11, 2, 10, 0))
-        rid = AS.start_run_record("2026-10-26", "scheduled", "10:00")
-        AS.finish_run_record(rid, "success", [])
-        self.assertIsNone(scheduler.due_slot(mon_1010)[0])                            # already ran
-        AS.save_automation_settings({"paused": "1"})
-
     def test_lock(self):
         self.assertTrue(AS.acquire_lock("a"))
         self.assertFalse(AS.acquire_lock("b"))
@@ -163,6 +143,29 @@ class AutomationStoreTest(unittest.TestCase):
         st = {x["dataset"]: x for x in sfa_store.get_dataset_status(D)["datasets"]}
         self.assertTrue(st["sales_orders"]["loaded"])
         self.assertEqual(st["sales_orders"]["rows"], 0)
+
+    def test_data_saver_setting_and_usage(self):
+        ok, _ = AS.save_automation_settings({"data_saver": "1"})
+        self.assertTrue(ok)
+        self.assertEqual(AS.get_automation_settings()["data_saver"], "1")
+        AS.save_automation_settings({"data_saver": "0"})
+        rid = AS.start_run_record(D, "manual", None)
+        AS.finish_run_record(rid, "success", [], None, "ok", data_bytes=2_000_000, blocked=7, data_saver=True)
+        run = next(r for r in AS.list_runs() if r["id"] == rid)
+        self.assertEqual((run["data_bytes"], run["blocked"], run["data_saver"]), (2_000_000, 7, 1))
+        u = AS.data_usage_summary()
+        self.assertEqual(u["last_bytes"], 2_000_000)
+        self.assertGreaterEqual(u["today_bytes"], 2_000_000)
+        self.assertEqual(u["avg_with_saver"], 2_000_000)
+
+    def test_meter_counts_http_downloads_only(self):
+        m = E.NetMeter(data_saver=True)
+        f = os.path.join(_TMP_HOME, "dl.bin")
+        open(f, "wb").write(b"x" * 1234)
+        m.add_download("blob:https://sfa/abc", f)
+        self.assertEqual(m.bytes, 0)
+        m.add_download("https://sfa/export.xlsx", f)
+        self.assertEqual(m.bytes, 1234)
 
 
 if __name__ == "__main__":

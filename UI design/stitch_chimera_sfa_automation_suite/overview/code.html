@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a class="flex items-center justify-between px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets & Territories</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About & Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full space-y-6">
+<!-- Header Context Note -->
+<div class="flex flex-wrap items-center justify-between gap-4 -mt-2">
+<p class="font-body-md text-body-md text-secondary">
+      Real-time daemon telemetry, daily ingestion pipelines, and automated synchronization health.
+    </p>
+<div class="flex items-center gap-3">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container font-mono-sm text-mono-sm text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+        Daemon ID: dmn-lk-092
+      </span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container font-mono-sm text-mono-sm text-secondary">
+        Heartbeat: 4s ago
+      </span>
+</div>
+</div>
+<!-- Section 1: Row of 4 Stat Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+<!-- Stat 1 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Next Automated Run</span>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">10:00 AM</span>
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">(in 18m)</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined text-[15px] text-primary">schedule</span>
+<span class="font-body-sm text-body-sm truncate">Job: Daily SFA Downloads (5 reports)</span>
+</div>
+</div>
+<!-- Stat 2 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Last Run Execution</span>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">08:30 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+            Success
+          </span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined text-[15px] text-tertiary">check_circle</span>
+<span class="font-body-sm text-body-sm truncate">All 5 profiles validated & imported</span>
+</div>
+</div>
+<!-- Stat 3 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Pending Approvals</span>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-primary-container">2 Reports</span>
+<span class="font-mono-sm text-mono-sm text-primary font-medium">Awaiting action</span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined text-[15px] text-primary">pending_actions</span>
+<span class="font-body-sm text-body-sm truncate">SKU Van & Pivot awaiting review</span>
+</div>
+</div>
+<!-- Stat 4 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between relative overflow-hidden group hover:shadow-md transition-shadow">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary-container"></div>
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">Data Usage Today</span>
+<div class="mt-2 flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-on-surface">14.2 MB</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container font-mono-sm text-mono-sm text-secondary">
+            -62% net
+          </span>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center gap-1.5 text-secondary">
+<span class="material-symbols-outlined text-[15px] text-secondary">compress</span>
+<span class="font-body-sm text-body-sm truncate">Data saver active · saved 62% bandwidth</span>
+</div>
+</div>
+</div>
+<!-- Section 2: Pipeline State Stepper Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6">
+<div class="flex flex-wrap items-center justify-between gap-2 pb-4">
+<div class="flex items-center gap-3">
+<span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase font-semibold">
+          TODAY'S PIPELINE — RUN #42 (2026-10-27)
+        </span>
+<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-mono-sm text-mono-sm font-semibold">
+          ACTIVE STEP 5/6
+        </span>
+</div>
+<div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary">
+<span class="material-symbols-outlined text-[16px]">timer</span>
+<span>Elapsed: 05m 14s</span>
+</div>
+</div>
+<!-- Pipeline Visual Stepper -->
+<div class="grid grid-cols-1 md:grid-cols-6 gap-3 pt-2">
+<!-- Step 1 -->
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">01. Step</span>
+<span class="w-5 h-5 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</span>
+</div>
+<div class="mt-2">
+<p class="font-headline-md text-headline-md text-on-surface">Download</p>
+<p class="font-mono-sm text-mono-sm text-tertiary mt-0.5 font-medium">✓ 08:30 AM</p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">02. Step</span>
+<span class="w-5 h-5 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</span>
+</div>
+<div class="mt-2">
+<p class="font-headline-md text-headline-md text-on-surface">Validate</p>
+<p class="font-mono-sm text-mono-sm text-tertiary mt-0.5 font-medium">✓ 08:32 AM</p>
+</div>
+</div>
+<!-- Step 3 -->
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">03. Step</span>
+<span class="w-5 h-5 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</span>
+</div>
+<div class="mt-2">
+<p class="font-headline-md text-headline-md text-on-surface">Import</p>
+<p class="font-mono-sm text-mono-sm text-tertiary mt-0.5 font-medium">✓ 08:33 AM</p>
+</div>
+</div>
+<!-- Step 4 -->
+<div class="p-3 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">04. Step</span>
+<span class="w-5 h-5 rounded-full bg-tertiary text-on-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</span>
+</div>
+<div class="mt-2">
+<p class="font-headline-md text-headline-md text-on-surface">Build Reports</p>
+<p class="font-mono-sm text-mono-sm text-tertiary mt-0.5 font-medium">✓ 08:35 AM</p>
+</div>
+</div>
+<!-- Step 5 (Active) -->
+<div class="p-3 rounded-lg bg-primary-fixed/30 flex flex-col justify-between shadow-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-primary font-bold">05. Current</span>
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-container opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-primary-container"></span>
+</span>
+</div>
+<div class="mt-2">
+<p class="font-headline-md text-headline-md text-primary font-bold">Review</p>
+<p class="font-mono-sm text-mono-sm text-primary font-medium mt-0.5 truncate">⏳ In progress · 2 pending</p>
+</div>
+</div>
+<!-- Step 6 -->
+<div class="p-3 rounded-lg bg-surface-container-low opacity-75 flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary">06. Next</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">pause_circle</span>
+</div>
+<div class="mt-2">
+<p class="font-headline-md text-headline-md text-secondary">WhatsApp</p>
+<p class="font-mono-sm text-mono-sm text-secondary mt-0.5 truncate">⏸ Waiting approval</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Quick Actions Strip -->
+<div class="flex flex-wrap items-center gap-3">
+<button class="h-9 px-4 rounded bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-all hover:scale-[1.01] active:scale-[0.99]" id="btn-run-all" type="button">
+<span class="material-symbols-outlined text-[16px]">downloading</span>
+<span>+ Run all downloads now</span>
+</button>
+<button class="h-9 px-4 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-primary">play_arrow</span>
+<span>▶ Build today's reports</span>
+</button>
+<button class="h-9 px-4 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-tertiary">chat</span>
+<span>Open WhatsApp dispatch</span>
+</button>
+<button class="h-9 px-4 rounded bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-colors" type="button">
+<span class="material-symbols-outlined text-[16px] text-secondary">sync_alt</span>
+<span>Sync Master Data</span>
+</button>
+</div>
+<!-- Section 4: Two-Column Split (60% / 40%) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column (60% ~ 7 cols) -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">dynamic_feed</span>
+<span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase font-semibold">
+              Recent Activity
+            </span>
+</div>
+<a class="font-label-sm text-label-sm text-primary hover:text-primary-container font-semibold transition-colors flex items-center gap-1" href="#">
+<span>Audit Stream</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</a>
+</div>
+<!-- Activity Timeline -->
+<div class="space-y-4 pt-2">
+<!-- Item 1 -->
+<div class="flex items-start gap-3.5 group">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 mt-0.5 text-on-surface">
+<span class="material-symbols-outlined text-[18px]">info</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">09:14 AM</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold text-secondary uppercase">[Info]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mt-0.5">
+                Master Data Sync verified <span class="font-semibold">1,420 active outlets</span> in Colombo Central.
+              </p>
+<a class="font-mono-sm text-mono-sm text-primary-container hover:underline inline-flex items-center gap-0.5 mt-0.5" href="#">
+<span>view diff (checksum #8a02)</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-start gap-3.5 group">
+<div class="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center shrink-0 mt-0.5 text-tertiary">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">08:35 AM</span>
+<span class="px-1.5 py-0.2 rounded bg-tertiary/15 font-mono-sm text-mono-sm font-semibold text-tertiary uppercase">[Success]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mt-0.5">
+                Daily Sales Pivot & SKU generated (<span class="font-semibold text-on-surface">Classic + Professional</span> styles).
+              </p>
+<a class="font-mono-sm text-mono-sm text-primary-container hover:underline inline-flex items-center gap-0.5 mt-0.5" href="#">
+<span>open generated workbook.xlsx</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-start gap-3.5 group">
+<div class="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center shrink-0 mt-0.5 text-tertiary">
+<span class="material-symbols-outlined text-[18px]">database</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">08:33 AM</span>
+<span class="px-1.5 py-0.2 rounded bg-tertiary/15 font-mono-sm text-mono-sm font-semibold text-tertiary uppercase">[Success]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mt-0.5">
+                Invoices - Van Selling: <span class="font-semibold">3,420 rows</span> loaded into <code class="font-mono-sm text-mono-sm bg-surface-container px-1 rounded">Lakmee_DW.sqlite</code>.
+              </p>
+<a class="font-mono-sm text-mono-sm text-primary-container hover:underline inline-flex items-center gap-0.5 mt-0.5" href="#">
+<span>inspect SQLite schema</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="flex items-start gap-3.5 group">
+<div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center shrink-0 mt-0.5 text-primary">
+<span class="material-symbols-outlined text-[18px]">warning</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">08:31 AM</span>
+<span class="px-1.5 py-0.2 rounded bg-primary-fixed-dim/30 font-mono-sm text-mono-sm font-semibold text-primary uppercase">[Warning]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mt-0.5">
+                Tab #3 (Outlet Wise SKU) recovered via retry attempt 1/2.
+              </p>
+<a class="font-mono-sm text-mono-sm text-primary-container hover:underline inline-flex items-center gap-0.5 mt-0.5" href="#">
+<span>view scraper traceback</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</div>
+</div>
+<!-- Item 5 -->
+<div class="flex items-start gap-3.5 group">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 mt-0.5 text-secondary">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-mono-sm text-mono-sm text-secondary font-medium">08:30 AM</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-container-high font-mono-sm text-mono-sm font-semibold text-secondary uppercase">[Daemon]</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mt-0.5">
+                Scheduled daemon triggered morning batch #42.
+              </p>
+<a class="font-mono-sm text-mono-sm text-primary-container hover:underline inline-flex items-center gap-0.5 mt-0.5" href="#">
+<span>view process pid 31284</span>
+<span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Scraper Mini Telemetry Sparkline -->
+<div class="mt-6 pt-4 bg-surface-container-low rounded-lg p-3 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-tertiary">speed</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Throughput 18.2 req/s · Zero Dropped Packets</span>
+</div>
+<span class="font-mono-sm text-mono-sm font-semibold text-tertiary">99.98% UPTIME</span>
+</div>
+</div>
+<!-- Right Column (40% ~ 5 cols) -->
+<div class="lg:col-span-5 bg-surface-container-lowest rounded-xl shadow-sm p-6 flex flex-col justify-between">
+<div>
+<div class="flex items-center justify-between pb-3">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">monitor_heart</span>
+<span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase font-semibold">
+              Data Source Health
+            </span>
+</div>
+<span class="font-mono-sm text-mono-sm text-secondary">8 Ingestion Streams</span>
+</div>
+<!-- 8 Datasets List -->
+<div class="space-y-1.5 pt-1">
+<!-- 1. Invoices -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">Invoices</span>
+<span class="font-mono-sm text-mono-sm text-secondary">3,420 rows</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">08:33 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+<!-- 2. Sales Orders -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">Sales Orders</span>
+<span class="font-mono-sm text-mono-sm text-secondary">1,850 rows</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">08:32 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+<!-- 3. SKU Van -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">SKU Van</span>
+<span class="font-mono-sm text-mono-sm text-secondary">4,110 rows</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">08:31 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+<!-- 4. SKU Pre -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">SKU Pre</span>
+<span class="font-mono-sm text-mono-sm text-primary font-medium">Pending</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">Awaiting run</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-secondary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                Queued
+              </span>
+</div>
+</div>
+<!-- 5. Unproductive -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">Unproductive</span>
+<span class="font-mono-sm text-mono-sm text-secondary">620 rows</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">08:34 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+<!-- 6. Itinerary -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">Itinerary</span>
+<span class="font-mono-sm text-mono-sm text-secondary">84 routes</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">08:30 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+<!-- 7. Territories -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">Territories</span>
+<span class="font-mono-sm text-mono-sm text-secondary">28 territories</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">08:30 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+<!-- 8. Outlet Master -->
+<div class="flex items-center justify-between p-2 rounded hover:bg-surface-container-low transition-colors">
+<div class="min-w-0 flex items-center gap-2">
+<span class="font-headline-md text-body-md font-semibold text-on-surface truncate">Outlet Master</span>
+<span class="font-mono-sm text-mono-sm text-secondary">1,420 outlets</span>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<span class="font-mono-sm text-mono-sm text-secondary">09:14 AM</span>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-tertiary/10 text-tertiary font-label-sm text-label-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+                Fresh
+              </span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-4 pt-3 flex items-center justify-between text-secondary">
+<span class="font-mono-sm text-mono-sm">Storage: SQLite 48.6 MB / 2 GB</span>
+<span class="font-mono-sm text-mono-sm text-tertiary font-semibold">ALL DBs HEALTHY</span>
+</div>
+</div>
+</div>
+<!-- Section 5: Upcoming This Week Widget -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6">
+<div class="flex flex-wrap items-center justify-between gap-2 pb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[20px]">calendar_month</span>
+<span class="font-headline-md text-headline-md tracking-wider text-on-surface uppercase font-semibold">
+          Upcoming Automated Runs — Schedule Matrix
+        </span>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-container font-mono-sm text-mono-sm text-secondary">Timezone: Asia/Colombo (UTC+05:30)</span>
+</div>
+</div>
+<!-- Schedule List Table / Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+<!-- Item 1 -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-primary-fixed text-on-primary-fixed font-mono-sm text-mono-sm font-semibold">Today</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Cron: 0 10 * * *</span>
+</div>
+<div class="mt-3">
+<p class="font-headline-md text-headline-md text-on-surface font-semibold truncate">Mid-Day SFA Sync</p>
+<p class="font-mono-sm text-mono-sm text-primary-container font-medium mt-0.5">10:00 AM (in 18m)</p>
+<p class="font-body-sm text-body-sm text-secondary mt-1">Incremental orders & van status</p>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-label-sm text-label-sm text-secondary">
+<span>Trigger: Automatic Daemon</span>
+<span class="material-symbols-outlined text-[16px] text-tertiary">check_circle</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-surface-container font-mono-sm text-mono-sm text-secondary font-semibold">Today</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Cron: 0 14 * * *</span>
+</div>
+<div class="mt-3">
+<p class="font-headline-md text-headline-md text-on-surface font-semibold truncate">Afternoon Re-Scrape</p>
+<p class="font-mono-sm text-mono-sm text-on-surface font-medium mt-0.5">02:00 PM</p>
+<p class="font-body-sm text-body-sm text-secondary mt-1">Full territory sales delta scrape</p>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-label-sm text-label-sm text-secondary">
+<span>Trigger: Automatic Daemon</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">schedule</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-surface-container font-mono-sm text-mono-sm text-secondary font-semibold">Today</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Cron: 30 18 * * *</span>
+</div>
+<div class="mt-3">
+<p class="font-headline-md text-headline-md text-on-surface font-semibold truncate">EOD Closure & WhatsApp</p>
+<p class="font-mono-sm text-mono-sm text-on-surface font-medium mt-0.5">06:30 PM</p>
+<p class="font-body-sm text-body-sm text-secondary mt-1">End of day rollups to distributor group</p>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-label-sm text-label-sm text-secondary">
+<span>Trigger: Scheduled Dispatch</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">chat</span>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="p-3.5 rounded-lg bg-surface-container-low flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="px-2 py-0.5 rounded bg-surface-container font-mono-sm text-mono-sm text-secondary font-semibold">Tomorrow</span>
+<span class="font-mono-sm text-mono-sm text-secondary">Cron: 30 08 * * *</span>
+</div>
+<div class="mt-3">
+<p class="font-headline-md text-headline-md text-on-surface font-semibold truncate">Morning Batch #43</p>
+<p class="font-mono-sm text-mono-sm text-on-surface font-medium mt-0.5">08:30 AM</p>
+<p class="font-body-sm text-body-sm text-secondary mt-1">Full 5-report extraction pipeline</p>
+</div>
+<div class="mt-3 pt-2 flex items-center justify-between font-label-sm text-label-sm text-secondary">
+<span>Trigger: Master Pipeline Daemon</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">sync</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Interactive script for Run Button Feedback -->
+<script>
+    document.getElementById('btn-run-all')?.addEventListener('click', function() {
+      const btn = this;
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.classList.add('opacity-80');
+      btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>Initiating download queue...</span>';
+      setTimeout(() => {
+        btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">done</span><span>Daemon Signal Sent (PID 31490)</span>';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          btn.classList.remove('opacity-80');
+        }, 2200);
+      }, 1200);
+    });
+  </script>
+</div></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>

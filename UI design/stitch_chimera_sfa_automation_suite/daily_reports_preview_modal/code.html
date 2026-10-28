@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-primary":"#ffffff","on-secondary":"#ffffff","secondary-container":"#e2dfe1","on-tertiary-container":"#5debaf","inverse-on-surface":"#f0f1f3","surface":"#f8f9fb","tertiary-container":"#006846","error-container":"#ffdad6","background":"#f8f9fb","on-primary-fixed":"#410003","surface-dim":"#d9dadc","outline-variant":"#e4beb9","on-error-container":"#93000a","on-surface":"#191c1e","secondary-fixed":"#e4e2e4","on-background":"#191c1e","surface-container-highest":"#e1e2e4","primary-container":"#b5121b","error":"#ba1a1a","primary":"#8c000e","on-error":"#ffffff","surface-container":"#edeef0","on-tertiary-fixed":"#002113","on-surface-variant":"#5b403d","secondary":"#5f5e60","tertiary-fixed-dim":"#4edea3","inverse-primary":"#ffb3ac","tertiary":"#004e33","inverse-surface":"#2e3132","secondary-fixed-dim":"#c8c6c8","on-tertiary":"#ffffff","on-secondary-fixed-variant":"#474649","surface-tint":"#bb181e","on-primary-fixed-variant":"#93000f","on-secondary-container":"#636264","primary-fixed":"#ffdad6","outline":"#906f6c","surface-variant":"#e1e2e4","surface-container-low":"#f3f4f6","tertiary-fixed":"#6ffbbe","surface-bright":"#f8f9fb","primary-fixed-dim":"#ffb3ac","on-tertiary-fixed-variant":"#005236","surface-container-high":"#e7e8ea","on-primary-container":"#ffc5bf","surface-container-lowest":"#ffffff","on-secondary-fixed":"#1b1b1d"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"space-md":"0.625rem","space-xs":"0.25rem","margin":"1rem","space-lg":"1rem","gutter":"0.75rem","space-sm":"0.375rem","space-xl":"1.5rem"},fontFamily:{"body-sm":["IBM Plex Sans"],"mono-md":["JetBrains Mono"],"headline-xl":["IBM Plex Sans"],"headline-md":["IBM Plex Sans"],"body-md":["IBM Plex Sans"],"mono-sm":["JetBrains Mono"],"label-sm":["IBM Plex Sans"],"headline-lg":["IBM Plex Sans"],"label-md":["IBM Plex Sans"],"body-lg":["IBM Plex Sans"],"mono-lg":["JetBrains Mono"]},fontSize:{"body-sm":["12px",{"lineHeight":"16px","fontWeight":"400"}],"mono-md":["12px",{"lineHeight":"16px","fontWeight":"400"}],"headline-xl":["24px",{"lineHeight":"32px","letterSpacing":"-0.015em","fontWeight":"700"}],"headline-md":["15px",{"lineHeight":"20px","fontWeight":"600"}],"body-md":["13px",{"lineHeight":"18px","fontWeight":"400"}],"mono-sm":["11px",{"lineHeight":"14px","fontWeight":"400"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.03em","fontWeight":"500"}],"headline-lg":["18px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.02em","fontWeight":"600"}],"body-lg":["14px",{"lineHeight":"20px","fontWeight":"400"}],"mono-lg":["13px",{"lineHeight":"18px","fontWeight":"500"}]}}}};</script></head><body class="bg-surface-container-low font-body-md text-body-md text-on-surface antialiased min-h-screen"><aside class="fixed left-0 top-0 h-full w-[260px] bg-[#1E1E20] z-50 flex flex-col justify-between select-none shadow-xl"><div class="flex flex-col h-full overflow-hidden"><div class="h-[72px] px-5 flex items-center gap-3 border-b border-white/5"><button class="w-9 h-9 rounded-full bg-[#E5D7C7] flex items-center justify-center text-[#3B291A] shrink-0 border border-[#D5BFA4] shadow-inner hover:scale-105 transition-transform" type="button"><span class="material-symbols-outlined text-[20px]">verified</span></button><div class="flex flex-col"><span class="font-headline-md text-headline-md font-bold tracking-[0.2em] text-white leading-none">C H I M E R A</span><span class="font-label-sm text-label-sm text-[#8E8E93] mt-1">SFA Management System</span></div></div><div class="flex-1 overflow-y-auto px-3 py-4 space-y-5"><nav class="space-y-4" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Overview</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="overview" href="#"><span class="material-symbols-outlined text-[18px]">space_dashboard</span><span class="font-label-md text-label-md">Overview</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Reports</div><div class="space-y-0.5"><a class="flex items-center justify-between px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="daily-reports" href="#"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-[18px]">assignment</span><span class="font-label-md text-label-md">Daily Reports</span></div><span class="px-1.5 py-0.5 rounded-full bg-primary-container text-on-primary font-mono-sm text-mono-sm font-semibold">2</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-outputs" href="#"><span class="material-symbols-outlined text-[18px]">file_download_done</span><span class="font-label-md text-label-md">Report Outputs</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="combined-sku-invoice" href="#"><span class="material-symbols-outlined text-[18px]">inventory_2</span><span class="font-label-md text-label-md">Combined SKU + Invoice</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Automation</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="report-downloads" href="#"><span class="material-symbols-outlined text-[18px]">downloading</span><span class="font-label-md text-label-md">Report Downloads</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="master-data-sync" href="#"><span class="material-symbols-outlined text-[18px]">sync_alt</span><span class="font-label-md text-label-md">Master Data Sync</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="visit-state-update" href="#"><span class="material-symbols-outlined text-[18px]">fact_check</span><span class="font-label-md text-label-md">Visit State Update</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="sequence-update" href="#"><span class="material-symbols-outlined text-[18px]">format_list_numbered</span><span class="font-label-md text-label-md">Sequence Update</span></a><a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl transition-all bg-primary-container text-on-primary font-bold shadow-sm" data-path="schedules" href="#"><span class="material-symbols-outlined text-[18px]">schedule</span><span class="font-label-md text-label-md">Schedules</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="run-history" href="#"><span class="material-symbols-outlined text-[18px]">history</span><span class="font-label-md text-label-md">Run History</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Delivery</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="whatsapp-delivery" href="#"><span class="material-symbols-outlined text-[18px]">chat</span><span class="font-label-md text-label-md">WhatsApp</span></a></div></div><div><div class="px-3 pb-1 font-label-sm text-label-sm text-[#8E8E93] uppercase tracking-wider">Data</div><div class="space-y-0.5"><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="outlets-and-territories" href="#"><span class="material-symbols-outlined text-[18px]">store</span><span class="font-label-md text-label-md">Outlets &amp; Territories</span></a><a class="flex items-center gap-3 px-3 py-2 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="manual-import" href="#"><span class="material-symbols-outlined text-[18px]">upload_file</span><span class="font-label-md text-label-md">Manual Import</span></a></div></div></nav></div><div class="border-t border-white/5 p-3 space-y-1 bg-[#1A1A1C]"><div class="px-3 py-1.5 mb-1 rounded-lg bg-[#242426] flex items-center justify-between"><span class="font-label-sm text-label-sm text-[#8E8E93]">System Status:</span><div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="font-label-sm text-label-sm font-semibold text-emerald-400">Live</span></div></div><nav class="space-y-0.5" data-active-classes="bg-primary-container text-on-primary font-bold shadow-sm"><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="settings" href="#"><span class="material-symbols-outlined text-[18px]">settings</span><span class="font-label-md text-label-md">Settings</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="maintenance" href="#"><span class="material-symbols-outlined text-[18px]">build_circle</span><span class="font-label-md text-label-md">Maintenance</span></a><a class="flex items-center gap-3 px-3 py-1.5 rounded-xl text-[#D0D0D0] hover:bg-[#2C2C2E] hover:text-white transition-all" data-path="about-and-support" href="#"><span class="material-symbols-outlined text-[18px]">help_outline</span><span class="font-label-md text-label-md">About &amp; Support</span></a></nav></div></div></aside><div class="pl-[260px]"><header class="fixed top-0 left-[260px] right-0 h-[72px] bg-surface-container-lowest border-b border-surface-container-high z-40 px-8 flex items-center justify-between"><div class="flex items-center gap-4"><div class="flex items-center gap-2 font-mono-sm text-mono-sm text-secondary"><span class="uppercase tracking-wider">SFA Operations</span><span class="material-symbols-outlined text-[14px]">chevron_right</span><span class="text-on-surface font-semibold">Active Workstream</span></div></div><div class="flex items-center gap-3"><div class="flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container border border-surface-container-high"><span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="font-mono-sm text-mono-sm font-medium text-on-surface">Running: Daily downloads 3/5</span></div><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">refresh</span></button><button class="relative w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">notifications</span><span class="absolute -top-1 -right-1 w-4 h-4 bg-primary-container text-on-primary rounded-full font-mono-sm text-mono-sm flex items-center justify-center font-bold">3</span></button><button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">help</span></button><div class="h-5 w-[1px] bg-surface-container-high mx-1"></div><a class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold transition-colors" href="#">Support</a><div class="ml-2 w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-[72px] px-8 py-6 min-h-[calc(100vh-60px)]"><div class="flex flex-col w-full relative">
+<!-- Underlying Daily Reports Context (Blurred & Dimmed Behind High-Priority Operational Review) -->
+<div class="w-full pointer-events-none select-none opacity-40 filter blur-[2px] transition-all">
+<div class="flex items-center justify-between pb-6">
+<div class="flex flex-col gap-1">
+<span class="font-headline-xl text-headline-xl text-on-surface">Daily Reports Execution Center</span>
+<span class="font-body-md text-body-md text-secondary">Automated FMCG batch generation pipeline and distributor reconciliation</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="h-8 px-4 rounded bg-surface-container-high flex items-center font-label-md text-label-md text-secondary">Sync Target: Cloud DB</div>
+<div class="h-8 px-4 rounded bg-primary-container text-on-primary flex items-center font-label-md text-label-md font-semibold">Queue Pipeline</div>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-4 mb-6">
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-label-sm text-label-sm text-secondary uppercase">Active Routine</span>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface mt-1">Run #42 (Q4-STG)</div>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-label-sm text-label-sm text-secondary uppercase">Territories Mapped</span>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface mt-1">28 Distributor Units</div>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-label-sm text-label-sm text-secondary uppercase">Total SKUs Parsed</span>
+<div class="font-headline-lg text-headline-lg font-bold text-on-surface mt-1">1,492 Variants</div>
+</div>
+<div class="p-4 rounded-xl bg-surface-container-lowest shadow-sm">
+<span class="font-label-sm text-label-sm text-secondary uppercase">Validation Check</span>
+<div class="font-headline-lg text-headline-lg font-bold text-tertiary mt-1">Passed (99.8%)</div>
+</div>
+</div>
+<div class="w-full h-80 rounded-xl bg-surface-container-lowest shadow-sm p-4">
+<div class="h-8 w-1/4 rounded bg-surface-container-high mb-4"></div>
+<div class="space-y-3">
+<div class="h-6 w-full rounded bg-surface-container"></div>
+<div class="h-6 w-full rounded bg-surface-container"></div>
+<div class="h-6 w-full rounded bg-surface-container"></div>
+<div class="h-6 w-full rounded bg-surface-container"></div>
+</div>
+</div>
+</div>
+<!-- Operational Modal Backdrop (Fixed Viewport Overlay) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1E1E20]/70 backdrop-blur-sm" id="modal-container">
+<!-- Modal Window (Industrial Command Console Architecture) -->
+<div class="w-[1280px] max-w-[96vw] h-[780px] max-h-[962px] bg-surface-container-lowest rounded-xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+<!-- Top Action Bar / Header -->
+<div class="h-[68px] px-6 bg-surface-container-lowest flex items-center justify-between shrink-0 shadow-sm z-20">
+<!-- Title & Batch Meta -->
+<div class="flex flex-col">
+<div class="flex items-center gap-3">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Report Package Preview — Run #42 (2026-10-27)</span>
+<span class="px-2 py-0.5 rounded-full bg-surface-container font-mono-sm text-mono-sm text-secondary flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+              Validated Output
+            </span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary">Review generated sheets and distribution tables before disk commit and regional WhatsApp broadcast.</span>
+</div>
+<!-- Middle: Style Tabs Segmented Control -->
+<div class="flex items-center p-1 rounded-lg bg-surface-container-high shadow-inner">
+<button class="px-3 py-1 rounded text-secondary hover:text-on-surface font-label-md text-label-md transition-all" type="button">
+            Classic Grid
+          </button>
+<button class="px-3 py-1 rounded bg-primary-container text-on-primary font-label-md text-label-md font-bold shadow-sm transition-all flex items-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[15px]">verified</span>
+            Professional Presentation
+          </button>
+</div>
+<!-- Right Controls: Zoom, Rotate, Counter & Dismiss -->
+<div class="flex items-center gap-4">
+<!-- Zoom Group -->
+<div class="flex items-center bg-surface-container rounded-lg p-0.5">
+<button class="w-7 h-7 flex items-center justify-center rounded text-secondary hover:bg-surface-container-lowest hover:text-on-surface transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+</button>
+<span class="px-2 font-mono-sm text-mono-sm font-semibold text-on-surface select-none">100%</span>
+<button class="w-7 h-7 flex items-center justify-center rounded text-secondary hover:bg-surface-container-lowest hover:text-on-surface transition-all" type="button">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+</div>
+<!-- Utility Icons -->
+<button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary hover:text-on-surface transition-colors" title="Rotate sheet" type="button">
+<span class="material-symbols-outlined text-[18px]">rotate_right</span>
+</button>
+<!-- Sheet Navigation Counter -->
+<div class="px-2.5 py-1 rounded bg-surface-container font-mono-sm text-mono-sm font-medium text-on-surface">
+            Page <span class="font-bold text-primary">3</span> of 18
+          </div>
+<!-- Close Action -->
+<button class="w-8 h-8 rounded-lg bg-surface-container-low hover:bg-error-container hover:text-on-error-container flex items-center justify-center text-secondary transition-colors" onclick="document.getElementById('modal-container').classList.add('hidden')" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Main Dual-Pane Body -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Left Thumbnails Sidebar (280px) -->
+<div class="w-[280px] bg-surface-container-low flex flex-col shrink-0 overflow-y-auto p-4 space-y-5">
+<!-- Category 1: SKU Report -->
+<div class="space-y-2">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm uppercase font-bold text-secondary tracking-wider">SKU Report (18 Pages)</span>
+<span class="font-mono-sm text-mono-sm text-on-secondary-container">PDF / A4-L</span>
+</div>
+<!-- Thumbnail 1 (Active Page) -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest shadow-md transition-all relative overflow-hidden bg-gradient-to-r from-primary/10 via-transparent to-transparent">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
+<div class="space-y-1">
+<div class="w-full h-1.5 bg-primary-container rounded-xs"></div>
+<div class="w-3/4 h-1 bg-surface-container-highest rounded-xs"></div>
+<div class="w-full h-1 bg-surface-container-highest rounded-xs"></div>
+<div class="w-5/6 h-1 bg-surface-container-highest rounded-xs"></div>
+</div>
+<div class="flex gap-0.5 mt-auto">
+<div class="w-2 h-4 bg-tertiary-container rounded-xs"></div>
+<div class="w-2 h-6 bg-primary-container rounded-xs"></div>
+<div class="w-2 h-3 bg-secondary rounded-xs"></div>
+</div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-bold text-primary truncate">Executive Territory Summary</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Sheet 01 — Target vs Actual</span>
+<span class="mt-2 font-mono-sm text-mono-sm text-primary font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">visibility</span>
+                    Currently Viewing
+                  </span>
+</div>
+</div>
+</div>
+<!-- Thumbnail 2 -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest hover:bg-surface-bright shadow-sm hover:shadow transition-all">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
+<div class="space-y-1">
+<div class="w-full h-1.5 bg-surface-container-highest rounded-xs"></div>
+<div class="w-full h-1 bg-surface-container-high rounded-xs"></div>
+<div class="w-2/3 h-1 bg-surface-container-high rounded-xs"></div>
+</div>
+<div class="grid grid-cols-2 gap-0.5">
+<div class="h-3 bg-surface-container-high rounded-xs"></div>
+<div class="h-3 bg-surface-container-high rounded-xs"></div>
+</div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Van Selling Category Rollup</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Sheet 02 — Dairy &amp; Confectionery</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-1.5">Pg. 2</span>
+</div>
+</div>
+</div>
+<!-- Thumbnail 3 -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest hover:bg-surface-bright shadow-sm hover:shadow transition-all">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
+<div class="space-y-1">
+<div class="w-4/5 h-1.5 bg-surface-container-highest rounded-xs"></div>
+<div class="w-full h-1 bg-surface-container-high rounded-xs"></div>
+<div class="w-1/2 h-1 bg-surface-container-high rounded-xs"></div>
+</div>
+<div class="h-5 w-full bg-surface-container rounded-xs"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Brand Wise Distribution Matrix</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Sheet 03 — FMCG Tier Breakdown</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-1.5">Pg. 3</span>
+</div>
+</div>
+</div>
+<!-- Thumbnail 4 -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest hover:bg-surface-bright shadow-sm hover:shadow transition-all">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
+<div class="space-y-1">
+<div class="w-full h-1 bg-surface-container-high rounded-xs"></div>
+<div class="w-full h-1 bg-surface-container-high rounded-xs"></div>
+</div>
+<div class="w-full h-4 bg-tertiary-container/30 rounded-xs"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Outlet Coverage &amp; Penetration</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Sheet 04 — Active Strike Rates</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-1.5">Pg. 4</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Category 2: Territory Pivot -->
+<div class="space-y-2 pt-2">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm uppercase font-bold text-secondary tracking-wider">Territory Pivot (6 Pages)</span>
+<span class="font-mono-sm text-mono-sm text-on-secondary-container">XLSX Feed</span>
+</div>
+<!-- Thumbnail 5 -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest hover:bg-surface-bright shadow-sm hover:shadow transition-all">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0 overflow-hidden">
+<div class="space-y-1">
+<div class="w-full h-1.5 bg-surface-container-highest rounded-xs"></div>
+<div class="w-full h-1 bg-surface-container-high rounded-xs"></div>
+</div>
+<div class="h-3 w-3/4 bg-surface-container-highest rounded-xs"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Colombo &amp; Gampaha Grid</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Metropolitan Super Pivot</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-1.5">Pg. 5</span>
+</div>
+</div>
+</div>
+<!-- Thumbnail 6 -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest hover:bg-surface-bright shadow-sm hover:shadow transition-all">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0">
+<div class="space-y-1">
+<div class="w-3/4 h-1.5 bg-surface-container-highest rounded-xs"></div>
+</div>
+<div class="h-4 w-full bg-surface-container-high rounded-xs"></div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Galle &amp; Kandy Grid</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Outstation Regional Rollup</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-1.5">Pg. 6</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Category 3: Hourly Trajectory -->
+<div class="space-y-2 pt-2">
+<div class="flex items-center justify-between px-1">
+<span class="font-label-sm text-label-sm uppercase font-bold text-secondary tracking-wider">Hourly Trajectory (4 Pages)</span>
+<span class="font-mono-sm text-mono-sm text-on-secondary-container">Intraday</span>
+</div>
+<!-- Thumbnail 7 -->
+<div class="group cursor-pointer p-2 rounded-xl bg-surface-container-lowest hover:bg-surface-bright shadow-sm hover:shadow transition-all">
+<div class="flex items-start gap-2.5">
+<div class="w-16 h-20 bg-surface rounded shadow-sm p-1.5 flex flex-col justify-between shrink-0">
+<div class="space-y-1">
+<div class="w-full h-1.5 bg-surface-container-highest rounded-xs"></div>
+</div>
+<div class="h-6 w-full flex items-end gap-0.5">
+<div class="w-1/3 h-2 bg-surface-container-highest rounded-xs"></div>
+<div class="w-1/3 h-5 bg-surface-container-highest rounded-xs"></div>
+<div class="w-1/3 h-4 bg-surface-container-highest rounded-xs"></div>
+</div>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md font-medium text-on-surface truncate group-hover:text-primary transition-colors">Bill Count vs Sales Value</span>
+<span class="font-body-sm text-body-sm text-secondary mt-0.5">Time Interval Synchronizer</span>
+<span class="font-mono-sm text-mono-sm text-secondary mt-1.5">Pg. 7</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Large Page Viewer -->
+<div class="flex-1 bg-surface-container p-6 overflow-y-auto flex justify-center items-start">
+<!-- Realistic Rendered FMCG Sheet Canvas (A4 Landscape Form Factor) -->
+<div class="w-full max-w-[920px] bg-surface-container-lowest rounded-xl shadow-xl p-8 flex flex-col space-y-6">
+<!-- Document Meta Header -->
+<div class="flex items-start justify-between pb-4">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-6 bg-primary-container rounded-xs"></span>
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-on-surface">LAKMEE SFA OPERATIONS — DAILY SALES PERFORMANCE REVIEW</span>
+</div>
+<span class="font-body-sm text-body-sm text-secondary mt-1 pl-4">Territory Sales Group B · Central Warehousing &amp; Van Fleet Dispatch Summary</span>
+</div>
+<div class="flex flex-col items-end font-mono-sm text-mono-sm text-secondary bg-surface-container-low px-3 py-2 rounded-lg">
+<div><span class="text-on-surface font-semibold">Date:</span> 2026-10-27</div>
+<div><span class="text-on-surface font-semibold">Generated:</span> 08:35:12 AM</div>
+<div><span class="text-on-surface font-semibold">Territory:</span> Western &amp; Southern Provinces</div>
+</div>
+</div>
+<!-- Status Banner Strip -->
+<div class="w-full bg-surface-container-low p-3 rounded-lg flex items-center justify-between">
+<div class="flex items-center gap-4">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-secondary font-bold">Execution Context</span>
+<span class="font-mono-sm text-mono-sm text-on-surface">Batch 20261027-C42</span>
+<span class="w-1 h-1 rounded-full bg-secondary"></span>
+<span class="font-mono-sm text-mono-sm text-on-surface">Source: Master ERP Core</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[16px]">check_circle</span>
+<span class="font-label-sm text-label-sm text-tertiary font-bold">All 4 Regional Hubs Cleared</span>
+</div>
+</div>
+<!-- Dense FMCG Performance Matrix Table -->
+<div class="overflow-x-auto rounded-xl shadow-sm bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-primary-container text-on-primary font-label-sm text-label-sm uppercase tracking-wider">
+<th class="py-2.5 px-3 font-semibold">Territory</th>
+<th class="py-2.5 px-3 font-semibold">Area Mgr</th>
+<th class="py-2.5 px-3 text-right font-semibold">Target (LKR)</th>
+<th class="py-2.5 px-3 text-right font-semibold">Van Sales (LKR)</th>
+<th class="py-2.5 px-3 text-right font-semibold">Pre Sales (LKR)</th>
+<th class="py-2.5 px-3 text-right font-semibold">Total Actual</th>
+<th class="py-2.5 px-3 text-center font-semibold">% Achieved</th>
+<th class="py-2.5 px-3 text-right font-semibold">Bill Count</th>
+<th class="py-2.5 px-3 text-right font-semibold">Strike Rate</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container font-mono-sm text-mono-sm">
+<!-- Row 1: Colombo Central -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface font-body-md text-body-md">Colombo Central</td>
+<td class="py-2.5 px-3 text-secondary font-body-sm text-body-sm">N. Perera</td>
+<td class="py-2.5 px-3 text-right tabular-nums">4,200,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">2,850,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,620,000</td>
+<td class="py-2.5 px-3 text-right font-bold text-on-surface tabular-nums">4,470,000</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-tertiary-container bg-on-tertiary-container/20">
+                        106.4%
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,420</td>
+<td class="py-2.5 px-3 text-right font-semibold text-on-surface tabular-nums">88.2%</td>
+</tr>
+<!-- Row 2: Gampaha North -->
+<tr class="hover:bg-surface-container-low transition-colors bg-surface-container-low/30">
+<td class="py-2.5 px-3 font-medium text-on-surface font-body-md text-body-md">Gampaha North</td>
+<td class="py-2.5 px-3 text-secondary font-body-sm text-body-sm">S. Fernando</td>
+<td class="py-2.5 px-3 text-right tabular-nums">3,800,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">2,120,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,480,000</td>
+<td class="py-2.5 px-3 text-right font-bold text-on-surface tabular-nums">3,600,000</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-amber-700 bg-amber-100">
+                        94.7%
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,180</td>
+<td class="py-2.5 px-3 text-right font-semibold text-on-surface tabular-nums">82.5%</td>
+</tr>
+<!-- Row 3: Galle Coastal -->
+<tr class="hover:bg-surface-container-low transition-colors">
+<td class="py-2.5 px-3 font-medium text-on-surface font-body-md text-body-md">Galle Coastal</td>
+<td class="py-2.5 px-3 text-secondary font-body-sm text-body-sm">K. Jayasuriya</td>
+<td class="py-2.5 px-3 text-right tabular-nums">3,100,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,940,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,290,000</td>
+<td class="py-2.5 px-3 text-right font-bold text-on-surface tabular-nums">3,230,000</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-tertiary-container bg-on-tertiary-container/20">
+                        104.2%
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right tabular-nums">990</td>
+<td class="py-2.5 px-3 text-right font-semibold text-on-surface tabular-nums">85.0%</td>
+</tr>
+<!-- Row 4: Kandy Metro -->
+<tr class="hover:bg-surface-container-low transition-colors bg-surface-container-low/30">
+<td class="py-2.5 px-3 font-medium text-on-surface font-body-md text-body-md">Kandy Metro</td>
+<td class="py-2.5 px-3 text-secondary font-body-sm text-body-sm">D. Wickramasinghe</td>
+<td class="py-2.5 px-3 text-right tabular-nums">2,900,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,680,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">1,110,000</td>
+<td class="py-2.5 px-3 text-right font-bold text-on-surface tabular-nums">2,790,000</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-tertiary-container bg-on-tertiary-container/20">
+                        96.2%
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right tabular-nums">870</td>
+<td class="py-2.5 px-3 text-right font-semibold text-on-surface tabular-nums">79.4%</td>
+</tr>
+<!-- Summary Row -->
+<tr class="bg-surface-container font-bold text-on-surface">
+<td class="py-2.5 px-3 font-headline-md text-headline-md">Consolidated</td>
+<td class="py-2.5 px-3 text-secondary">4 Officers</td>
+<td class="py-2.5 px-3 text-right tabular-nums">14,000,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">8,590,000</td>
+<td class="py-2.5 px-3 text-right tabular-nums">5,500,000</td>
+<td class="py-2.5 px-3 text-right text-primary tabular-nums">14,090,000</td>
+<td class="py-2.5 px-3 text-center">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-tertiary bg-on-tertiary-container/30">
+                        100.6%
+                      </span>
+</td>
+<td class="py-2.5 px-3 text-right tabular-nums">4,460</td>
+<td class="py-2.5 px-3 text-right tabular-nums">84.3%</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Inline Rich Visual: Performance Distribution Sparklines & Summary KPI Cards -->
+<div class="grid grid-cols-3 gap-4 pt-2">
+<!-- KPI Card 1: Total Volume -->
+<div class="p-4 rounded-xl bg-surface-container-low shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-semibold">Total Revenue Volume</span>
+<span class="material-symbols-outlined text-primary text-[20px]">payments</span>
+</div>
+<div class="mt-2">
+<div class="font-headline-xl text-headline-xl font-bold text-on-surface tracking-tight">14.09M <span class="font-body-sm text-body-sm text-secondary">LKR</span></div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="text-tertiary font-mono-sm text-mono-sm font-bold">+90,000 LKR</span>
+<span class="font-body-sm text-body-sm text-secondary">above daily base target</span>
+</div>
+</div>
+<!-- Inline SVG Bar Representation -->
+<div class="w-full mt-3 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 100.6%"></div>
+</div>
+</div>
+<!-- KPI Card 2: Achievement -->
+<div class="p-4 rounded-xl bg-surface-container-low shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-semibold">Territory Quota Index</span>
+<span class="material-symbols-outlined text-tertiary text-[20px]">trending_up</span>
+</div>
+<div class="mt-2">
+<div class="font-headline-xl text-headline-xl font-bold text-tertiary tracking-tight">101.2%</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="font-mono-sm text-mono-sm text-secondary">Weighted performance rating</span>
+</div>
+</div>
+<!-- Visual Trend Indicator -->
+<div class="w-full mt-3 flex items-center justify-between font-mono-sm text-mono-sm text-secondary">
+<span>Threshold: 95.0%</span>
+<span class="font-bold text-tertiary">Optimal</span>
+</div>
+</div>
+<!-- KPI Card 3: Outlet Visits -->
+<div class="p-4 rounded-xl bg-surface-container-low shadow-sm flex flex-col justify-between">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-semibold">Active Outlets Visited</span>
+<span class="material-symbols-outlined text-on-surface text-[20px]">storefront</span>
+</div>
+<div class="mt-2">
+<div class="font-headline-xl text-headline-xl font-bold text-on-surface tracking-tight">4,460 <span class="font-body-sm text-body-sm text-secondary">Shops</span></div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="font-mono-sm text-mono-sm text-secondary">Strike: 3,760 Bills (84.3%)</span>
+</div>
+</div>
+<div class="w-full mt-3 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full" style="width: 84.3%"></div>
+</div>
+</div>
+</div>
+<!-- Page Footer Telemetry Strip inside document -->
+<div class="pt-4 flex items-center justify-between font-mono-sm text-mono-sm text-secondary">
+<div>Chimera Engine v4.8.2 · SHA256: 8bf2e44d · Watermark: STAGING-EXPORT-AUTHORIZED</div>
+<div>CONFIDENTIAL — FOR INTERNAL FMCG SALES DISTRIBUTION ONLY</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Sticky Footer (Dispatch Controls Strip) -->
+<div class="h-[72px] px-6 bg-surface-container-lowest flex items-center justify-between shrink-0 shadow-lg z-20">
+<!-- Discard Pipeline Action -->
+<button class="h-9 px-4 rounded bg-error-container text-on-error-container hover:bg-error hover:text-on-error font-label-md text-label-md font-semibold transition-all flex items-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+          Discard Run
+        </button>
+<!-- Primary Routing Actions -->
+<div class="flex items-center gap-3">
+<!-- Secondary Approval -->
+<button class="h-9 px-4 rounded bg-surface-container-low hover:bg-surface-container text-on-surface font-label-md text-label-md font-semibold shadow-sm transition-all flex items-center gap-2" type="button">
+<span class="material-symbols-outlined text-[18px]">save</span>
+            Approve &amp; Save Only (Local Disk)
+          </button>
+<!-- Primary Trigger: WhatsApp & Dispatch -->
+<button class="h-9 px-5 rounded bg-primary-container hover:bg-primary text-on-primary font-label-md text-label-md font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2.5" type="button">
+<!-- WhatsApp Chat Icon Token -->
+<div class="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0 shadow-inner">
+<span class="material-symbols-outlined text-[14px]">chat</span>
+</div>
+<span>Approve &amp; Send to WhatsApp (7 chats)</span>
+<span class="material-symbols-outlined text-[18px]">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div></main><footer class="w-full py-4 text-center border-t border-surface-container-high bg-surface-container-lowest"><span class="font-body-sm text-body-sm text-secondary">Crafted by Binusha · Full-Stack Software Engineer · binusha45liyanage@gmail.com</span></footer></div></body></html>
