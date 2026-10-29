@@ -395,10 +395,11 @@ class Api:
             return {"ok": False, "message": "Wait for the current run to finish first."}
         return sfa_automation.detect_filters(url, headless=not show_browser)
 
-    def start_automation_run(self, report_date=None, profile_ids=None, show_browser=False, style=None):
+    def start_automation_run(self, report_date=None, profile_ids=None, show_browser=False, style=None, review=None):
         import sfa_automation
         return sfa_automation.start_background(report_date=report_date or None, profile_ids=profile_ids or None,
-                                               trigger="manual", headless=not show_browser, style=style or None)
+                                               trigger="manual", headless=not show_browser, style=style or None,
+                                               review=review)
 
     def start_profile_test(self, profile_id, report_date=None, show_browser=True):
         import sfa_automation

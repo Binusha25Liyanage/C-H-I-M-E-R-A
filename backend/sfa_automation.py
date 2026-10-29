@@ -969,7 +969,7 @@ async def _run_async(cfg, items, report_date, opts):
 
 
 def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=None, headless=None,
-                   generate=True, import_data=True, test=False, style=None):
+                   generate=True, import_data=True, test=False, style=None, review=None):
     """
     Synchronous entry point (call it from a background thread for the UI).
     Returns a summary dict; live progress is in LIVE.snapshot().
@@ -1052,7 +1052,8 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                             f"{_ss.get_settings().get('output_style', 'classic')} (the default in Settings › Report Rules)"))
                 import report_pipeline
                 failed = [l["name"] for l in lanes if l["status"] not in ("done", "empty")]
-                report_run = report_pipeline.run_reports(report_date, kinds=kinds, trigger=trigger, style=style)
+                report_run = report_pipeline.run_reports(report_date, kinds=kinds, trigger=trigger, style=style,
+                                                         review=review)
                 for r in report_run["reports"]:
                     r.pop("trace", None)
                     LIVE.log(f"{r['label']}: {'OK' if r['ok'] else r.get('reason')}",
@@ -1063,8 +1064,8 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                 import whatsapp_sender
                 has_rules = bool([r for r in whatsapp_sender.list_rules() if r["enabled"]])
                 if report_run.get("status") == "pending_review":
-                    LIVE.log("Reports are waiting for your approval (Preview before saving is on). "
-                             "Open the bell or Daily Reports and press 'Approve & send to WhatsApp'.", level="warn")
+                    LIVE.log("Reports are waiting for your approval — the preview opens now (also under the bell "
+                             "and Daily Reports). Approve to save them and send them to WhatsApp.", level="warn")
                 elif not report_run.get("ok"):
                     LIVE.log("WhatsApp: not sent — no report was built.", level="warn")
                 elif settings.get("wa_auto_send") != "1":

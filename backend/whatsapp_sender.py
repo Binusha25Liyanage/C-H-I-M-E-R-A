@@ -318,18 +318,38 @@ async def _wait_sent(page, timeout_s=90):
 
 _PICK_PHOTO_INPUT_JS = r"""
 ([token]) => {
-  // WhatsApp Web has several file inputs after "Attach": a single-file one for
-  // stickers and a multi-file "Photos & videos" one. Prefer the multi-file
-  // input that also accepts video (= Photos & videos), never the sticker one.
+  // Only the "Photos & videos" input: it accepts video too and takes several
+  // files. The image-only, single-file input is WhatsApp's STICKER maker —
+  // never use it (it turns report pages into stickers).
   const ins = [...document.querySelectorAll("input[type='file']")]
-    .filter(i => /image/.test(i.accept || ''));
-  const score = i => (i.multiple ? 4 : 0) + (/video/.test(i.accept || '') ? 2 : 0) + (/webp/.test(i.accept || '') ? -3 : 0);
-  ins.sort((a, b) => score(b) - score(a));
+    .filter(i => /image/.test(i.accept || '') && /video/.test(i.accept || ''));
+  ins.sort((a, b) => (b.multiple ? 1 : 0) - (a.multiple ? 1 : 0));
   if (!ins.length) return null;
   ins[0].setAttribute('data-chimera-input', token);
-  return {multiple: !!ins[0].multiple, accept: ins[0].accept || '', count: ins.length};
+  return {multiple: !!ins[0].multiple, accept: ins[0].accept || ''};
 }
 """
+_PHOTOS_ITEM_JS = r"""
+([token]) => {
+  // the "Photos & videos" entry of the attach menu (any language: also by its icon)
+  const els = [...document.querySelectorAll('li, [role=button], [role=menuitem], button, div, span')]
+    .filter(e => e.offsetParent !== null);
+  const txt = e => (e.getAttribute('aria-label') || e.innerText || '').trim();
+  let hit = els.find(e => /^photos?\s*(&|and)\s*videos?$/i.test(txt(e)))
+         || els.find(e => /photos?\s*(&|and)\s*videos?/i.test(e.getAttribute('aria-label') || ''));
+  if (!hit) {
+    const icon = document.querySelector("span[data-icon*='media-filled'], span[data-icon*='attach-image'], " +
+                                        "span[data-icon*='media-multiple'], span[data-icon*='gallery'], span[data-icon*='photo']");
+    if (icon) hit = icon.closest('li, [role=button], [role=menuitem], button') || icon;
+  }
+  if (!hit) return false;
+  hit = hit.closest('li, [role=button], [role=menuitem], button') || hit;
+  hit.setAttribute('data-chimera-item', token);
+  return true;
+}
+"""
+SEL_SEND_MEDIA = ("div[role='button'][aria-label='Send'], button[aria-label='Send'], [aria-label='Send' i], "
+                  "span[data-icon='send'], span[data-icon*='send'], div[role='button'] span[data-icon*='send']")
 
 
 async def _open_attach(page):
@@ -340,32 +360,58 @@ async def _open_attach(page):
     await page.wait_for_timeout(700)
 
 
-async def _send_images(page, files, caption):
-    """Attach the images (several at once when WhatsApp allows it, else one per message) and send."""
+async def _choose_files(page, files):
+    """Opens Attach > Photos & videos and gives it the files. Returns how many it took (all, or 1)."""
     await _open_attach(page)
     token = uuid.uuid4().hex[:8]
+    # 1) the menu item + the file picker it opens (what a person does)
+    if await page.evaluate(_PHOTOS_ITEM_JS, [token]):
+        try:
+            async with page.expect_file_chooser(timeout=6000) as fc:
+                await page.locator(f"[data-chimera-item='{token}']").first.click()
+            chooser = await fc.value
+            take = files if chooser.is_multiple() else files[:1]
+            await chooser.set_files(take)
+            return len(take)
+        except Exception:
+            pass   # some versions don't open a picker — fall through to the hidden input
+    # 2) the hidden "Photos & videos" input
     info = await page.evaluate(_PICK_PHOTO_INPUT_JS, [token])
     if not info:
-        raise WAError("Couldn't find WhatsApp's photo upload field.")
-    inp = page.locator(f"input[data-chimera-input='{token}']")
-    if not info["multiple"] and len(files) > 1:
-        # only a single-file field: send the pages one by one (caption on the first)
-        WA.log(f"WhatsApp accepts one image at a time here — sending {len(files)} images one by one.")
-        await page.keyboard.press("Escape")
-        for n, f in enumerate(files):
-            await _send_images(page, [f], caption if n == 0 else "")
-        return
-    await inp.set_input_files(files)
-    cap = await _first(page, SEL_CAPTION, 15000)
-    if cap is not None and caption:
+        raise WAError("Couldn't find 'Photos & videos' in WhatsApp's attach menu.")
+    take = files if info["multiple"] else files[:1]
+    await page.locator(f"input[data-chimera-input='{token}']").set_input_files(take)
+    return len(take)
+
+
+async def _send_images(page, files, caption):
+    """Attach the report pages as photos and send them (in as many messages as WhatsApp needs)."""
+    i, first = 0, True
+    while i < len(files):
+        n = await _choose_files(page, files[i:])
+        if n < len(files) - i and first:
+            WA.log(f"WhatsApp took one image at a time here — sending {len(files)} images one by one.")
+        cap = await _first(page, SEL_CAPTION, 15000)
+        if cap is None:
+            raise WAError("WhatsApp didn't open the photo preview.")
         await cap.click()
-        await cap.type(caption, delay=10)
-    send = await _first(page, SEL_SEND, 15000)
-    if send is None:
-        raise WAError("The image preview opened but the Send button wasn't found.")
-    await send.click()
-    if not await _wait_sent(page):
-        raise WAError("WhatsApp is still sending after 90 s (slow connection?). Check the chat.")
+        if caption and first:
+            await cap.type(caption, delay=10)
+        # send: Enter in the caption box (works in every WhatsApp version); the Send button as a backup
+        await cap.press("Enter")
+        await page.wait_for_timeout(1200)
+        if await page.locator(SEL_CAPTION).count():
+            btn = await _first(page, SEL_SEND_MEDIA, 4000)
+            if btn is None:
+                shot = await _shot(page, "send_button")
+                raise WAError("The photo preview opened but couldn't be sent (no Send button found)."
+                              + (f" Screenshot: {shot}" if shot else ""))
+            await btn.click()
+            await page.wait_for_timeout(1200)
+        if not await _wait_sent(page):
+            raise WAError("WhatsApp is still sending after 90 s (slow connection?). Check the chat.")
+        i += n
+        first = False
 
 
 async def _send_text(page, text):

@@ -16,10 +16,29 @@ window.switchView = function (view, tab) {
 };
 
 // ---------------------------------------------------------------- run-in-progress pill (top bar)
+// When a run (manual or scheduled) ends with reports waiting for approval,
+// open the preview pop-up straight away — once per report run.
+SH.autoPreviewed = SH.autoPreviewed || new Set();
+function maybeAutoPreview(s) {
+  const rr = s && !s.active && s.result && s.result.report_run;
+  if (!rr || rr.status !== "pending_review" || SH.autoPreviewed.has(rr.run_id)) return false;
+  SH.autoPreviewed.add(rr.run_id);
+  const modalOpen = document.getElementById("modal-backdrop").style.display === "flex";
+  if (modalOpen && !AU.monitorOpen) return false;          // don't cover a pop-up the user is using
+  if (AU.monitorOpen) closeModal(true);
+  openPreview(rr.run_id);
+  return true;
+}
+window.maybeAutoPreview = maybeAutoPreview;
+SH.pillPrimed = false;
 async function refreshRunPill() {
   let s; try { s = await window.pywebview.api.get_live_run(); } catch (e) { return; }
   const pill = document.getElementById("tb-run");
-  if (!s.active) { pill.style.display = "none"; return; }
+  if (!SH.pillPrimed) {   // a finished run from before this window opened isn't "new"
+    SH.pillPrimed = true;
+    const rr = s.result && s.result.report_run; if (!s.active && rr) SH.autoPreviewed.add(rr.run_id);
+  }
+  if (!s.active) { pill.style.display = "none"; maybeAutoPreview(s); return; }
   const lanes = s.lanes || [], done = lanes.filter(l => ["done", "empty", "failed", "cancelled"].includes(l.status)).length;
   const phase = { logging_in: "Logging in to SFA", downloading: "Downloading", generating: "Building reports", sending: "Sending to WhatsApp" }[s.phase] || "Running";
   document.getElementById("tb-run-text").textContent = lanes.length && s.phase === "downloading" ? `${phase} ${done}/${lanes.length}` : phase;
@@ -195,8 +214,8 @@ async function openPreview(runId) {
       <div class="preview-grid" id="pv-grid"></div>
       ${(r.run.summary.reports || []).some(x => x.notes && x.notes.length) ? `<div class="section-title">Data notes</div><ul class="result-list">${[...new Set((r.run.summary.reports || []).flatMap(x => x.notes || []))].map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}`,
     footer: pending ? `<button class="btn-outline left" id="pv-discard">Discard</button>
-             <button class="btn-outline" id="pv-save">Save</button>
-             ${r.has_rules ? `<button class="btn-primary" id="pv-save-send">Save &amp; send to WhatsApp</button>` : `<button class="btn-primary" id="pv-save2">Save reports</button>`}`
+             ${r.has_rules ? `<button class="btn-outline" id="pv-save">Save only</button><button class="btn-primary" id="pv-save-send">Approve &amp; send to WhatsApp</button>`
+                           : `<button class="btn-primary" id="pv-save2">Approve &amp; save</button>`}`
            : `${r.run.folder ? openPathButton(r.run.folder, "Open folder") : ""}<button class="btn-outline" onclick="closeModal()">Close</button>` });
   const show = (k) => {
     SH.pvItems = groups[k];
@@ -228,7 +247,7 @@ async function openPreview(runId) {
       loadPending(); refreshBell(); if (typeof loadRuns === "function") loadRuns();
       if (send) startWaPoll();
     };
-    document.getElementById("pv-save").onclick = () => act(false);
+    if (document.getElementById("pv-save")) document.getElementById("pv-save").onclick = () => act(false);
     const s2 = document.getElementById("pv-save-send") || document.getElementById("pv-save2");
     s2.onclick = () => act(!!document.getElementById("pv-save-send"));
     document.getElementById("pv-discard").onclick = () => confirmModal("Discard preview", "Delete these generated reports? The SFA data stays imported; you can generate again any time.", "Discard", async () => {

@@ -358,7 +358,8 @@ function logHtml(log) {
 
 async function openRunNowModal() {
   const en = AU.ov.profiles;
-  let defStyle = "classic"; try { defStyle = (await API().get_report_settings()).output_style || "classic"; } catch (e) {}
+  let defStyle = "classic", defReview = false;
+  try { const rs = await API().get_report_settings(); defStyle = rs.output_style || "classic"; defReview = rs.delivery_mode === "preview"; } catch (e) {}
   openModal({ title: "Run SFA downloads now", body: `
       <div class="grid-2">
         <label class="field">Report date <input type="date" id="rn-date" value="${localToday()}"></label>
@@ -366,7 +367,7 @@ async function openRunNowModal() {
       </div>
       <div class="grid-2" style="margin-top:12px;">
         <label class="field">Output style for this run <select id="rn-style"><option value="classic">Classic &mdash; SalesPulse layout</option><option value="professional">Professional &mdash; Chimera layout, B&amp;W logo</option><option value="both">Both</option></select></label>
-        <label class="field" style="justify-content:flex-end;"><span class="hint">The default for scheduled runs is set in Run Settings.</span></label>
+        <label class="field" style="justify-content:flex-end;"><span><input type="checkbox" id="rn-review"> Preview &amp; approve before saving and sending</span></label>
       </div>
       <div class="section-title" style="margin-top:16px;">Reports to download</div>
       <div class="detect-list">${en.map(p => `<label><input type="checkbox" class="rn-p" value="${p.id}" ${p.enabled && !p.problems.length ? "checked" : ""} ${p.problems.length ? "disabled" : ""}>
@@ -374,12 +375,13 @@ async function openRunNowModal() {
       <p class="hint" style="margin-top:10px;">Up to ${esc(AU.ov.settings.parallel_tabs)} tabs at once. Afterwards the ${esc(AU.ov.settings.generate_list.join(", ") || "no")} report(s) are built${AU.ov.settings.wa_auto_send === "1" ? " and sent to WhatsApp" : ""}.</p>`,
     footer: `<button class="btn-outline" id="rn-cancel">Cancel</button><button class="btn-primary" id="rn-go">▶ Start</button>` });
   document.getElementById("rn-style").value = defStyle;
+  document.getElementById("rn-review").checked = defReview;
   document.getElementById("rn-cancel").onclick = () => closeModal();
   document.getElementById("rn-go").onclick = async () => {
     const ids = [...document.querySelectorAll(".rn-p:checked")].map(c => Number(c.value));
     if (!ids.length) return;
     const r = await API().start_automation_run(document.getElementById("rn-date").value, ids, document.getElementById("rn-show").checked,
-                                               document.getElementById("rn-style").value);
+                                               document.getElementById("rn-style").value, document.getElementById("rn-review").checked);
     if (!r.ok) { document.getElementById("modal-body").insertAdjacentHTML("afterbegin", `<div class="problem-box">${esc(r.message)}</div>`); return; }
     closeModal(true); openMonitor();
   };
@@ -446,6 +448,7 @@ function startPolling() {
       `${s.trigger === "scheduled" ? "Scheduled" : "Manual"} run in progress — ${(s.lanes || []).filter(l => ["done", "empty"].includes(l.status)).length}/${(s.lanes || []).length} reports done`;
     document.getElementById("au-cancel-btn").classList.toggle("is-live", !!s.active);
     if (AU.monitorOpen) renderMonitor(s);
+    if (!s.active && !s.test && window.maybeAutoPreview) window.maybeAutoPreview(s);
     if (AU.testOpen) renderTest(s);
     if (!s.active && !AU.monitorOpen && !AU.testOpen) { clearInterval(AU.poll); AU.poll = null; loadAutomation(); }
     if (!s.active && AU.wasActive) { AU.wasActive = false; loadAutomationQuiet(); }
