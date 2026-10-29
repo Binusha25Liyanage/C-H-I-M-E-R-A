@@ -56,7 +56,7 @@ function switchView(view, tab) {
   document.querySelector("main").scrollTop = 0; window.scrollTo(0, 0);
   if (view === "import-data") loadImportLog();
   if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); loadDataUsage(); }
-  if (view === "daily") { loadDailyStatus(); loadRuns(); }
+  if (view === "daily") { loadDailyStatus(); loadRuns(); refreshStyleDefaultLabel(); }
   if (view === "automation" && window.loadAutomation) window.loadAutomation();
   if (view === "schedules" && window.loadSchedules) window.loadSchedules();
   if (view === "automation" && tab && window.selectAutomationTab) window.selectAutomationTab(tab);
@@ -592,3 +592,47 @@ document.getElementById("nd-saver").addEventListener("change", async (e) => {
     : `<p class="error">${escapeHtml(r.message)}</p>`;
   if (!r.ok) e.target.checked = !on;
 });
+
+
+// ---------------------------------------------------------------- clipboard
+async function copyText(text, btn) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+  if (!ok) {
+    try {
+      const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); ok = document.execCommand("copy"); ta.remove();
+    } catch (e) {}
+  }
+  if (!ok) { try { ok = (await window.pywebview.api.copy_text(text)).ok; } catch (e) {} }
+  if (btn) {
+    const old = btn.dataset.label || btn.textContent; btn.dataset.label = old;
+    btn.textContent = ok ? "Copied ✓" : "Couldn't copy"; setTimeout(() => { btn.textContent = old; }, 2000);
+  }
+  return ok;
+}
+// Any button with data-copy-log copies a run's log ("live" = the current / last run, or a run id).
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copy-log]"); if (!b) return;
+  const id = b.dataset.copyLog;
+  const text = await window.pywebview.api.get_run_log_text(id === "live" ? null : Number(id));
+  copyText(text, b);
+});
+
+
+// ---------------- Output style: one setting, saved as soon as it's changed ----------------
+const STYLE_NAMES = { classic: "Classic", professional: "Professional", both: "Both" };
+document.getElementById("rs-output_style").addEventListener("change", async (e) => {
+  const r = await window.pywebview.api.save_report_settings({ output_style: e.target.value });
+  document.getElementById("rs-result").innerHTML = `<p class="${r.ok ? 'hint' : 'error'}">${r.ok
+    ? `Output style saved: ${STYLE_NAMES[e.target.value]}. Used by Daily Reports, scheduled runs and WhatsApp.` : escapeHtml(r.message)}</p>`;
+  refreshStyleDefaultLabel();
+});
+async function refreshStyleDefaultLabel() {
+  try {
+    const s = await window.pywebview.api.get_report_settings();
+    const opt = document.querySelector('#dr-style option[value=""]');
+    if (opt) opt.textContent = `Default — ${STYLE_NAMES[s.output_style] || s.output_style} (from Settings)`;
+  } catch (e) {}
+}
+window.addEventListener("pywebviewready", refreshStyleDefaultLabel);

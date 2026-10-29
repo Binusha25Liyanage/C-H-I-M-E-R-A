@@ -465,6 +465,9 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
     if not rules:
         return {"ok": False, "message": "No WhatsApp delivery rules are set up."}
     plan = [p for p in plan_delivery(run, rules)]
+    styles_built = sorted({o["style"] for rep in run["summary"].get("reports", []) for o in rep.get("outputs", [])})
+    _wa = AS.get_automation_settings()["wa_style"]
+    used = _wa if _wa in styles_built else (styles_built[0] if styles_built else "?")
     if not any(p["files"] for p in plan):
         built = sum(len(r.get("images") or []) for r in run["summary"].get("reports", []))
         return {"ok": False, "message": ("No WhatsApp images were made for this run — install the missing package: "
@@ -477,6 +480,8 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
 
         async def fn(page):
             sent, failed = 0, 0
+            WA.log(f"Sending the {used} images (built: {', '.join(styles_built) or 'none'}"
+                   + ("; choose which in WhatsApp › Sending options" if len(styles_built) > 1 else "") + ").")
             for item in plan:
                 if not item["files"]:
                     _log_delivery(report_run_id, item["chat_name"], 0, "skipped", "No matching report pages.")

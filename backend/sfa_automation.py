@@ -1044,7 +1044,9 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
             kinds = settings["generate_list"]
             if kinds:
                 LIVE.set(phase="generating")
-                LIVE.log("Building reports: " + ", ".join(kinds))
+                import sfa_store as _ss
+                LIVE.log("Building reports: " + ", ".join(kinds) + f" — style: {_ss.get_settings().get('output_style', 'classic')} "
+                         "(Settings › Report Rules › Default output style)")
                 import report_pipeline
                 failed = [l["name"] for l in lanes if l["status"] not in ("done", "empty")]
                 report_run = report_pipeline.run_reports(report_date, kinds=kinds, trigger=trigger)
