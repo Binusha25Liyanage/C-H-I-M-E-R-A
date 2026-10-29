@@ -969,7 +969,7 @@ async def _run_async(cfg, items, report_date, opts):
 
 
 def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=None, headless=None,
-                   generate=True, import_data=True, test=False):
+                   generate=True, import_data=True, test=False, style=None):
     """
     Synchronous entry point (call it from a background thread for the UI).
     Returns a summary dict; live progress is in LIVE.snapshot().
@@ -1045,11 +1045,14 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
             if kinds:
                 LIVE.set(phase="generating")
                 import sfa_store as _ss
-                LIVE.log("Building reports: " + ", ".join(kinds) + f" — style: {_ss.get_settings().get('output_style', 'classic')} "
-                         "(Settings › Report Rules › Default output style)")
+                if style not in _ss.OUTPUT_STYLES:
+                    style = None
+                LIVE.log("Building reports: " + ", ".join(kinds) + " — style: "
+                         + (f"{style} (chosen for this run)" if style else
+                            f"{_ss.get_settings().get('output_style', 'classic')} (the default in Settings › Report Rules)"))
                 import report_pipeline
                 failed = [l["name"] for l in lanes if l["status"] not in ("done", "empty")]
-                report_run = report_pipeline.run_reports(report_date, kinds=kinds, trigger=trigger)
+                report_run = report_pipeline.run_reports(report_date, kinds=kinds, trigger=trigger, style=style)
                 for r in report_run["reports"]:
                     r.pop("trace", None)
                     LIVE.log(f"{r['label']}: {'OK' if r['ok'] else r.get('reason')}",

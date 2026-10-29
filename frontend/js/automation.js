@@ -356,23 +356,30 @@ function logHtml(log) {
   return log.slice(-150).map(x => `<div class="lv-${x.level}">${esc(x.t)} ${x.lane ? `<span class="who">[${esc(x.lane)}]</span> ` : ""}${esc(x.msg)}</div>`).join("");
 }
 
-function openRunNowModal() {
+async function openRunNowModal() {
   const en = AU.ov.profiles;
+  let defStyle = "classic"; try { defStyle = (await API().get_report_settings()).output_style || "classic"; } catch (e) {}
   openModal({ title: "Run SFA downloads now", body: `
       <div class="grid-2">
         <label class="field">Report date <input type="date" id="rn-date" value="${localToday()}"></label>
         <label class="field" style="justify-content:flex-end;"><span><input type="checkbox" id="rn-show"> Show the browser while it runs</span></label>
+      </div>
+      <div class="grid-2" style="margin-top:12px;">
+        <label class="field">Output style for this run <select id="rn-style"><option value="classic">Classic &mdash; SalesPulse layout</option><option value="professional">Professional &mdash; Chimera layout, B&amp;W logo</option><option value="both">Both</option></select></label>
+        <label class="field" style="justify-content:flex-end;"><span class="hint">The default for scheduled runs is set in Run Settings.</span></label>
       </div>
       <div class="section-title" style="margin-top:16px;">Reports to download</div>
       <div class="detect-list">${en.map(p => `<label><input type="checkbox" class="rn-p" value="${p.id}" ${p.enabled && !p.problems.length ? "checked" : ""} ${p.problems.length ? "disabled" : ""}>
         <b>${esc(p.name)}</b><span class="muted">${p.problems.length ? `<span class="error">${esc(p.problems[0])}</span>` : esc(p.feeds_label)}</span></label>`).join("")}</div>
       <p class="hint" style="margin-top:10px;">Up to ${esc(AU.ov.settings.parallel_tabs)} tabs at once. Afterwards the ${esc(AU.ov.settings.generate_list.join(", ") || "no")} report(s) are built${AU.ov.settings.wa_auto_send === "1" ? " and sent to WhatsApp" : ""}.</p>`,
     footer: `<button class="btn-outline" id="rn-cancel">Cancel</button><button class="btn-primary" id="rn-go">▶ Start</button>` });
+  document.getElementById("rn-style").value = defStyle;
   document.getElementById("rn-cancel").onclick = () => closeModal();
   document.getElementById("rn-go").onclick = async () => {
     const ids = [...document.querySelectorAll(".rn-p:checked")].map(c => Number(c.value));
     if (!ids.length) return;
-    const r = await API().start_automation_run(document.getElementById("rn-date").value, ids, document.getElementById("rn-show").checked);
+    const r = await API().start_automation_run(document.getElementById("rn-date").value, ids, document.getElementById("rn-show").checked,
+                                               document.getElementById("rn-style").value);
     if (!r.ok) { document.getElementById("modal-body").insertAdjacentHTML("afterbegin", `<div class="problem-box">${esc(r.message)}</div>`); return; }
     closeModal(true); openMonitor();
   };
@@ -490,6 +497,7 @@ function renderSchedule() {
   document.getElementById("au-retries").value = s.retries; document.getElementById("au-timeout").value = s.page_timeout_seconds;
   document.getElementById("au-headless").checked = s.headless === "1";
   document.querySelectorAll(".au-gen").forEach(c => { c.checked = s.generate_list.includes(c.value); });
+  API().get_report_settings().then(r => { document.getElementById("au-style").value = r.output_style || "classic"; }).catch(() => {});
 }
 async function saveAuto(values, resultId) {
   const r = await API().save_automation_settings(values);
@@ -509,6 +517,10 @@ function parallelWarn(v) {
     : "Each enabled report gets its own tab; extra reports wait for a free tab.";
 }
 document.getElementById("au-parallel").addEventListener("input", (e) => { document.getElementById("au-parallel-val").textContent = e.target.value; parallelWarn(e.target.value); });
+document.getElementById("au-style").addEventListener("change", async (e) => {
+  const r = await API().save_report_settings({ output_style: e.target.value });
+  document.getElementById("au-behaviour-result").innerHTML = `<p class="${r.ok ? "hint" : "error"}">${r.ok ? "Output style saved — used by every run, Daily Reports and WhatsApp." : esc(r.message)}</p>`;
+});
 document.getElementById("au-behaviour-save").addEventListener("click", () => saveAuto({
   parallel_tabs: document.getElementById("au-parallel").value, retries: document.getElementById("au-retries").value,
   page_timeout_seconds: document.getElementById("au-timeout").value, headless: document.getElementById("au-headless").checked ? "1" : "0",

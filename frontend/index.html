@@ -204,7 +204,8 @@
                   <label class="check"><input type="checkbox" class="au-gen" value="pivot"> Pivot Report</label>
                   <label class="check"><input type="checkbox" class="au-gen" value="hourly"> Hourly BC &amp; SV</label>
                 </div>
-                <p class="hint">Output style and report rules are in Settings &rarr; Daily report rules.</p>
+                <div class="form-row"><label>Output style <select id="au-style"><option value="classic">Classic &mdash; SalesPulse layout</option><option value="professional">Professional &mdash; Chimera layout, B&amp;W logo</option><option value="both">Both</option></select></label></div>
+                <p class="hint">Saved as soon as you change it (same setting as Settings &rarr; Report Rules). Report rules are in Settings.</p>
                 <div class="form-row" style="margin-top:12px;"><button class="btn-primary" id="au-behaviour-save">Save</button></div>
                 <div id="au-behaviour-result"></div>
               </div>
@@ -236,7 +237,7 @@
                   <label class="switch2"><input type="checkbox" id="wa-auto"><span></span></label></div>
                 <div class="toggle-row"><div><b>Show the WhatsApp window while sending</b><p class="hint">Keep this on until you trust it.</p></div>
                   <label class="switch2"><input type="checkbox" id="wa-show"><span></span></label></div>
-                <div class="form-row" style="margin-top:10px;"><label>Images to send when both styles are built
+                <div class="form-row" style="margin-top:10px;"><label>When <b>Both</b> styles are built, send
                   <select id="wa-style"><option value="classic">Classic</option><option value="professional">Professional</option></select></label></div>
                 <div class="banner-warning" style="margin:6px 0 0;">Chimera uses <b>your own WhatsApp</b> through WhatsApp Web (scan the QR once). WhatsApp doesn't officially support automated sending from personal accounts &mdash; a few report messages to your own groups is fine, but avoid bulk messaging.</div>
               </div>

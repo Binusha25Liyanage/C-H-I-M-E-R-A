@@ -22,6 +22,7 @@ Caveats (told to the user in the UI):
 """
 
 import asyncio
+import uuid
 import json
 import os
 import re
@@ -315,16 +316,46 @@ async def _wait_sent(page, timeout_s=90):
     return False
 
 
-async def _send_images(page, files, caption):
+_PICK_PHOTO_INPUT_JS = r"""
+([token]) => {
+  // WhatsApp Web has several file inputs after "Attach": a single-file one for
+  // stickers and a multi-file "Photos & videos" one. Prefer the multi-file
+  // input that also accepts video (= Photos & videos), never the sticker one.
+  const ins = [...document.querySelectorAll("input[type='file']")]
+    .filter(i => /image/.test(i.accept || ''));
+  const score = i => (i.multiple ? 4 : 0) + (/video/.test(i.accept || '') ? 2 : 0) + (/webp/.test(i.accept || '') ? -3 : 0);
+  ins.sort((a, b) => score(b) - score(a));
+  if (!ins.length) return null;
+  ins[0].setAttribute('data-chimera-input', token);
+  return {multiple: !!ins[0].multiple, accept: ins[0].accept || '', count: ins.length};
+}
+"""
+
+
+async def _open_attach(page):
     attach = await _first(page, SEL_ATTACH, 8000)
     if attach is None:
         raise WAError("Couldn't find the attach (+) button.")
     await attach.click()
-    await page.wait_for_timeout(600)
-    inp = page.locator(SEL_IMG_INPUT)
-    if await inp.count() == 0:
+    await page.wait_for_timeout(700)
+
+
+async def _send_images(page, files, caption):
+    """Attach the images (several at once when WhatsApp allows it, else one per message) and send."""
+    await _open_attach(page)
+    token = uuid.uuid4().hex[:8]
+    info = await page.evaluate(_PICK_PHOTO_INPUT_JS, [token])
+    if not info:
         raise WAError("Couldn't find WhatsApp's photo upload field.")
-    await inp.first.set_input_files(files)
+    inp = page.locator(f"input[data-chimera-input='{token}']")
+    if not info["multiple"] and len(files) > 1:
+        # only a single-file field: send the pages one by one (caption on the first)
+        WA.log(f"WhatsApp accepts one image at a time here — sending {len(files)} images one by one.")
+        await page.keyboard.press("Escape")
+        for n, f in enumerate(files):
+            await _send_images(page, [f], caption if n == 0 else "")
+        return
+    await inp.set_input_files(files)
     cap = await _first(page, SEL_CAPTION, 15000)
     if cap is not None and caption:
         await cap.click()
