@@ -330,10 +330,14 @@ function renderWaLive(s) {
   if (!s || (!s.active && !s.result)) { el.innerHTML = ""; return; }
   const title = { link: "Linking WhatsApp", chats: "Reading your chats", test: "Sending a test message", send: "Sending reports" }[s.action] || "WhatsApp";
   el.innerHTML = `<div class="card"><div class="card-header-row"><h3>${s.active ? '<span class="spinner"></span> ' : ""}${esc(title)}</h3>
-      ${s.result ? chip(s.result.ok ? "done" : "failed") : ""}</div>
+      <span>${!s.active ? '<button class="btn-outline btn-small" id="wa-copy-log" title="Log plus the page details WhatsApp showed — paste it to get help">Copy log</button> ' : ""}${s.result ? chip(s.result.ok ? "done" : "failed") : ""}</span></div>
     ${s.result && s.result.message ? `<p class="${s.result.ok ? "hint" : "error"}">${esc(s.result.message)}</p>` : ""}
     <div class="log-box">${(s.log || []).map(x => `<div class="lv-${x.level}">${esc(x.t)} ${esc(x.msg)}</div>`).join("") || "Starting…"}</div></div>`;
 }
+document.addEventListener("click", async (e) => {
+  if (e.target.id !== "wa-copy-log") return;
+  copyText(await window.pywebview.api.get_whatsapp_log_text(), e.target);
+});
 function startWaPoll() {
   if (SH.waPoll) return;
   SH.waPoll = setInterval(async () => {

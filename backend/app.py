@@ -90,6 +90,60 @@ def style_title_bar(window, rgb=TITLE_BAR_RGB):
         return False
 
 
+APP_ID = "Binusha.Chimera.SFA"   # Windows taskbar identity (so it isn't grouped as "Python")
+
+
+def set_app_identity():
+    """Before any window exists: tell Windows this is Chimera, not python.exe, so the
+    taskbar uses Chimera's own icon and groups its windows separately."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
+    except Exception as e:
+        logging.info("App identity not set: %s", e)
+
+
+def set_window_icon(window, icon_path=None):
+    """Puts Chimera's icon on the window (title bar, taskbar, Alt+Tab) instead of Python's."""
+    icon_path = icon_path or ICON_PATH
+    if os.name != "nt" or not os.path.exists(icon_path):
+        return False
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        user32.LoadImageW.restype = wintypes.HANDLE
+        user32.LoadImageW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR, wintypes.UINT, ctypes.c_int,
+                                      ctypes.c_int, wintypes.UINT]
+        user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        hwnd = None
+        try:
+            hwnd = int(window.native.Handle.ToInt64())
+        except Exception:
+            hwnd = user32.FindWindowW(None, APP_TITLE)
+        if not hwnd:
+            return False
+        IMAGE_ICON, LR_LOADFROMFILE, WM_SETICON = 1, 0x0010, 0x0080
+        big = user32.LoadImageW(None, os.path.abspath(icon_path), IMAGE_ICON, 256, 256, LR_LOADFROMFILE)
+        small = user32.LoadImageW(None, os.path.abspath(icon_path), IMAGE_ICON, 32, 32, LR_LOADFROMFILE)
+        if big:
+            user32.SendMessageW(hwnd, WM_SETICON, 1, big)      # ICON_BIG: taskbar, Alt+Tab
+        if small:
+            user32.SendMessageW(hwnd, WM_SETICON, 0, small)    # ICON_SMALL: title bar
+        try:                                                   # the WinForms window itself, too
+            from System.Drawing import Icon
+            window.native.Icon = Icon(os.path.abspath(icon_path))
+        except Exception:
+            pass
+        logging.info("Window icon set")
+        return True
+    except Exception as e:
+        logging.info("Window icon not set: %s", e)
+        return False
+
+
 def main():
     # Windows Task Scheduler launches "Chimera.exe --scheduled": run the due
     # SFA automation headless and exit, without opening a window.
@@ -104,6 +158,7 @@ def main():
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     logging.info("Chimera starting")
 
+    set_app_identity()          # must happen before the window exists
     api = Api()
     bad = api_public_non_methods(api)
     if bad:  # would break pywebview's API discovery — see Api.__init__
@@ -138,7 +193,7 @@ def main():
     api._scheduler = scheduler.InAppScheduler()
     api._scheduler.start()
 
-    window.events.shown += lambda: style_title_bar(window)
+    window.events.shown += lambda: (style_title_bar(window), set_window_icon(window))
     # Closing the window stops Chimera's own runs and frees the run lock, so the
     # next run doesn't report "Another SFA run is already in progress".
     window.events.closing += lambda: api._on_window_closing()

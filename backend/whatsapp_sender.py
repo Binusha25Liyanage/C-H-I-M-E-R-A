@@ -342,7 +342,7 @@ def _at(step):
     _STEP["name"] = step
 
 
-async def _click(loc, what, js_ok=True):
+async def _click(loc, what, js_ok=True, escape=True):
     """
     Click like a person; if WhatsApp has something on top (a banner, a tip, a
     pop-up), press Escape and force the click; finally click from inside the page.
@@ -354,9 +354,17 @@ async def _click(loc, what, js_ok=True):
     except Exception:
         pass
     try:
-        await loc.page.keyboard.press("Escape")
+        if escape:
+            await loc.page.keyboard.press("Escape")
         await loc.click(timeout=4000, force=True)
         return
+    except Exception:
+        pass
+    try:                                    # a real mouse click at its centre
+        box = await loc.bounding_box()
+        if box:
+            await loc.page.mouse.click(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+            return
     except Exception:
         pass
     if js_ok:
@@ -454,6 +462,11 @@ _PAGE_DUMP_JS = r"""
     menu: [...document.querySelectorAll('li, [role=menuitem], [role=button], button')]
             .filter(e => vis(e) && !e.closest('#pane-side, #side')).map(d).slice(-30),
     inputs: [...document.querySelectorAll("input[type='file']")].map(i => `accept=${i.accept} multiple=${i.multiple}`),
+    send_like: [...document.querySelectorAll("[aria-label*='send' i], [data-icon*='send'], [data-icon*='ptt']")].filter(vis)
+                 .map(e => { const r = e.getBoundingClientRect(); return d(e) + ` | at ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}`
+                             + (e.closest('#main footer') ? ' | in chat footer' : ''); }),
+    text_boxes: [...document.querySelectorAll("[contenteditable='true']")].filter(vis)
+                 .map(e => `${e.getAttribute('aria-label') || ''} / ${e.getAttribute('aria-placeholder') || ''}` + (e.closest('#main footer') ? ' | in chat footer' : '')),
   };
 }
 """
@@ -577,7 +590,7 @@ async def _attach(page, files, which):
     if item is not None:
         try:
             async with page.expect_file_chooser(timeout=8000) as fc:
-                await _click(item, f"'{label}'", js_ok=False)
+                await _click(item, f"'{label}'", js_ok=False, escape=False)
             chooser = await fc.value
             take = files if chooser.is_multiple() else files[:1]
             await chooser.set_files(take)
@@ -611,12 +624,19 @@ _PREVIEW_JS = r"""
   const W = innerWidth, H = innerHeight;
   const inChatList = e => !!e.closest('#pane-side, #side, header');
   let send = null, how = '';
+  // never the microphone ("Send voice message" / ptt) or anything else that only starts with "Send"
+  const notMic = e => !/voice|ptt|mic|audio|sticker|gif|emoji/i.test((e.getAttribute('aria-label') || '') + ' ' +
+                      (e.getAttribute('data-icon') || '') + ' ' + ((e.querySelector && e.querySelector('[data-icon]') || {}).getAttribute?.('data-icon') || ''));
+  const desc = e => `${e.tagName.toLowerCase()}${e.getAttribute('aria-label') ? ' "' + e.getAttribute('aria-label') + '"' : ''}` +
+                    `${e.querySelector && e.querySelector('[data-icon]') ? ' icon=' + e.querySelector('[data-icon]').getAttribute('data-icon') : ''}`;
   const byLabel = [...document.querySelectorAll('[aria-label]')]
-    .filter(e => vis(e) && !inChatList(e) && /^send\b/i.test(e.getAttribute('aria-label') || ''));
-  if (byLabel.length) { send = byLabel[byLabel.length - 1]; how = 'label'; }
+    .filter(e => vis(e) && !inChatList(e) && notMic(e) && /^send(\s*\(?\d*\)?)?$/i.test((e.getAttribute('aria-label') || '').trim()));
+  if (byLabel.length) { send = byLabel[byLabel.length - 1]; how = 'label ' + desc(send); }
   if (!send) {
-    const icons = [...document.querySelectorAll("[data-icon*='send']")].filter(e => vis(e) && !inChatList(e));
-    if (icons.length) { const i = icons[icons.length - 1]; send = i.closest("[role=button], button") || i; how = 'icon'; }
+    const icons = [...document.querySelectorAll("[data-icon*='send']")]
+      .filter(e => vis(e) && !inChatList(e) && notMic(e) && !/voice|ptt/i.test(e.getAttribute('data-icon') || ''));
+    if (icons.length) { const i = icons[icons.length - 1]; send = i.closest("[role=button], button") || i;
+                        how = 'icon ' + i.getAttribute('data-icon'); }
   }
   if (!send) {   // the big green round button in the lower right
     const greens = [...document.querySelectorAll('div, span, button')].filter(e => {
@@ -629,7 +649,7 @@ _PREVIEW_JS = r"""
     });
     if (greens.length) { greens.sort((a, b) => b.getBoundingClientRect().right + b.getBoundingClientRect().bottom
                                             - a.getBoundingClientRect().right - a.getBoundingClientRect().bottom);
-                         send = greens[0]; how = 'green'; }
+                         send = greens[0]; how = 'green round button ' + desc(send); }
   }
   const boxes = [...document.querySelectorAll("[contenteditable='true']")]
     .filter(e => vis(e) && !inChatList(e) && !e.closest('#main footer'));
@@ -684,6 +704,7 @@ async def _send_files(page, files, caption, which="photos"):
                 await page.wait_for_timeout(300)
         send, box, how = await _preview(page, 3000)   # positions fresh, right before sending
         if send is not None:
+            WA.log(f"Pressing Send ({how}).")
             await _tap(page, send)                     # the green Send button
         elif box is not None:
             await _tap(page, box)

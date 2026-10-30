@@ -270,7 +270,7 @@ class Api:
         status = sfa_store.get_dataset_status(date)
         groups = sfa_store.get_groups()
         status["groups"] = {g: [{"territory": t, "model": m} for t, m in v] for g, v in groups.items()}
-        status["output_root"] = report_pipeline.DEFAULT_OUTPUT_ROOT
+        status["output_root"] = report_pipeline.output_root()
         return status
 
     def import_sfa_exports(self):
@@ -321,12 +321,29 @@ class Api:
 
     def reports_location(self):
         """Where saved reports are: the main folder and the newest saved run's folder."""
-        root = report_pipeline.DEFAULT_OUTPUT_ROOT
+        root = report_pipeline.output_root()
         latest = next((r for r in report_pipeline.get_runs(200)
                        if r.get("folder") and r["status"] != "pending_review" and "_pending" not in r["folder"]
                        and os.path.isdir(r["folder"])), None)
         return {"root": root, "latest": latest["folder"] if latest else None,
                 "latest_label": f"{latest['report_date']} · {os.path.basename(latest['folder'])}" if latest else None}
+
+    def choose_output_folder(self):
+        """Settings > Save location: pick a folder with Windows' folder picker."""
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(webview.FOLDER_DIALOG, directory=report_pipeline.output_root())
+        if not paths:
+            return {"ok": False, "message": "No folder chosen.", "cancelled": True}
+        folder = paths[0] if isinstance(paths, (list, tuple)) else paths
+        ok, msg = sfa_store.save_settings({"output_folder": folder})
+        return {"ok": ok, "message": msg if not ok else f"Reports will be saved in {folder}", "folder": folder}
+
+    def reset_output_folder(self):
+        sfa_store.save_settings({"output_folder": ""})
+        return {"ok": True, "folder": report_pipeline.DEFAULT_OUTPUT_ROOT,
+                "message": f"Back to the default folder: {report_pipeline.DEFAULT_OUTPUT_ROOT}"}
 
     def open_reports_folder(self, which="latest"):
         loc = self.reports_location()
@@ -748,6 +765,28 @@ class Api:
     def whatsapp_plan(self, run_id):
         run = report_pipeline.get_run(run_id)
         return whatsapp_sender.plan_delivery(run) if run else []
+
+    def get_whatsapp_log_text(self):
+        """WhatsApp log as text, plus the page-details files it mentions (for diagnosis)."""
+        import re as _re
+        s = whatsapp_sender.WA.snapshot()
+        lines = [f"Chimera WhatsApp — {s.get('action') or ''} — started {s.get('started_at') or ''}"]
+        if s.get("result"):
+            lines.append(f"Result: {s['result'].get('message', '')}")
+        lines.append("")
+        lines += [f"{x['t']} {x['level'].upper():5} {x['msg']}" for x in s.get("log", [])]
+        seen = []
+        for x in s.get("log", []):
+            for path in _re.findall(r'[A-Za-z]:\\(?:[^\\\n:*?"<>|]+\\)*[^\\\n:*?"<>|]+?\.txt|/[^\s]*?\.txt', x["msg"]):
+                if path not in seen and os.path.exists(path):
+                    seen.append(path)
+        for path in seen[-4:]:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    lines += ["", f"===== {os.path.basename(path)} =====", f.read().strip()]
+            except OSError:
+                pass
+        return "\n".join(lines)
 
     def get_whatsapp_live(self):
         return whatsapp_sender.WA.snapshot()
