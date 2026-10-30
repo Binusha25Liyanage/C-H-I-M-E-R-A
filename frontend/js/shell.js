@@ -209,7 +209,9 @@ async function openPreview(runId) {
   const pending = r.run.status === "pending_review";
   openModal({ title: `${pending ? "Review" : "View"} reports — ${r.run.report_date}`, size: "xl",
     body: `
-      ${pending ? `<div class="ok-box" style="background:#fff6e5;color:#9a6a00;">These reports aren't saved yet. Check every page, then save or discard.</div>` : ""}
+      ${pending ? `<div class="ok-box" style="background:#fff6e5;color:#9a6a00;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span>These reports aren't saved yet. Check every page, then save or discard.</span>
+          <span>Style: <span class="seg" id="pv-style">${["classic", "professional", "both"].map(st => `<button data-st="${st}" class="${(r.run.summary.style || "classic") === st ? "on" : ""}">${st[0].toUpperCase() + st.slice(1)}</button>`).join("")}</span></span></div>` : ""}
       <div class="tabs" id="pv-tabs">${keys.map((k, i) => `<button class="tab ${i === 0 ? "active" : ""}" data-k="${esc(k)}">${esc(k)} <span class="chip chip-grey">${groups[k].length}</span></button>`).join("")}</div>
       <div class="preview-grid" id="pv-grid"></div>
       ${(r.run.summary.reports || []).some(x => x.notes && x.notes.length) ? `<div class="section-title">Data notes</div><ul class="result-list">${[...new Set((r.run.summary.reports || []).flatMap(x => x.notes || []))].map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}`,
@@ -234,6 +236,17 @@ async function openPreview(runId) {
     document.querySelectorAll("#pv-tabs .tab").forEach(t => t.classList.toggle("active", t === b)); show(b.dataset.k); };
   document.getElementById("pv-grid").onclick = (e) => { const f = e.target.closest("figure"); if (f) openLightbox(Number(f.dataset.i)); };
   if (pending) {
+    document.getElementById("pv-style").onclick = async (e) => {
+      const st = e.target.dataset.st; if (!st || e.target.classList.contains("on")) return;
+      document.querySelectorAll("#pv-style button").forEach(b => { b.disabled = true; });
+      e.target.textContent = "Building…";
+      AU.busyModal = true;
+      const res = await window.pywebview.api.rebuild_report_run(runId, st);
+      AU.busyModal = false;
+      if (!res.ok) { openModal({ title: "Couldn't rebuild", body: `<div class="problem-box">${esc(res.message)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); return; }
+      SH.autoPreviewed && SH.autoPreviewed.add(res.run_id);
+      closeModal(true); openPreview(res.run_id); loadPending();
+    };
     const act = async (send) => {
       AU.busyModal = true;
       const res = await window.pywebview.api.approve_report_run(runId, send);
@@ -342,7 +355,9 @@ document.getElementById("wa-style").addEventListener("change", (e) => window.pyw
 document.getElementById("wa-send-latest").addEventListener("click", async () => {
   const run = SH.wa.last_saved_run; if (!run) return;
   const plan = await window.pywebview.api.whatsapp_plan(run.id);
-  confirmModal("Send latest reports", `Report date <b>${esc(run.report_date)}</b> (run #${run.id}):<ul class="result-list">${plan.map(p => `<li><b>${esc(p.chat_name)}</b> — ${p.files.length} image(s)${p.files.length ? "" : " (nothing matches this rule)"}</li>`).join("")}</ul>`,
+  const st = ((run.summary || {}).style || "classic");
+  confirmModal("Send latest reports", `Report date <b>${esc(run.report_date)}</b> (run #${run.id}) · style <b>${esc(st[0].toUpperCase() + st.slice(1))}</b>
+    <p class="hint">This sends reports that were already built. For another style, build them again (Daily Reports, or Run now) — or switch the style in the review pop-up before approving.</p><ul class="result-list">${plan.map(p => `<li><b>${esc(p.chat_name)}</b> — ${p.files.length} image(s)${p.files.length ? "" : " (nothing matches this rule)"}</li>`).join("")}</ul>`,
     "Send now", () => waStart(window.pywebview.api.whatsapp_send_run(run.id)));
 });
 document.getElementById("wa-rules").addEventListener("click", (e) => {

@@ -336,7 +336,8 @@ _PHOTOS_ITEM_JS = r"""
     .filter(e => e.offsetParent !== null);
   const txt = e => (e.getAttribute('aria-label') || e.innerText || '').trim();
   let hit = els.find(e => /^photos?\s*(&|and)\s*videos?$/i.test(txt(e)))
-         || els.find(e => /photos?\s*(&|and)\s*videos?/i.test(e.getAttribute('aria-label') || ''));
+         || els.find(e => /photos?\s*(&|and)\s*videos?/i.test(e.getAttribute('aria-label') || ''))
+         || els.find(e => /^(photos?|gallery|images?|media)\b/i.test(txt(e)) && !/sticker|document|camera/i.test(txt(e)));
   if (!hit) {
     const icon = document.querySelector("span[data-icon*='media-filled'], span[data-icon*='attach-image'], " +
                                         "span[data-icon*='media-multiple'], span[data-icon*='gallery'], span[data-icon*='photo']");
@@ -360,12 +361,76 @@ async def _open_attach(page):
     await page.wait_for_timeout(700)
 
 
+_MENU_ITEMS_JS = r"""
+() => [...document.querySelectorAll('li, [role=menuitem], [role=button], button')]
+  .filter(e => e.offsetParent !== null && !e.closest('#pane-side, #side, header'))
+  .map(e => ((e.getAttribute('aria-label') || e.innerText || '').trim().split('\n')[0]
+             + (e.querySelector('[data-icon]') ? ' {' + e.querySelector('[data-icon]').getAttribute('data-icon') + '}' : '')))
+  .filter(t => t && t.length < 60).slice(-20)
+"""
+_DROP_FILES_JS = r"""
+async ([items]) => {
+  // Drop the images on the open chat, like dragging them in from Explorer.
+  const dt = new DataTransfer();
+  for (const it of items) {
+    const bin = atob(it.b64); const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    dt.items.add(new File([u8], it.name, {type: it.type}));
+  }
+  const target = document.querySelector('#main [role=application]') || document.querySelector('#main .copyable-area')
+              || document.querySelector('#main') ;
+  if (!target) return false;
+  for (const type of ['dragenter', 'dragover', 'drop']) {
+    target.dispatchEvent(new DragEvent(type, {bubbles: true, cancelable: true, dataTransfer: dt}));
+    await new Promise(r => setTimeout(r, 150));
+  }
+  return true;
+}
+"""
+
+
+async def _drop_files(page, files):
+    """Drops the images on the chat. First a real (trusted) drag & drop through Chrome's DevTools,
+    then a page-level drop event."""
+    try:
+        box = await page.locator("#main").first.bounding_box()
+        if box:
+            x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+            cdp = await page.context.new_cdp_session(page)
+            data = {"items": [], "files": [os.path.abspath(f) for f in files], "dragOperationsMask": 1}
+            for t in ("dragEnter", "dragOver", "drop"):
+                await cdp.send("Input.dispatchDragEvent", {"type": t, "x": x, "y": y, "data": data})
+                await page.wait_for_timeout(150)
+            if await _first(page, SEL_CAPTION, 5000) is not None:
+                return True
+    except Exception:
+        pass
+    import base64
+    items = []
+    for f in files:
+        with open(f, "rb") as fh:
+            items.append({"name": os.path.basename(f), "type": "image/png" if f.lower().endswith(".png") else "image/jpeg",
+                          "b64": base64.b64encode(fh.read()).decode()})
+    return await page.evaluate(_DROP_FILES_JS, [items])
+
+
 async def _choose_files(page, files):
-    """Opens Attach > Photos & videos and gives it the files. Returns how many it took (all, or 1)."""
+    """
+    Gets the images into WhatsApp's photo preview. Returns how many it took.
+      1) Attach > Photos & videos > the file picker it opens (what a person does)
+      2) the hidden "Photos & videos" upload field
+      3) dropping the images on the chat (works whatever the attach menu looks like)
+    Never the sticker upload.
+    """
     await _open_attach(page)
     token = uuid.uuid4().hex[:8]
-    # 1) the menu item + the file picker it opens (what a person does)
-    if await page.evaluate(_PHOTOS_ITEM_JS, [token]):
+    found = False
+    for _ in range(8):                      # the menu animates in
+        if await page.evaluate(_PHOTOS_ITEM_JS, [token]):
+            found = True
+            break
+        await page.wait_for_timeout(400)
+    if found:
         try:
             async with page.expect_file_chooser(timeout=6000) as fc:
                 await page.locator(f"[data-chimera-item='{token}']").first.click()
@@ -374,14 +439,21 @@ async def _choose_files(page, files):
             await chooser.set_files(take)
             return len(take)
         except Exception:
-            pass   # some versions don't open a picker — fall through to the hidden input
-    # 2) the hidden "Photos & videos" input
+            pass
     info = await page.evaluate(_PICK_PHOTO_INPUT_JS, [token])
-    if not info:
-        raise WAError("Couldn't find 'Photos & videos' in WhatsApp's attach menu.")
-    take = files if info["multiple"] else files[:1]
-    await page.locator(f"input[data-chimera-input='{token}']").set_input_files(take)
-    return len(take)
+    if info:
+        take = files if info["multiple"] else files[:1]
+        await page.locator(f"input[data-chimera-input='{token}']").set_input_files(take)
+        return len(take)
+    seen = await page.evaluate(_MENU_ITEMS_JS)
+    await page.keyboard.press("Escape")
+    await page.wait_for_timeout(300)
+    WA.log("Attach menu has no 'Photos & videos' Chimera recognises — dropping the images on the chat instead. "
+           "(Menu items seen: " + "; ".join(seen[-10:]) + ")", "warn")
+    if await _drop_files(page, files):
+        return len(files)
+    raise WAError("Couldn't attach the images: no 'Photos & videos' in the attach menu and the chat didn't accept "
+                  "dropped images. Menu items seen: " + "; ".join(seen[-10:]))
 
 
 async def _send_images(page, files, caption):
@@ -393,7 +465,8 @@ async def _send_images(page, files, caption):
             WA.log(f"WhatsApp took one image at a time here — sending {len(files)} images one by one.")
         cap = await _first(page, SEL_CAPTION, 15000)
         if cap is None:
-            raise WAError("WhatsApp didn't open the photo preview.")
+            shot = await _shot(page, "no_preview")
+            raise WAError("WhatsApp didn't open the photo preview." + (f" Screenshot: {shot}" if shot else ""))
         await cap.click()
         if caption and first:
             await cap.type(caption, delay=10)

@@ -319,6 +319,21 @@ class Api:
         except Exception as e:
             return {"ok": False, "message": str(e)}
 
+    def reports_location(self):
+        """Where saved reports are: the main folder and the newest saved run's folder."""
+        root = report_pipeline.DEFAULT_OUTPUT_ROOT
+        latest = next((r for r in report_pipeline.get_runs(200)
+                       if r.get("folder") and r["status"] != "pending_review" and "_pending" not in r["folder"]
+                       and os.path.isdir(r["folder"])), None)
+        return {"root": root, "latest": latest["folder"] if latest else None,
+                "latest_label": f"{latest['report_date']} · {os.path.basename(latest['folder'])}" if latest else None}
+
+    def open_reports_folder(self, which="latest"):
+        loc = self.reports_location()
+        path = loc["latest"] if which == "latest" and loc["latest"] else loc["root"]
+        os.makedirs(path, exist_ok=True)
+        return self.open_path(path)
+
     def get_report_settings(self):
         return sfa_store.get_settings()
 
@@ -679,6 +694,22 @@ class Api:
         if r.get("ok") and send_whatsapp:
             r["whatsapp"] = whatsapp_sender.deliver_run(run_id)
         return r
+
+    def rebuild_report_run(self, run_id, style):
+        """Review pop-up: build the same reports again in another style (still waiting for approval)."""
+        run = report_pipeline.get_run(int(run_id))
+        if not run:
+            return {"ok": False, "message": "That report run no longer exists."}
+        if style not in sfa_store.OUTPUT_STYLES:
+            return {"ok": False, "message": "Choose Classic, Professional or Both."}
+        kinds = [r["kind"] for r in run["summary"].get("reports", [])] or list(report_pipeline.REPORT_KINDS)
+        if run["status"] == "pending_review":
+            report_pipeline.discard_run(run["id"])
+        new = report_pipeline.run_reports(run["report_date"], kinds=kinds, trigger="manual", style=style, review=True)
+        for r in new.get("reports", []):
+            r.pop("trace", None)
+        return {"ok": new.get("ok", False), "run_id": new.get("run_id"), "status": new.get("status"),
+                "message": "" if new.get("ok") else (new.get("error") or "The reports couldn't be built.")}
 
     def discard_report_run(self, run_id):
         return report_pipeline.discard_run(run_id)

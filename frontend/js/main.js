@@ -636,3 +636,12 @@ async function refreshStyleDefaultLabel() {
   } catch (e) {}
 }
 window.addEventListener("pywebviewready", refreshStyleDefaultLabel);
+
+
+// ---------------- Saved reports folder ----------------
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-open-reports]"); if (!b) return;
+  const r = await window.pywebview.api.open_reports_folder(b.dataset.openReports);
+  if (!r.ok) openModal({ title: "Saved reports", body: `<div class="problem-box">${escapeHtml(r.message)}</div>`,
+                         footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
+});
