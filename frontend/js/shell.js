@@ -316,7 +316,7 @@ async function loadWhatsApp() {
   document.getElementById("wa-rules").innerHTML = w.rules.length ? w.rules.map(r => `
     <div class="rule-card ${r.enabled ? "" : "off"}"><div>
       <div class="who">${esc(r.chat_name)} ${r.enabled ? "" : '<span class="chip chip-grey">off</span>'}</div>
-      <div class="what">${r.kinds.map(k => kindLabel[k]).join(" · ")} — ${r.groups.includes("*") ? "all managers" : esc(r.groups.join(", "))}${r.caption ? ` · “${esc(r.caption)}”` : ""}</div></div>
+      <div class="what">${r.kinds.map(k => kindLabel[k]).join(" · ")} as ${{ images: "photos", pdf: "PDF files", both: "photos + PDF" }[r.send_as || "images"]}${(r.send_as || "images") !== "pdf" ? ` (${r.orientation || "portrait"})` : ""} — ${r.groups.includes("*") ? "all managers" : esc(r.groups.join(", "))}${r.caption ? ` · “${esc(r.caption)}”` : ""}</div></div>
       <div class="row-actions"><button class="icon-action" data-wa-edit="${r.id}">Edit</button><button class="icon-action" data-wa-test="${esc(r.chat_name)}">Test</button><button class="icon-action danger" data-wa-del="${r.id}">✕</button></div></div>`).join("")
     : `<p class="hint">No rules yet. Example: send the SKU and Pivot pages for <b>Asela</b> to Asela's team group, and the Hourly report to the management group.</p>`;
   document.getElementById("wa-deliveries").innerHTML = w.deliveries.length ? `<table class="report-table"><thead><tr><th>When</th><th>Chat</th><th>Images</th><th>Status</th><th>Details</th></tr></thead><tbody>${w.deliveries.map(d => `
@@ -369,7 +369,8 @@ document.getElementById("wa-rules").addEventListener("click", (e) => {
 document.getElementById("wa-add-rule").addEventListener("click", () => openRuleModal(null));
 
 function openRuleModal(rule) {
-  const w = SH.wa; const r = rule || { chat_name: "", kinds: ["sku", "pivot", "hourly"], groups: ["*"], caption: "{report} — {date}", enabled: true };
+  const w = SH.wa; const r = rule || { chat_name: "", kinds: ["sku", "pivot", "hourly"], groups: ["*"], caption: "{report} — {date}", enabled: true, send_as: "images", orientation: "portrait" };
+  const sendAs = r.send_as || "images", orient = r.orientation || "portrait";
   const all = r.groups.includes("*");
   openModal({ title: rule ? "Edit delivery rule" : "Add delivery rule", body: `
     <div id="wr-err"></div>
@@ -378,6 +379,17 @@ function openRuleModal(rule) {
       <datalist id="wr-chats">${w.chats.map(c => `<option value="${esc(c)}">`).join("")}</datalist></label>
     <div class="section-title">Reports to send</div>
     <div class="form-row">${[["sku", "SKU Report"], ["pivot", "Pivot Report"], ["hourly", "Hourly BC & SV"]].map(([k, l]) => `<label class="check"><input type="checkbox" class="wr-kind" value="${k}" ${r.kinds.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div>
+    <div class="section-title">Send as</div>
+    <div class="radio-row" style="margin-bottom:6px;">
+      <label class="radio"><input type="radio" name="wr-as" value="images" ${sendAs === "images" ? "checked" : ""}> Photos (Photos &amp; videos)</label>
+      <label class="radio"><input type="radio" name="wr-as" value="pdf" ${sendAs === "pdf" ? "checked" : ""}> PDF files (Document)</label>
+      <label class="radio"><input type="radio" name="wr-as" value="both" ${sendAs === "both" ? "checked" : ""}> Both</label></div>
+    <p class="hint" style="margin:0 0 4px;">Photos can be limited to some managers below; a PDF is the whole report (every manager).
+      Photos are sent report by report: SKU, then Pivot, then Hourly — each as its own message.</p>
+    <div class="section-title">Photo orientation for this chat</div>
+    <div class="radio-row" style="margin-bottom:6px;">
+      <label class="radio"><input type="radio" name="wr-or" value="portrait" ${orient === "portrait" ? "checked" : ""}> Portrait (wide pages turned upright — easy on phones)</label>
+      <label class="radio"><input type="radio" name="wr-or" value="landscape" ${orient === "landscape" ? "checked" : ""}> Landscape (pages as printed)</label></div>
     <div class="section-title">Managers</div>
     <div class="radio-row" style="margin-bottom:10px;"><label class="radio"><input type="radio" name="wr-g" value="all" ${all ? "checked" : ""}> All managers</label>
       <label class="radio"><input type="radio" name="wr-g" value="some" ${all ? "" : "checked"}> Only these:</label></div>
@@ -394,7 +406,9 @@ function openRuleModal(rule) {
     if (some && !groups.length) { document.getElementById("wr-err").innerHTML = `<div class="problem-box">Tick at least one manager, or choose “All managers”.</div>`; return; }
     const res = await window.pywebview.api.save_whatsapp_rule({ id: rule ? rule.id : null, chat_name: document.getElementById("wr-chat").value,
       kinds: [...document.querySelectorAll(".wr-kind:checked")].map(c => c.value), groups,
-      caption: document.getElementById("wr-caption").value, enabled: document.getElementById("wr-enabled").checked });
+      caption: document.getElementById("wr-caption").value, enabled: document.getElementById("wr-enabled").checked,
+      send_as: document.querySelector('input[name="wr-as"]:checked').value,
+      orientation: document.querySelector('input[name="wr-or"]:checked').value });
     if (!res.ok) { document.getElementById("wr-err").innerHTML = `<div class="problem-box">${esc(res.message)}</div>`; return; }
     closeModal(); loadWhatsApp();
   };

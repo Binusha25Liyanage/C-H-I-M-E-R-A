@@ -82,16 +82,23 @@ def init_schema():
             message       TEXT,
             sent_at       TEXT NOT NULL
         )""")
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(wa_rules)")}
+    if "send_as" not in cols:      # images | pdf | both
+        conn.execute("ALTER TABLE wa_rules ADD COLUMN send_as TEXT NOT NULL DEFAULT 'images'")
+    if "orientation" not in cols:  # portrait (wide pages turned upright) | landscape (pages as they are)
+        conn.execute("ALTER TABLE wa_rules ADD COLUMN orientation TEXT NOT NULL DEFAULT 'portrait'")
     conn.commit()
     conn.close()
 
 
 def list_rules():
     conn = db.get_connection()
-    rows = conn.execute("SELECT id, chat_name, kinds, groups, caption, enabled FROM wa_rules ORDER BY id").fetchall()
+    rows = conn.execute("SELECT id, chat_name, kinds, groups, caption, enabled, send_as, orientation "
+                        "FROM wa_rules ORDER BY id").fetchall()
     conn.close()
     return [{"id": r[0], "chat_name": r[1], "kinds": [k for k in r[2].split(",") if k],
-             "groups": json.loads(r[3] or '["*"]'), "caption": r[4], "enabled": bool(r[5])} for r in rows]
+             "groups": json.loads(r[3] or '["*"]'), "caption": r[4], "enabled": bool(r[5]),
+             "send_as": r[6] or "images", "orientation": r[7] or "portrait"} for r in rows]
 
 
 def save_rule(data):
@@ -105,17 +112,24 @@ def save_rule(data):
     if not isinstance(groups, list) or not groups:
         groups = ["*"]
     caption = str(data.get("caption", "")).strip()[:500]
+    send_as = data.get("send_as") or "images"
+    if send_as not in ("images", "pdf", "both"):
+        return False, "Send as must be photos, PDF documents or both."
+    orientation = data.get("orientation") or "portrait"
+    if orientation not in ("portrait", "landscape"):
+        return False, "Orientation must be portrait or landscape."
     conn = db.get_connection()
     try:
-        vals = (chat, ",".join(kinds), json.dumps(groups), caption, 1 if data.get("enabled", True) else 0)
+        vals = (chat, ",".join(kinds), json.dumps(groups), caption, 1 if data.get("enabled", True) else 0, send_as,
+                orientation)
         if data.get("id"):
-            n = conn.execute("UPDATE wa_rules SET chat_name=?, kinds=?, groups=?, caption=?, enabled=? WHERE id=?",
-                             vals + (data["id"],)).rowcount
+            n = conn.execute("UPDATE wa_rules SET chat_name=?, kinds=?, groups=?, caption=?, enabled=?, send_as=?, "
+                             "orientation=? WHERE id=?", vals + (data["id"],)).rowcount
             if not n:
                 return False, "That rule no longer exists."
         else:
-            conn.execute("INSERT INTO wa_rules (chat_name, kinds, groups, caption, enabled) VALUES (?, ?, ?, ?, ?)",
-                         vals)
+            conn.execute("INSERT INTO wa_rules (chat_name, kinds, groups, caption, enabled, send_as, orientation) "
+                         "VALUES (?, ?, ?, ?, ?, ?, ?)", vals)
         conn.commit()
     finally:
         conn.close()
@@ -147,21 +161,73 @@ def list_deliveries(limit=30):
     return [dict(zip(keys, r)) for r in rows]
 
 
+KIND_ORDER = ("sku", "pivot", "hourly")
+
+
+def _landscape_copy(path):
+    """The page as it was drawn (wide), from the portrait-turned image: made once, kept next to it."""
+    folder = os.path.join(os.path.dirname(path), "landscape")
+    out = os.path.join(folder, os.path.basename(path))
+    if not os.path.exists(out):
+        from PIL import Image
+        os.makedirs(folder, exist_ok=True)
+        with Image.open(path) as im:
+            im.rotate(-90, expand=True).save(out, optimize=True)
+    return out
+
+
+def _caption(rule, run, label):
+    return (rule["caption"] or "").replace("{date}", run["report_date"]).replace("{report}", label) \
+        .replace("{time}", datetime.now().strftime("%H:%M"))
+
+
 def plan_delivery(run, rules=None):
-    """Which images go to which chat for this report run. Pure — no browser."""
+    """
+    What goes to which chat for this report run. Images are sent report by
+    report — SKU, then Pivot, then Hourly — each as its own message with its
+    own caption; then the PDFs. Portrait or landscape per chat.
+    """
     s = AS.get_automation_settings()
     styles_built = {o["style"] for rep in run["summary"].get("reports", []) for o in rep.get("outputs", [])}
     style = s["wa_style"] if s["wa_style"] in styles_built else (sorted(styles_built)[0] if styles_built else None)
     items = report_pipeline.image_items(run, style)
     plan = []
     for rule in (rules if rules is not None else [r for r in list_rules() if r["enabled"]]):
-        chosen = [it for it in items if it["kind"] in rule["kinds"]
-                  and ("*" in rule["groups"] or it["group"] == "*" or it["group"] in rule["groups"])]
-        caption = (rule["caption"] or "").replace("{date}", run["report_date"]) \
-            .replace("{report}", ", ".join(sorted({it["label"] for it in chosen}))) \
-            .replace("{time}", datetime.now().strftime("%H:%M"))
-        plan.append({"rule_id": rule["id"], "chat_name": rule["chat_name"], "files": [it["path"] for it in chosen],
-                     "pages": [it["page"] for it in chosen], "caption": caption})
+        send_as = rule.get("send_as", "images")
+        landscape = rule.get("orientation", "portrait") == "landscape"
+        batches = []
+        if send_as in ("images", "both"):
+            for kind in KIND_ORDER:
+                chosen = [it for it in items if it["kind"] == kind and kind in rule["kinds"]
+                          and ("*" in rule["groups"] or it["group"] == "*" or it["group"] in rule["groups"])]
+                if not chosen:
+                    continue
+                files = []
+                for it in chosen:
+                    p = it["path"]
+                    if landscape and it.get("rotated") and os.path.exists(p):
+                        try:
+                            p = _landscape_copy(p)
+                        except Exception:
+                            pass
+                    files.append(p)
+                batches.append({"kind": kind, "label": chosen[0]["label"], "files": files,
+                                "pages": [it["page"] for it in chosen],
+                                "caption": _caption(rule, run, chosen[0]["label"])})
+        pdfs = []
+        if send_as in ("pdf", "both"):    # whole report PDFs (all managers) for the ticked reports, in the sent style
+            reps = sorted([r for r in run["summary"].get("reports", []) if r.get("ok") and r["kind"] in rule["kinds"]],
+                          key=lambda r: KIND_ORDER.index(r["kind"]) if r["kind"] in KIND_ORDER else 9)
+            for rep in reps:
+                for o in rep.get("outputs") or [{"style": style, "pdf": rep.get("pdf")}]:
+                    if o.get("pdf") and (o.get("style") in (style, None)):
+                        pdfs.append(o["pdf"])
+        labels = ", ".join(b["label"] for b in batches) or ", ".join(
+            r["label"] for r in run["summary"].get("reports", []) if r.get("ok") and r["kind"] in rule["kinds"])
+        plan.append({"rule_id": rule["id"], "chat_name": rule["chat_name"], "batches": batches,
+                     "files": [f for b in batches for f in b["files"]], "pdfs": pdfs, "send_as": send_as,
+                     "orientation": "landscape" if landscape else "portrait",
+                     "pages": [pg for b in batches for pg in b["pages"]], "caption": _caption(rule, run, labels)})
     return plan
 
 
@@ -329,45 +395,32 @@ _PICK_PHOTO_INPUT_JS = r"""
   return {multiple: !!ins[0].multiple, accept: ins[0].accept || ''};
 }
 """
-_PHOTOS_ITEM_JS = r"""
-([token]) => {
-  // the "Photos & videos" entry of the attach menu (any language: also by its icon)
-  const els = [...document.querySelectorAll('li, [role=button], [role=menuitem], button, div, span')]
-    .filter(e => e.offsetParent !== null);
-  const txt = e => (e.getAttribute('aria-label') || e.innerText || '').trim();
-  let hit = els.find(e => /^photos?\s*(&|and)\s*videos?$/i.test(txt(e)))
-         || els.find(e => /photos?\s*(&|and)\s*videos?/i.test(e.getAttribute('aria-label') || ''))
-         || els.find(e => /^(photos?|gallery|images?|media)\b/i.test(txt(e)) && !/sticker|document|camera/i.test(txt(e)));
-  if (!hit) {
-    const icon = document.querySelector("span[data-icon*='media-filled'], span[data-icon*='attach-image'], " +
-                                        "span[data-icon*='media-multiple'], span[data-icon*='gallery'], span[data-icon*='photo']");
-    if (icon) hit = icon.closest('li, [role=button], [role=menuitem], button') || icon;
-  }
-  if (!hit) return false;
-  hit = hit.closest('li, [role=button], [role=menuitem], button') || hit;
-  hit.setAttribute('data-chimera-item', token);
-  return true;
-}
-"""
 SEL_SEND_MEDIA = ("div[role='button'][aria-label='Send'], button[aria-label='Send'], [aria-label='Send' i], "
                   "span[data-icon='send'], span[data-icon*='send'], div[role='button'] span[data-icon*='send']")
 
 
-async def _open_attach(page):
-    attach = await _first(page, SEL_ATTACH, 8000)
-    if attach is None:
-        raise WAError("Couldn't find the attach (+) button.")
-    await attach.click()
-    await page.wait_for_timeout(700)
+_MENU_TEXT = {"photos": re.compile(r"^\s*photos?\s*(&|and)\s*videos?\s*$", re.I),
+              "document": re.compile(r"^\s*documents?\s*$", re.I)}
+_ATTACH_NAME = re.compile(r"attach", re.I)
 
-
-_MENU_ITEMS_JS = r"""
-() => [...document.querySelectorAll('li, [role=menuitem], [role=button], button')]
-  .filter(e => e.offsetParent !== null && !e.closest('#pane-side, #side, header'))
-  .map(e => ((e.getAttribute('aria-label') || e.innerText || '').trim().split('\n')[0]
-             + (e.querySelector('[data-icon]') ? ' {' + e.querySelector('[data-icon]').getAttribute('data-icon') + '}' : '')))
-  .filter(t => t && t.length < 60).slice(-20)
+_PAGE_DUMP_JS = r"""
+() => {
+  const vis = e => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length);
+  const d = e => [e.tagName.toLowerCase(), e.getAttribute('role') && 'role=' + e.getAttribute('role'),
+                  e.getAttribute('aria-label') && 'aria=' + e.getAttribute('aria-label'),
+                  e.getAttribute('title') && 'title=' + e.getAttribute('title'),
+                  e.querySelector && e.querySelector('[data-icon]') && 'icon=' + e.querySelector('[data-icon]').getAttribute('data-icon'),
+                  (e.innerText || '').trim().split('\n')[0].slice(0, 40)].filter(Boolean).join(' | ');
+  return {
+    footer: [...document.querySelectorAll('#main footer button, #main footer [role=button], #main footer span[data-icon]')].filter(vis).map(d).slice(0, 25),
+    menu: [...document.querySelectorAll('li, [role=menuitem], [role=button], button')]
+            .filter(e => vis(e) && !e.closest('#pane-side, #side')).map(d).slice(-30),
+    inputs: [...document.querySelectorAll("input[type='file']")].map(i => `accept=${i.accept} multiple=${i.multiple}`),
+  };
+}
 """
+
+
 _DROP_FILES_JS = r"""
 async ([items]) => {
   // Drop the images on the open chat, like dragging them in from Explorer.
@@ -401,7 +454,8 @@ async def _drop_files(page, files):
             for t in ("dragEnter", "dragOver", "drop"):
                 await cdp.send("Input.dispatchDragEvent", {"type": t, "x": x, "y": y, "data": data})
                 await page.wait_for_timeout(150)
-            if await _first(page, SEL_CAPTION, 5000) is not None:
+            send, box, _how = await _preview(page, 5000)
+            if send is not None or box is not None:
                 return True
     except Exception:
         pass
@@ -409,82 +463,204 @@ async def _drop_files(page, files):
     items = []
     for f in files:
         with open(f, "rb") as fh:
-            items.append({"name": os.path.basename(f), "type": "image/png" if f.lower().endswith(".png") else "image/jpeg",
+            items.append({"name": os.path.basename(f), "type": ("image/png" if f.lower().endswith(".png") else "application/pdf"
+                                   if f.lower().endswith(".pdf") else "image/jpeg"),
                           "b64": base64.b64encode(fh.read()).decode()})
     return await page.evaluate(_DROP_FILES_JS, [items])
 
 
-async def _choose_files(page, files):
+async def _dump_page(page, name):
+    """Saves what WhatsApp Web showed (buttons, menu, upload fields) next to the screenshot, for diagnosis."""
+    try:
+        info = await page.evaluate(_PAGE_DUMP_JS)
+        os.makedirs(SHOT_DIR, exist_ok=True)
+        path = os.path.join(SHOT_DIR, f"{datetime.now():%Y%m%d_%H%M%S}_{name}.txt")
+        with open(path, "w", encoding="utf-8") as f:
+            for k, v in info.items():
+                f.write(f"== {k}\n" + "\n".join(v) + "\n\n")
+        return path
+    except Exception:
+        return None
+
+
+async def _visible(loc):
+    try:
+        n = await loc.count()
+        for i in range(n):
+            if await loc.nth(i).is_visible():
+                return loc.nth(i)
+    except Exception:
+        pass
+    return None
+
+
+async def _menu_item(page, which, timeout_ms=5000):
+    """The attach-menu entry ('Photos & videos' or 'Document') as a person sees it."""
+    pat = _MENU_TEXT[which]
+    deadline = time.time() + timeout_ms / 1000
+    while True:
+        for loc in (page.get_by_role("button", name=pat), page.get_by_role("menuitem", name=pat),
+                    page.get_by_role("listitem").filter(has_text=pat), page.get_by_text(pat)):
+            el = await _visible(loc)
+            if el is not None:
+                return el
+        if time.time() >= deadline:
+            return None
+        await page.wait_for_timeout(300)
+
+
+async def _open_attach(page):
+    """Opens the + (Attach) menu in the chat. Returns True when its entries are showing."""
+    for attempt in range(2):
+        btn = await _visible(page.locator("#main footer").get_by_role("button", name=_ATTACH_NAME))
+        if btn is None:
+            btn = await _first(page, SEL_ATTACH, 8000)
+        if btn is None:
+            raise WAError("Couldn't find the attach (+) button.")
+        await btn.click()
+        if await _menu_item(page, "document", 2500) or await _menu_item(page, "photos", 500):
+            return True
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(400)
+    return False
+
+
+async def _attach(page, files, which):
     """
-    Gets the images into WhatsApp's photo preview. Returns how many it took.
-      1) Attach > Photos & videos > the file picker it opens (what a person does)
-      2) the hidden "Photos & videos" upload field
-      3) dropping the images on the chat (works whatever the attach menu looks like)
+    Gets files into WhatsApp's send preview: photos through 'Photos & videos',
+    PDFs through 'Document' — exactly like a person. Returns how many it took.
+    Fallbacks: the matching hidden upload field, then dropping the files on the chat.
     Never the sticker upload.
     """
-    await _open_attach(page)
-    token = uuid.uuid4().hex[:8]
-    found = False
-    for _ in range(8):                      # the menu animates in
-        if await page.evaluate(_PHOTOS_ITEM_JS, [token]):
-            found = True
-            break
-        await page.wait_for_timeout(400)
-    if found:
+    label = "Photos & videos" if which == "photos" else "Document"
+    menu_open = await _open_attach(page)
+    item = await _menu_item(page, which, 3000) if menu_open else None
+    if item is not None:
         try:
-            async with page.expect_file_chooser(timeout=6000) as fc:
-                await page.locator(f"[data-chimera-item='{token}']").first.click()
+            async with page.expect_file_chooser(timeout=8000) as fc:
+                await item.click()
             chooser = await fc.value
             take = files if chooser.is_multiple() else files[:1]
             await chooser.set_files(take)
             return len(take)
-        except Exception:
-            pass
-    info = await page.evaluate(_PICK_PHOTO_INPUT_JS, [token])
-    if info:
-        take = files if info["multiple"] else files[:1]
-        await page.locator(f"input[data-chimera-input='{token}']").set_input_files(take)
-        return len(take)
-    seen = await page.evaluate(_MENU_ITEMS_JS)
+        except Exception as e:
+            WA.log(f"Clicked '{label}' but no file window opened ({str(e).splitlines()[0][:80]}) — trying another way.",
+                   "warn")
+    token = uuid.uuid4().hex[:8]
+    if which == "photos":
+        info = await page.evaluate(_PICK_PHOTO_INPUT_JS, [token])
+        if info:
+            take = files if info["multiple"] else files[:1]
+            await page.locator(f"input[data-chimera-input='{token}']").set_input_files(take)
+            return len(take)
+    dump = await _dump_page(page, f"attach_{which}")
     await page.keyboard.press("Escape")
     await page.wait_for_timeout(300)
-    WA.log("Attach menu has no 'Photos & videos' Chimera recognises — dropping the images on the chat instead. "
-           "(Menu items seen: " + "; ".join(seen[-10:]) + ")", "warn")
+    WA.log(f"'{label}' didn't work here — dropping the files on the chat instead."
+           + (f" (Page details saved: {dump})" if dump else ""), "warn")
     if await _drop_files(page, files):
         return len(files)
-    raise WAError("Couldn't attach the images: no 'Photos & videos' in the attach menu and the chat didn't accept "
-                  "dropped images. Menu items seen: " + "; ".join(seen[-10:]))
+    raise WAError(f"Couldn't attach the files through '{label}' or by dropping them on the chat."
+                  + (f" Page details: {dump}" if dump else ""))
 
 
-async def _send_images(page, files, caption):
-    """Attach the report pages as photos and send them (in as many messages as WhatsApp needs)."""
+_PREVIEW_JS = r"""
+([token]) => {
+  // WhatsApp's send preview (after attaching): its message box ("Add a caption"
+  // or "Type a message") and its green round Send button (often with a count badge).
+  const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+  const W = innerWidth, H = innerHeight;
+  const inChatList = e => !!e.closest('#pane-side, #side, header');
+  let send = null, how = '';
+  const byLabel = [...document.querySelectorAll('[aria-label]')]
+    .filter(e => vis(e) && !inChatList(e) && /^send\b/i.test(e.getAttribute('aria-label') || ''));
+  if (byLabel.length) { send = byLabel[byLabel.length - 1]; how = 'label'; }
+  if (!send) {
+    const icons = [...document.querySelectorAll("[data-icon*='send']")].filter(e => vis(e) && !inChatList(e));
+    if (icons.length) { const i = icons[icons.length - 1]; send = i.closest("[role=button], button") || i; how = 'icon'; }
+  }
+  if (!send) {   // the big green round button in the lower right
+    const greens = [...document.querySelectorAll('div, span, button')].filter(e => {
+      if (!vis(e) || inChatList(e)) return false;
+      const r = e.getBoundingClientRect();
+      if (r.width < 36 || r.width > 90 || Math.abs(r.width - r.height) > 8 || r.left < W * 0.45 || r.top < H * 0.55) return false;
+      const m = getComputedStyle(e).backgroundColor.match(/\d+/g); if (!m) return false;
+      const [R, G, B] = m.map(Number);
+      return G > 140 && R < 110 && B < 160 && G - R > 60;
+    });
+    if (greens.length) { greens.sort((a, b) => b.getBoundingClientRect().right + b.getBoundingClientRect().bottom
+                                            - a.getBoundingClientRect().right - a.getBoundingClientRect().bottom);
+                         send = greens[0]; how = 'green'; }
+  }
+  const boxes = [...document.querySelectorAll("[contenteditable='true']")]
+    .filter(e => vis(e) && !inChatList(e) && !e.closest('#main footer'));
+  const named = boxes.filter(e => /caption|message/i.test((e.getAttribute('aria-label') || '') + ' ' +
+                                   (e.getAttribute('aria-placeholder') || '') + ' ' + (e.getAttribute('data-placeholder') || '')));
+  const box = (named.length ? named : boxes).slice(-1)[0] || null;
+  if (send) send.setAttribute('data-chimera-send', token);
+  if (box) box.setAttribute('data-chimera-box', token);
+  return {send: !!send, how, box: !!box};
+}
+"""
+
+
+async def _preview(page, timeout_ms=20000):
+    """Waits for the send preview. Returns (send locator | None, message box locator | None, how)."""
+    deadline = time.time() + timeout_ms / 1000
+    while True:
+        token = uuid.uuid4().hex[:8]
+        r = await page.evaluate(_PREVIEW_JS, [token])
+        if r["send"] or time.time() >= deadline:
+            return ((page.locator(f"[data-chimera-send='{token}']").first if r["send"] else None),
+                    (page.locator(f"[data-chimera-box='{token}']").first if r["box"] else None), r["how"])
+        await page.wait_for_timeout(400)
+
+
+async def _send_files(page, files, caption, which="photos"):
+    """Attach (photos or PDF documents) and send, in as many messages as WhatsApp needs."""
     i, first = 0, True
+    what = "images" if which == "photos" else "PDF(s)"
     while i < len(files):
-        n = await _choose_files(page, files[i:])
+        n = await _attach(page, files[i:], which)
         if n < len(files) - i and first:
-            WA.log(f"WhatsApp took one image at a time here — sending {len(files)} images one by one.")
-        cap = await _first(page, SEL_CAPTION, 15000)
-        if cap is None:
+            WA.log(f"WhatsApp took one file at a time here — sending {len(files)} {what} one by one.")
+        send, box, how = await _preview(page)
+        if send is None and box is None:
             shot = await _shot(page, "no_preview")
-            raise WAError("WhatsApp didn't open the photo preview." + (f" Screenshot: {shot}" if shot else ""))
-        await cap.click()
-        if caption and first:
-            await cap.type(caption, delay=10)
-        # send: Enter in the caption box (works in every WhatsApp version); the Send button as a backup
-        await cap.press("Enter")
-        await page.wait_for_timeout(1200)
-        if await page.locator(SEL_CAPTION).count():
-            btn = await _first(page, SEL_SEND_MEDIA, 4000)
-            if btn is None:
+            dump = await _dump_page(page, "no_preview")
+            raise WAError("WhatsApp didn't open the send preview." + (f" Screenshot: {shot}" if shot else "")
+                          + (f" Page details: {dump}" if dump else ""))
+        if box is not None and caption and first:
+            await box.click()
+            await box.type(caption, delay=10)
+        if send is not None:
+            await send.click()                         # the green Send button
+        else:
+            await box.click()
+            await box.press("Enter")
+        await page.wait_for_timeout(1500)
+        still, _b, _h = await _preview(page, 1500)
+        if still is not None:                          # preview still open: try the other way once
+            if box is not None:
+                await box.click()
+                await box.press("Enter")
+            else:
+                await still.evaluate("e => e.click()")
+            await page.wait_for_timeout(1500)
+            still, _b, _h = await _preview(page, 1500)
+            if still is not None:
                 shot = await _shot(page, "send_button")
-                raise WAError("The photo preview opened but couldn't be sent (no Send button found)."
-                              + (f" Screenshot: {shot}" if shot else ""))
-            await btn.click()
-            await page.wait_for_timeout(1200)
+                dump = await _dump_page(page, "send_button")
+                raise WAError(f"The preview opened but pressing Send didn't send it (found Send by {how})."
+                              + (f" Screenshot: {shot}" if shot else "") + (f" Page details: {dump}" if dump else ""))
         if not await _wait_sent(page):
             raise WAError("WhatsApp is still sending after 90 s (slow connection?). Check the chat.")
         i += n
         first = False
+
+
+async def _send_images(page, files, caption):
+    await _send_files(page, files, caption, "photos")
 
 
 async def _send_text(page, text):
@@ -562,12 +738,28 @@ def link_whatsapp():
     return _start("link", lambda: _run("link", False, fn))
 
 
+_CHAT_NAMES_JS = r"""
+() => {
+  // Only the contact / group NAME of each chat row (the first title in the row) —
+  // not the last-message preview, which also carries a title.
+  const pane = document.querySelector('#pane-side'); if (!pane) return [];
+  const rows = [...pane.querySelectorAll("[role=listitem], [role=row]")];
+  const names = rows.length
+    ? rows.map(r => { const t = r.querySelector('span[title]'); return t ? t.getAttribute('title') : ''; })
+    : [...pane.querySelectorAll('span[title]')].filter(s => {
+        const row = s.closest('div[tabindex], [aria-selected]') || s.parentElement;
+        return row.querySelector('span[title]') === s;          // first title in its row
+      }).map(s => s.getAttribute('title'));
+  return names.map(n => (n || '').trim()).filter(Boolean);
+}
+"""
+
+
 async def _read_chats(page, scrolls=12):
     names = []
     pane = page.locator("#pane-side")
     for _ in range(scrolls):
-        found = await page.evaluate("""() => [...document.querySelectorAll('#pane-side span[title]')]
-                                       .map(s => s.getAttribute('title').trim()).filter(Boolean)""")
+        found = await page.evaluate(_CHAT_NAMES_JS)
         for n in found:
             if n not in names and not re.match(r"^\d{1,2}:\d{2}", n):
                 names.append(n)
@@ -618,7 +810,7 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
     styles_built = sorted({o["style"] for rep in run["summary"].get("reports", []) for o in rep.get("outputs", [])})
     _wa = AS.get_automation_settings()["wa_style"]
     used = _wa if _wa in styles_built else (styles_built[0] if styles_built else "?")
-    if not any(p["files"] for p in plan):
+    if not any(p["files"] or p.get("pdfs") for p in plan):
         built = sum(len(r.get("images") or []) for r in run["summary"].get("reports", []))
         return {"ok": False, "message": ("No WhatsApp images were made for this run — install the missing package: "
                                          "py -m pip install -r requirements.txt, then build the reports again.")
@@ -630,26 +822,32 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
 
         async def fn(page):
             sent, failed = 0, 0
-            WA.log(f"Sending the {used} images (built: {', '.join(styles_built) or 'none'}"
+            WA.log(f"Sending the {used} reports (built: {', '.join(styles_built) or 'none'}"
                    + ("; choose which in WhatsApp › Sending options" if len(styles_built) > 1 else "") + ").")
             for item in plan:
-                if not item["files"]:
+                pdfs = item.get("pdfs") or []
+                if not item["files"] and not pdfs:
                     _log_delivery(report_run_id, item["chat_name"], 0, "skipped", "No matching report pages.")
                     WA.log(f"{item['chat_name']}: nothing to send for this rule.", "warn")
                     continue
-                missing = [f for f in item["files"] if not os.path.exists(f)]
+                missing = [f for f in item["files"] + pdfs if not os.path.exists(f)]
                 if missing:
-                    _log_delivery(report_run_id, item["chat_name"], 0, "failed", "Report images are missing on disk.")
+                    _log_delivery(report_run_id, item["chat_name"], 0, "failed", "Report files are missing on disk.")
                     failed += 1
                     continue
                 try:
                     WA.log(f"Opening '{item['chat_name']}'…")
                     await _open_chat(page, item["chat_name"])
-                    for b in range(0, len(item["files"]), BATCH):
-                        chunk = item["files"][b:b + BATCH]
-                        await _send_images(page, chunk, item["caption"] if b == 0 else "")
-                        WA.log(f"{item['chat_name']}: sent {len(chunk)} image(s).")
-                    _log_delivery(report_run_id, item["chat_name"], len(item["files"]), "sent", item["caption"])
+                    for bt in item.get("batches") or []:          # SKU, then Pivot, then Hourly
+                        for k in range(0, len(bt["files"]), BATCH):
+                            chunk = bt["files"][k:k + BATCH]
+                            await _send_files(page, chunk, bt["caption"] if k == 0 else "", "photos")
+                            WA.log(f"{item['chat_name']}: sent {len(chunk)} {bt['label']} image(s) "
+                                   f"({item.get('orientation', 'portrait')}).")
+                    if pdfs:
+                        await _send_files(page, pdfs, "" if item["files"] else item["caption"], "document")
+                        WA.log(f"{item['chat_name']}: sent {len(pdfs)} PDF(s) (Document).")
+                    _log_delivery(report_run_id, item["chat_name"], len(item["files"]) + len(pdfs), "sent", item["caption"])
                     sent += 1
                 except WAError as e:
                     shot = await _shot(page, "send_failed")

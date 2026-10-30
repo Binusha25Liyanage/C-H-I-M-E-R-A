@@ -321,7 +321,11 @@ class PipelineTest(unittest.TestCase):
         self.assertFalse(W.save_rule({"chat_name": "x", "kinds": []})[0])
         plan = {p["chat_name"]: p for p in W.plan_delivery(run)}
         self.assertEqual(plan["Mgr1 team"]["pages"], ["SKU Report - Mgr1", "Pivot Report - Mgr1"])
-        self.assertEqual(plan["Mgr1 team"]["caption"], f"Pivot Report, SKU Report {D}")
+        self.assertEqual(plan["Mgr1 team"]["caption"], f"SKU Report, Pivot Report {D}")
+        # sent report by report (SKU first), each message with its own caption
+        self.assertEqual([(b["kind"], b["caption"]) for b in plan["Mgr1 team"]["batches"]],
+                         [("sku", f"SKU Report {D}"), ("pivot", f"Pivot Report {D}")])
+        self.assertEqual(plan["Mgr1 team"]["orientation"], "portrait")
         self.assertTrue(all(pg.startswith("Hourly") for pg in plan["All"]["pages"]))
 
     def test_classic_focus_label(self):
