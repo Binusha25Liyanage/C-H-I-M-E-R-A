@@ -332,11 +332,49 @@ async def _first(page, selector, timeout_ms=10000):
     return None
 
 
+# ---------------------------------------------------------------------------
+# Clicking robustly + knowing which step we're on (for clear error messages)
+# ---------------------------------------------------------------------------
+_STEP = {"name": ""}
+
+
+def _at(step):
+    _STEP["name"] = step
+
+
+async def _click(loc, what, js_ok=True):
+    """
+    Click like a person; if WhatsApp has something on top (a banner, a tip, a
+    pop-up), press Escape and force the click; finally click from inside the page.
+    Never waits Playwright's default 30 s.
+    """
+    try:
+        await loc.click(timeout=6000)
+        return
+    except Exception:
+        pass
+    try:
+        await loc.page.keyboard.press("Escape")
+        await loc.click(timeout=4000, force=True)
+        return
+    except Exception:
+        pass
+    if js_ok:
+        try:
+            await loc.evaluate("e => e.click()")
+            return
+        except Exception:
+            pass
+    raise WAError(f"Couldn't click {what} — something on WhatsApp's screen was in the way.")
+
+
 async def _open_chat(page, name):
+    _at(f"opening the chat '{name}'")
+    await page.keyboard.press("Escape")
     box = await _first(page, SEL_SEARCH, 10000)
     if box is None:
         raise WAError("Couldn't find WhatsApp's search box.")
-    await box.click()
+    await _click(box, "the search box")
     await page.keyboard.press("Control+A")
     await page.keyboard.press("Backspace")
     await box.type(name, delay=25)
@@ -354,7 +392,7 @@ async def _open_chat(page, name):
             await page.wait_for_timeout(400)
     if hit is None:
         raise WAError(f"No chat called '{name}' found. Check the exact name (it must match WhatsApp).")
-    await hit.click()
+    await _click(hit, f"the chat '{name}'")
     header = page.locator("#main header")
     try:
         await header.wait_for(state="visible", timeout=8000)
@@ -364,7 +402,7 @@ async def _open_chat(page, name):
         raise WAError(f"The open chat isn't '{name}' — stopped to avoid sending to the wrong chat.")
     # clear the search so the next chat search starts clean
     try:
-        await box.click()
+        await box.click(timeout=4000)
         await page.keyboard.press("Control+A")
         await page.keyboard.press("Backspace")
     except Exception:
@@ -517,7 +555,7 @@ async def _open_attach(page):
             btn = await _first(page, SEL_ATTACH, 8000)
         if btn is None:
             raise WAError("Couldn't find the attach (+) button.")
-        await btn.click()
+        await _click(btn, "the attach (+) button")
         if await _menu_item(page, "document", 2500) or await _menu_item(page, "photos", 500):
             return True
         await page.keyboard.press("Escape")
@@ -533,12 +571,13 @@ async def _attach(page, files, which):
     Never the sticker upload.
     """
     label = "Photos & videos" if which == "photos" else "Document"
+    _at(f"attaching through '{label}'")
     menu_open = await _open_attach(page)
     item = await _menu_item(page, which, 3000) if menu_open else None
     if item is not None:
         try:
             async with page.expect_file_chooser(timeout=8000) as fc:
-                await item.click()
+                await _click(item, f"'{label}'", js_ok=False)
             chooser = await fc.value
             take = files if chooser.is_multiple() else files[:1]
             await chooser.set_files(take)
@@ -630,19 +669,20 @@ async def _send_files(page, files, caption, which="photos"):
             dump = await _dump_page(page, "no_preview")
             raise WAError("WhatsApp didn't open the send preview." + (f" Screenshot: {shot}" if shot else "")
                           + (f" Page details: {dump}" if dump else ""))
+        _at("sending from WhatsApp's preview")
         if box is not None and caption and first:
-            await box.click()
+            await _click(box, "the message box in the preview")
             await box.type(caption, delay=10)
         if send is not None:
-            await send.click()                         # the green Send button
+            await _click(send, "the green Send button")
         else:
-            await box.click()
+            await _click(box, "the message box in the preview")
             await box.press("Enter")
         await page.wait_for_timeout(1500)
         still, _b, _h = await _preview(page, 1500)
         if still is not None:                          # preview still open: try the other way once
             if box is not None:
-                await box.click()
+                await _click(box, "the message box in the preview")
                 await box.press("Enter")
             else:
                 await still.evaluate("e => e.click()")
@@ -667,7 +707,7 @@ async def _send_text(page, text):
     box = await _first(page, SEL_COMPOSE, 8000)
     if box is None:
         raise WAError("Couldn't find the message box.")
-    await box.click()
+    await _click(box, "the message box")
     await box.type(text, delay=15)
     await page.keyboard.press("Enter")
     if not await _wait_sent(page, 45):
@@ -713,7 +753,7 @@ def _run(action, headless, fn):
         WA.finish(res)
         return res
     except Exception as e:
-        msg = str(e).splitlines()[0][:300]
+        msg = (f"Stopped while {_STEP['name']}: " if _STEP["name"] else "") + str(e).splitlines()[0][:300]
         WA.log(msg, "error")
         res = {"ok": False, "message": f"WhatsApp error: {msg}"}
         WA.finish(res)
@@ -849,11 +889,18 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
                         WA.log(f"{item['chat_name']}: sent {len(pdfs)} PDF(s) (Document).")
                     _log_delivery(report_run_id, item["chat_name"], len(item["files"]) + len(pdfs), "sent", item["caption"])
                     sent += 1
-                except WAError as e:
+                except Exception as e:
                     shot = await _shot(page, "send_failed")
-                    _log_delivery(report_run_id, item["chat_name"], 0, "failed", str(e) + (f" ({shot})" if shot else ""))
-                    WA.log(f"{item['chat_name']}: {e}", "error")
+                    msg = str(e) if isinstance(e, WAError) else \
+                        f"Stopped while {_STEP['name'] or 'working in WhatsApp'}: {str(e).splitlines()[0][:160]}"
+                    _log_delivery(report_run_id, item["chat_name"], 0, "failed", msg + (f" ({shot})" if shot else ""))
+                    WA.log(f"{item['chat_name']}: {msg}", "error")
                     failed += 1
+                    try:                                  # leave a clean screen for the next chat
+                        await page.keyboard.press("Escape")
+                        await page.keyboard.press("Escape")
+                    except Exception:
+                        pass
             msg = f"Sent to {sent} chat(s)" + (f", {failed} failed" if failed else "") + "."
             return {"ok": failed == 0 and sent > 0, "message": msg, "sent": sent, "failed": failed}
         return _run("send", s["wa_show_browser"] != "1", fn)
