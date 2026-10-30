@@ -636,23 +636,28 @@ _PREVIEW_JS = r"""
   const named = boxes.filter(e => /caption|message/i.test((e.getAttribute('aria-label') || '') + ' ' +
                                    (e.getAttribute('aria-placeholder') || '') + ' ' + (e.getAttribute('data-placeholder') || '')));
   const box = (named.length ? named : boxes).slice(-1)[0] || null;
-  if (send) send.setAttribute('data-chimera-send', token);
-  if (box) box.setAttribute('data-chimera-box', token);
-  return {send: !!send, how, box: !!box};
+  // Return where they are on screen: WhatsApp redraws these elements often, so
+  // Chimera clicks the spot (like a person) instead of holding on to the element.
+  const pt = e => { if (!e) return null; e.scrollIntoView({block: 'nearest'}); const r = e.getBoundingClientRect();
+                    return {x: r.left + r.width / 2, y: r.top + r.height / 2}; };
+  if (token === 'click-send' && send) send.click();   // in-page click (when something covers the spot)
+  return {send: pt(send), how, box: pt(box)};
 }
 """
 
 
 async def _preview(page, timeout_ms=20000):
-    """Waits for the send preview. Returns (send locator | None, message box locator | None, how)."""
+    """Waits for the send preview. Returns (Send button point | None, message box point | None, how)."""
     deadline = time.time() + timeout_ms / 1000
     while True:
-        token = uuid.uuid4().hex[:8]
-        r = await page.evaluate(_PREVIEW_JS, [token])
+        r = await page.evaluate(_PREVIEW_JS, [""])
         if r["send"] or time.time() >= deadline:
-            return ((page.locator(f"[data-chimera-send='{token}']").first if r["send"] else None),
-                    (page.locator(f"[data-chimera-box='{token}']").first if r["box"] else None), r["how"])
+            return r["send"], r["box"], r["how"]
         await page.wait_for_timeout(400)
+
+
+async def _tap(page, pt):
+    await page.mouse.click(pt["x"], pt["y"])
 
 
 async def _send_files(page, files, caption, which="photos"):
@@ -670,23 +675,29 @@ async def _send_files(page, files, caption, which="photos"):
             raise WAError("WhatsApp didn't open the send preview." + (f" Screenshot: {shot}" if shot else "")
                           + (f" Page details: {dump}" if dump else ""))
         _at("sending from WhatsApp's preview")
-        if box is not None and caption and first:
-            await _click(box, "the message box in the preview")
-            await box.type(caption, delay=10)
-        if send is not None:
-            await _click(send, "the green Send button")
-        else:
-            await _click(box, "the message box in the preview")
-            await box.press("Enter")
-        await page.wait_for_timeout(1500)
-        still, _b, _h = await _preview(page, 1500)
-        if still is not None:                          # preview still open: try the other way once
+        await page.wait_for_timeout(600)               # let the preview settle
+        if caption and first:
+            send, box, how = await _preview(page, 3000)
             if box is not None:
-                await _click(box, "the message box in the preview")
-                await box.press("Enter")
-            else:
-                await still.evaluate("e => e.click()")
+                await _tap(page, box)
+                await page.keyboard.insert_text(caption)   # in one go (WhatsApp redraws while typing)
+                await page.wait_for_timeout(300)
+        send, box, how = await _preview(page, 3000)   # positions fresh, right before sending
+        if send is not None:
+            await _tap(page, send)                     # the green Send button
+        elif box is not None:
+            await _tap(page, box)
+            await page.keyboard.press("Enter")
+        await page.wait_for_timeout(1500)
+        still, box2, _h = await _preview(page, 1500)
+        if still is not None:                          # preview still open: try the other way once
+            await page.evaluate(_PREVIEW_JS, ["click-send"])
             await page.wait_for_timeout(1500)
+            still, box2, _h = await _preview(page, 1500)
+            if still is not None and box2 is not None:
+                await _tap(page, box2)
+                await page.keyboard.press("Enter")
+                await page.wait_for_timeout(1500)
             still, _b, _h = await _preview(page, 1500)
             if still is not None:
                 shot = await _shot(page, "send_button")
