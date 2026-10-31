@@ -39,11 +39,14 @@ JOB_TYPES = {
                     "hint": "Itinerary, Territories and Outlet Master from SFA (coming next)."},
     "visit_state": {"label": "Visit state update", "available": False, "hint": "Coming soon."},
     "sequence": {"label": "Sequence update", "available": False, "hint": "Coming soon."},
+    "loadings": {"label": "Distributor loadings (prepare)", "available": True,
+                 "hint": "Reads the pending loading of every Daily distributor and asks for your approval — "
+                         "it never confirms a loading on its own."},
 }
 REPORT_DAYS = ("today", "yesterday")
 # Each job type has an on/off switch in automation_settings (Schedules > Automations).
 TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "master_sync": "auto_master_sync",
-               "visit_state": "auto_visit_state", "sequence": "auto_sequence"}
+               "visit_state": "auto_visit_state", "sequence": "auto_sequence", "loadings": "auto_loadings"}
 
 
 def type_on(job, settings):

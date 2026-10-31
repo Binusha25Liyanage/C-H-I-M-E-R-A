@@ -29,6 +29,7 @@ import sfa_store
 import report_pipeline
 import automation_store
 import schedule_store
+import loading_store
 import scheduler
 import notifications
 import whatsapp_sender
@@ -42,6 +43,8 @@ class Api:
         automation_store.init_schema()
         automation_store.mark_interrupted_runs()
         schedule_store.init_schema()
+        loading_store.init_schema()
+        loading_store.mark_interrupted()
         whatsapp_sender.init_schema()
         # IMPORTANT: anything that is not an API method must start with "_".
         # pywebview walks every public attribute of this object to build
@@ -609,9 +612,12 @@ class Api:
         ticked — pauses scheduled runs so nothing starts again by itself.
         """
         import sfa_automation
+        import loading_automation
         done = []
         if sfa_automation.force_stop():
             done.append("Stopped the SFA run in this window.")
+        if loading_automation.force_stop():
+            done.append("Stopped the Distributor Loadings run (nothing more will be confirmed).")
         if whatsapp_sender.force_stop():
             done.append("Closed the WhatsApp sending window.")
         holder = automation_store.lock_holder()
@@ -624,7 +630,7 @@ class Api:
                 if killed:
                     automation_store.release_lock()
                     automation_store.mark_interrupted_runs()
-            elif not sfa_automation.LIVE.snapshot().get("active"):
+            elif not sfa_automation.LIVE.snapshot().get("active") and not loading_automation.LIVE.snapshot().get("active"):
                 automation_store.release_lock()
                 automation_store.mark_interrupted_runs()
                 done.append("Cleared a run that was left unfinished when Chimera was closed.")
@@ -656,9 +662,93 @@ class Api:
             import sfa_automation
             sfa_automation.force_stop(timeout=5)
             whatsapp_sender.force_stop(timeout=5)
+            import loading_automation
+            loading_automation.force_stop(timeout=5)
         except Exception:
             pass
         automation_store.release_lock(only_if_mine=True)
+
+    # ------------------------------------------------------------
+    # Distributor Loadings
+    # ------------------------------------------------------------
+    def get_loadings_overview(self):
+        import loading_automation as LA
+        settings = automation_store.get_automation_settings()
+        ds = loading_store.list_distributors()
+        pend = loading_store.pending_items()
+        today = loading_store.today_summary()
+        cfg = sfa_config.load_config()
+        return {"distributors": ds, "pending_count": len(pend),
+                "stats": {"total": len(ds), "daily": sum(d["frequency"] == "daily" for d in ds),
+                          "pending": len(pend), "confirmed_today": today.get("confirmed", 0),
+                          "prepared_today": sum(today.values()), "nothing_today": today.get("nothing_pending", 0)},
+                "settings": {"loading_url": settings.get("loading_url") or loading_store.DEFAULT_URL,
+                             "loading_tabs": settings.get("loading_tabs") or "12",
+                             "auto_loadings": settings.get("auto_loadings", "1")},
+                "jobs": [{"id": j["id"], "name": j["name"], "summary": j["summary"], "enabled": j["enabled"]}
+                         for j in schedule_store.list_jobs() if j["job_type"] == "loadings"],
+                "live_active": LA.LIVE.snapshot().get("active", False),
+                "login_ready": bool(cfg.get("login_url") and cfg.get("username") and cfg.get("password")),
+                "filter_types": list(automation_store.FILTER_TYPES), "date_modes": list(automation_store.DATE_MODES),
+                "runs": loading_store.list_runs(15)}
+
+    def save_distributor(self, data):
+        ok, msg, d = loading_store.save_distributor(data or {})
+        return {"ok": ok, "message": msg, "distributor": d}
+
+    def delete_distributor(self, did):
+        loading_store.delete_distributor(int(did))
+        return {"ok": True}
+
+    def duplicate_distributor(self, did):
+        ok, msg, d = loading_store.duplicate_distributor(int(did))
+        return {"ok": ok, "message": msg, "distributor": d}
+
+    def set_distributor_frequency(self, ids, frequency):
+        ok = loading_store.set_frequency([int(i) for i in ids or []], frequency)
+        return {"ok": ok}
+
+    def save_loading_settings(self, values):
+        vals = {k: v for k, v in (values or {}).items() if k in ("loading_url", "loading_tabs", "auto_loadings")}
+        ok, msg = automation_store.save_automation_settings(vals)
+        return {"ok": ok, "message": msg}
+
+    def detect_loading_filters(self, url=None):
+        import loading_automation as LA
+        return LA.detect_filters(url or None)
+
+    def start_loading_prepare(self, distributor_ids=None, show_browser=False):
+        import loading_automation as LA
+        return LA.start_background(LA.run_prepare, distributor_ids=[int(i) for i in distributor_ids] if distributor_ids
+                                   else None, trigger="manual", headless=not show_browser)
+
+    def start_loading_confirm(self, item_ids, show_browser=False):
+        import loading_automation as LA
+        ids = [int(i) for i in item_ids or []]
+        if not ids:
+            return {"ok": False, "message": "Choose at least one loading to confirm."}
+        return LA.start_background(LA.run_confirm, item_ids=ids, trigger="manual", headless=not show_browser)
+
+    def get_pending_loadings(self):
+        return {"items": sorted(loading_store.pending_items(), key=lambda x: x["distributor_name"].lower())}
+
+    def get_loading_items(self, run_id):
+        return {"items": loading_store.list_items(run_id=int(run_id))}
+
+    def skip_loadings(self, item_ids):
+        loading_store.skip_items([int(i) for i in item_ids or []])
+        return {"ok": True}
+
+    def get_loading_live(self):
+        import loading_automation as LA
+        return LA.LIVE.snapshot()
+
+    def get_loading_log_text(self, run_id=None):
+        import loading_automation as LA
+        s = LA.LIVE.snapshot()
+        if run_id is None or s.get("run_id") == run_id:
+            return LA.log_text(s)
+        return loading_store.get_run_log(int(run_id)) or "No log kept for that run."
 
     def check_dependencies(self):
         """Python packages Chimera needs that aren't installed on this PC (shown as a banner)."""

@@ -32,7 +32,16 @@ function maybeAutoPreview(s) {
 window.maybeAutoPreview = maybeAutoPreview;
 SH.pillPrimed = false;
 async function refreshRunPill() {
+  let ls = null;   // a Distributor Loadings run shows in the same pill
+  try { if (window.pywebview.api.get_loading_live) ls = await window.pywebview.api.get_loading_live(); } catch (e) { ls = null; }
+  if (ls && window.onLoadingLive) window.onLoadingLive(ls);
   let s; try { s = await window.pywebview.api.get_live_run(); } catch (e) { return; }
+  if (ls && ls.active && !s.active) {
+    const lanes = ls.lanes || [], done = lanes.filter(l => !["queued", "running"].includes(l.status)).length;
+    document.getElementById("tb-run-text").textContent = `${ls.kind === "confirm" ? "Confirming loadings" : "Preparing loadings"} ${done}/${lanes.length}`;
+    document.getElementById("tb-run").style.display = ""; SH.pillLoading = true; return;
+  }
+  SH.pillLoading = false;
   const pill = document.getElementById("tb-run");
   if (!SH.pillPrimed) {   // a finished run from before this window opened isn't "new"
     SH.pillPrimed = true;
@@ -44,7 +53,9 @@ async function refreshRunPill() {
   document.getElementById("tb-run-text").textContent = lanes.length && s.phase === "downloading" ? `${phase} ${done}/${lanes.length}` : phase;
   pill.style.display = "";
 }
-document.getElementById("tb-run-open").addEventListener("click", () => { if (typeof openMonitor === "function") openMonitor(); });
+document.getElementById("tb-run-open").addEventListener("click", () => {
+  if (SH.pillLoading && window.openLdMonitor) { switchView("loadings"); openLdMonitor("Distributor loadings"); return; }
+  if (typeof openMonitor === "function") openMonitor(); });
 document.getElementById("tb-run-stop").addEventListener("click", () => openStopNow());
 
 // ---------------------------------------------------------------- Stop now (everywhere)
@@ -67,6 +78,7 @@ function openStopNow() {
     if (window.refreshClock) refreshClock();
     if (SH.view === "schedules" && window.loadSchedules) loadSchedules();
     if (SH.view === "automation" && window.loadAutomation) loadAutomation();
+    if (SH.view === "loadings" && window.loadLoadings) loadLoadings();
   };
 }
 window.openStopNow = openStopNow;
@@ -118,6 +130,7 @@ document.getElementById("notif-list").addEventListener("click", (e) => {
   document.getElementById("notif-panel").style.display = "none";
   if (ev.action.startsWith("preview:")) openPreview(Number(ev.action.split(":")[1]));
   else if (ev.action === "whatsapp") { switchView("automation"); selectAutomationTab("whatsapp"); }
+  else if (ev.action === "loadings-approve") { switchView("loadings"); if (window.openApproveLoadings) openApproveLoadings(); }
   else switchView(ev.action);
 });
 document.addEventListener("click", (e) => {

@@ -29,11 +29,18 @@
         <button class="nav-btn" data-view="visit-state"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 12l3 3 7-7"/></svg><span>Visit State Update</span><em class="nav-soon">Soon</em></button>
         <button class="nav-btn" data-view="sequence"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg><span>Sequence Update</span><em class="nav-soon">Soon</em></button>
         <button class="nav-btn" data-view="automation" data-tab="history"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg><span>Run History</span></button>
+        <div class="nav-group">Distribution</div>
+        <button class="nav-btn" data-view="loadings"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h13v11H1z"/><path d="M14 8h4l3 3v4h-7"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg><span>Distributor Loadings</span><em class="nav-badge" id="nav-load-badge" style="display:none"></em></button>
+        <div class="nav-group">Attendance</div>
+        <button class="nav-btn" data-view="rep-attendance"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M9 15l2 2 4-4"/></svg><span>Rep Attendance</span><em class="nav-soon">Soon</em></button>
         <div class="nav-group">Delivery</div>
         <button class="nav-btn" data-view="automation" data-tab="whatsapp"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg><span>WhatsApp</span></button>
         <div class="nav-group">Data</div>
+        <button class="nav-btn" data-view="data-sync"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5M3 21v-5h5"/></svg><span>Data Sync</span><em class="nav-soon">Soon</em></button>
         <button class="nav-btn" data-view="outlet-master"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg><span>Outlets &amp; Territories</span><em class="nav-soon">Soon</em></button>
         <button class="nav-btn" data-view="import-data"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6M9 15l3-3 3 3"/></svg><span>Manual Import</span></button>
+        <div class="nav-group">Monitoring</div>
+        <button class="nav-btn" data-view="activity"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>Activity Monitor</span><em class="nav-soon">Soon</em></button>
       </nav>
 
       <div class="sidebar-footer">
@@ -446,6 +453,67 @@
                     <div class="card"><p class="hint">Not yet built in this rebuild.</p></div>
         </section>
 
+        <!-- ============ DISTRIBUTOR LOADINGS ============ -->
+        <section id="view-loadings" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div><p class="hint">Chimera opens View Loadings for each distributor (up to 12 at a time), reads the pending loading
+              and shows it to you. <b>A loading is confirmed in SFA only after you approve it.</b></p></div>
+            <div class="heading-actions">
+              <button class="btn-outline" id="ld-add">+ Add distributor</button>
+              <button class="btn-primary" id="ld-prepare-daily">&#9654; Prepare today's loadings</button>
+            </div>
+          </div>
+          <div id="ld-approve-banner"></div>
+          <div class="stat-cards">
+            <div class="stat-card"><div class="stat-label">DAILY DISTRIBUTORS</div><div class="stat-value" id="ld-st-daily">&mdash;</div><div class="stat-foot" id="ld-st-daily-foot"></div></div>
+            <div class="stat-card"><div class="stat-label">WAITING FOR APPROVAL</div><div class="stat-value" id="ld-st-pending">&mdash;</div><div class="stat-foot">read from SFA, not confirmed</div></div>
+            <div class="stat-card"><div class="stat-label">CONFIRMED TODAY</div><div class="stat-value" id="ld-st-confirmed">&mdash;</div><div class="stat-foot">confirmed and verified in SFA</div></div>
+            <div class="stat-card"><div class="stat-label">NOTHING PENDING TODAY</div><div class="stat-value" id="ld-st-nothing">&mdash;</div><div class="stat-foot">no pending loading found</div></div>
+          </div>
+          <div class="card card-flush">
+            <div class="ld-toolbar">
+              <input type="search" id="ld-search" placeholder="Search distributor or code&hellip;">
+              <div class="seg" id="ld-freq-filter"><button data-f="all" class="on">All</button><button data-f="daily">Daily</button><button data-f="request">On request</button></div>
+              <span class="hint" id="ld-count"></span>
+            </div>
+            <div id="ld-bulk" class="ld-bulk" style="display:none;"></div>
+            <div id="ld-table"><p class="hint" style="padding:18px;">Loading&hellip;</p></div>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <h3>View Loadings page</h3>
+              <p class="hint">The SFA page Chimera searches on (same for every distributor &mdash; each distributor has its own filter values).</p>
+              <div class="form-row"><label style="flex:1;">URL <input type="text" id="ld-url" style="width:100%;"></label>
+                <button class="btn-outline" id="ld-url-save">Save</button></div>
+              <div class="form-row"><label>Distributors at once (browser tabs)
+                <span class="range-wrap"><input type="range" min="1" max="12" id="ld-tabs"><b id="ld-tabs-val"></b></span></label></div>
+              <div id="ld-settings-result"></div>
+            </div>
+            <div class="card">
+              <h3>Schedule &amp; safety</h3>
+              <div class="toggle-row"><div><b>Ask me before confirming</b><p class="hint">Always on &mdash; Chimera never confirms a loading by itself.</p></div>
+                <label class="switch2"><input type="checkbox" checked disabled><span></span></label></div>
+              <div id="ld-jobs"></div>
+              <div class="form-row" style="margin-top:8px;"><button class="btn-outline" id="ld-add-job">Prepare automatically each morning&hellip;</button>
+                <button class="btn-outline" data-goto="schedules">Open Schedules</button></div>
+            </div>
+          </div>
+          <div class="card card-flush"><div class="card-header-row" style="padding:16px 18px 0;"><h3>Recent loading runs</h3></div><div id="ld-runs"></div></div>
+        </section>
+
+        <section id="view-rep-attendance" class="view" style="display:none;">
+          <div class="card"><h3>Rep Attendance</h3><p class="hint">Planned: download the attendance report from SFA, build it in your layout and send it
+            to a WhatsApp group on its own daily schedule. It will be built once the example input and outputs are ready.</p></div>
+        </section>
+        <section id="view-data-sync" class="view" style="display:none;">
+          <div class="card"><h3>Data Sync</h3><p class="hint">Planned: download SFA Excels (Itinerary, Territories, Outlet Master and more) on their
+            own schedules and keep Chimera's tables up to date. It will be built once the example Excels and URLs are ready.</p></div>
+        </section>
+        <section id="view-activity" class="view" style="display:none;">
+          <div class="card"><h3>Activity Monitor</h3><p class="hint">Next update: everything Chimera did over a chosen period &mdash; runs, reports,
+            WhatsApp messages, loadings &mdash; with totals, a chart and details. Until then, see Run History and Recent loading runs.</p></div>
+        </section>
+
         <!-- ============ SCHEDULES ============ -->
         <section id="view-schedules" class="view" style="display:none;">
           <p class="hint view-intro">When Chimera runs each job. Every job follows Pause, Skip today and the holiday calendar.</p>
@@ -617,6 +685,18 @@
             <div class="form-row"><button id="rs-save-btn" class="btn-primary">Save rules</button></div>
             <div id="rs-result"></div>
           </div>
+          <div class="card">
+            <h3>Save location</h3>
+            <p class="hint">Where approved / saved reports (PDFs and WhatsApp images) go. Each run gets its own
+              <code>date\time</code> folder inside it. Reports waiting for approval stay in a <code>_pending</code> folder there until you approve them.</p>
+            <div class="folder-row"><code id="of-path">&hellip;</code></div>
+            <div class="form-row" style="margin-top:10px;">
+              <button class="btn-primary" id="of-choose">Change folder&hellip;</button>
+              <button class="btn-outline" id="of-open">Open</button>
+              <button class="btn-outline" id="of-reset">Use the default</button>
+            </div>
+            <div id="of-result"></div>
+          </div>
           </div>
 
           <div class="tab-panel" id="st-panel-groups" style="display:none;">
@@ -723,6 +803,7 @@
   <script src="js/main.js"></script>
   <script src="js/automation.js"></script>
   <script src="js/schedules.js"></script>
+  <script src="js/loadings.js"></script>
   <script src="js/shell.js"></script>
 </body>
 </html>

@@ -117,6 +117,9 @@ def _run_job(job, slot, trigger):
         r = sfa_automation.run_automation(report_date=day.isoformat(), trigger=trigger, slot=slot,
                                           profile_ids=job["options"].get("profile_ids") or None)
         return r
+    if job["job_type"] == "loadings":
+        import loading_automation
+        return loading_automation.run_prepare(trigger=trigger)
     return {"ok": False, "status": "skipped", "message": f"{job['type_label']} isn't available yet."}
 
 
@@ -158,7 +161,8 @@ class InAppScheduler:
         while not self._stop.wait(self.interval):
             try:
                 import sfa_automation
-                if sfa_automation.LIVE.snapshot().get("active"):
+                import loading_automation
+                if sfa_automation.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active"):
                     continue    # still due later in the grace window
                 run_due("scheduled")
             except Exception:

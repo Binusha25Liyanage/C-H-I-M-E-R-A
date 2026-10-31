@@ -62,6 +62,9 @@ DEFAULT_AUTOMATION = {
     "auto_master_sync": "1",
     "auto_visit_state": "1",
     "auto_sequence": "1",
+    "auto_loadings": "1",                # Distributor Loadings: prepare on schedule (never confirms by itself)
+    "loading_url": "https://lakmee.salespro.lk/it/loading",   # SFA View Loadings page
+    "loading_tabs": "12",
     "clock_offset_s": "",                # SFA server time minus PC time, seconds (last check)
     "clock_source": "",
     "clock_checked_at": "",
@@ -383,8 +386,15 @@ def save_automation_settings(values):
         elif k in ("wa_chats_cache", "notif_seen_at", "clock_source", "clock_checked_at"):
             pass
         elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
-                   "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence"):
+                   "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence",
+                   "auto_loadings"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
+        elif k == "loading_url":
+            if not re.match(r"^https?://", v):
+                return False, "The View Loadings URL must start with http:// or https://"
+        elif k == "loading_tabs":
+            if not v.isdigit() or not 1 <= int(v) <= MAX_PARALLEL_TABS:
+                return False, f"Loading tabs must be between 1 and {MAX_PARALLEL_TABS}."
         elif k == "parallel_tabs":
             if not v.isdigit() or not 1 <= int(v) <= MAX_PARALLEL_TABS:
                 return False, f"Parallel tabs must be between 1 and {MAX_PARALLEL_TABS}."

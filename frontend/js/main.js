@@ -16,6 +16,10 @@ const VIEW_META = {
   "visit-state": ["Automation", "Visit State Update"],
   "sequence": ["Automation", "Sequence Update"],
   "import-data": ["Data", "Manual Import"],
+  "loadings": ["Distribution", "Distributor Loadings"],
+  "rep-attendance": ["Attendance", "Rep Attendance"],
+  "data-sync": ["Data", "Data Sync"],
+  "activity": ["Monitoring", "Activity Monitor"],
   "outlet-master": ["Data", "Outlets & Territories"],
   "maintenance": ["System", "Maintenance"],
   "settings": ["System", "Settings"],
@@ -55,10 +59,11 @@ function switchView(view, tab) {
   target.style.display = "block";
   document.querySelector("main").scrollTop = 0; window.scrollTo(0, 0);
   if (view === "import-data") loadImportLog();
-  if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); loadDataUsage(); }
+  if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); loadDataUsage(); loadOutputFolder(); }
   if (view === "daily") { loadDailyStatus(); loadRuns(); refreshStyleDefaultLabel(); }
   if (view === "automation" && window.loadAutomation) window.loadAutomation();
   if (view === "schedules" && window.loadSchedules) window.loadSchedules();
+  if (view === "loadings" && window.loadLoadings) window.loadLoadings();
   if (view === "automation" && tab && window.selectAutomationTab) window.selectAutomationTab(tab);
   setShellTitle(view, tab);
 }
@@ -645,3 +650,24 @@ document.addEventListener("click", async (e) => {
   if (!r.ok) openModal({ title: "Saved reports", body: `<div class="problem-box">${escapeHtml(r.message)}</div>`,
                          footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
 });
+
+
+// ---------------- Settings: save location ----------------
+async function loadOutputFolder() {
+  try {
+    const loc = await window.pywebview.api.reports_location();
+    document.getElementById("of-path").textContent = loc.root;
+  } catch (e) {}
+}
+document.getElementById("of-choose").addEventListener("click", async () => {
+  const r = await window.pywebview.api.choose_output_folder();
+  if (r.cancelled) return;
+  document.getElementById("of-result").innerHTML = `<p class="${r.ok ? "hint" : "error"}">${escapeHtml(r.message)}</p>`;
+  loadOutputFolder();
+});
+document.getElementById("of-reset").addEventListener("click", async () => {
+  const r = await window.pywebview.api.reset_output_folder();
+  document.getElementById("of-result").innerHTML = `<p class="hint">${escapeHtml(r.message)}</p>`;
+  loadOutputFolder();
+});
+document.getElementById("of-open").addEventListener("click", () => window.pywebview.api.open_reports_folder("root"));

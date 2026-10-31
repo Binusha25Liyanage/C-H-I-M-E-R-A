@@ -585,6 +585,7 @@ async def _attach(page, files, which):
     """
     label = "Photos & videos" if which == "photos" else "Document"
     _at(f"attaching through '{label}'")
+    await _cancel_recording(page)
     menu_open = await _open_attach(page)
     item = await _menu_item(page, which, 3000) if menu_open else None
     if item is not None:
@@ -618,29 +619,36 @@ async def _attach(page, files, which):
 
 _PREVIEW_JS = r"""
 ([token]) => {
-  // WhatsApp's send preview (after attaching): its message box ("Add a caption"
-  // or "Type a message") and its green round Send button (often with a count badge).
+  // WhatsApp's send preview (after attaching): its own message box ("Add a caption"
+  // / "Type a message") and its green Send button. NEVER anything in the normal
+  // chat bar (#main footer): that's where the green MICROPHONE is.
   const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   const W = innerWidth, H = innerHeight;
-  const inChatList = e => !!e.closest('#pane-side, #side, header');
-  let send = null, how = '';
-  // never the microphone ("Send voice message" / ptt) or anything else that only starts with "Send"
-  const notMic = e => !/voice|ptt|mic|audio|sticker|gif|emoji/i.test((e.getAttribute('aria-label') || '') + ' ' +
-                      (e.getAttribute('data-icon') || '') + ' ' + ((e.querySelector && e.querySelector('[data-icon]') || {}).getAttribute?.('data-icon') || ''));
+  const outside = e => !e.closest('#pane-side, #side, header, #main footer');
+  const words = e => ((e.getAttribute('aria-label') || '') + ' ' + (e.getAttribute('data-icon') || '') + ' ' +
+                      [...e.querySelectorAll('[data-icon], [aria-label]')].map(x => (x.getAttribute('data-icon') || '') + ' ' +
+                      (x.getAttribute('aria-label') || '')).join(' '));
+  const notMic = e => !/voice|ptt|mic|audio|record|sticker|gif|emoji/i.test(words(e));
   const desc = e => `${e.tagName.toLowerCase()}${e.getAttribute('aria-label') ? ' "' + e.getAttribute('aria-label') + '"' : ''}` +
-                    `${e.querySelector && e.querySelector('[data-icon]') ? ' icon=' + e.querySelector('[data-icon]').getAttribute('data-icon') : ''}`;
+                    `${e.querySelector('[data-icon]') ? ' icon=' + e.querySelector('[data-icon]').getAttribute('data-icon') : ''}`;
+  // the preview's message box (outside the chat bar)
+  const boxes = [...document.querySelectorAll("[contenteditable='true']")].filter(e => vis(e) && outside(e));
+  const named = boxes.filter(e => /caption|message/i.test((e.getAttribute('aria-label') || '') + ' ' +
+                                   (e.getAttribute('aria-placeholder') || '') + ' ' + (e.getAttribute('data-placeholder') || '')));
+  const box = (named.length ? named : boxes).slice(-1)[0] || null;
+  let send = null, how = '';
   const byLabel = [...document.querySelectorAll('[aria-label]')]
-    .filter(e => vis(e) && !inChatList(e) && notMic(e) && /^send(\s*\(?\d*\)?)?$/i.test((e.getAttribute('aria-label') || '').trim()));
+    .filter(e => vis(e) && outside(e) && notMic(e) && /^send(\s*\(?\d*\)?)?$/i.test((e.getAttribute('aria-label') || '').trim()));
   if (byLabel.length) { send = byLabel[byLabel.length - 1]; how = 'label ' + desc(send); }
   if (!send) {
     const icons = [...document.querySelectorAll("[data-icon*='send']")]
-      .filter(e => vis(e) && !inChatList(e) && notMic(e) && !/voice|ptt/i.test(e.getAttribute('data-icon') || ''));
+      .filter(e => vis(e) && outside(e) && !/voice|ptt|mic|record/i.test(e.getAttribute('data-icon') || ''));
     if (icons.length) { const i = icons[icons.length - 1]; send = i.closest("[role=button], button") || i;
-                        how = 'icon ' + i.getAttribute('data-icon'); }
+                        if (!notMic(send)) send = null; else how = 'icon ' + i.getAttribute('data-icon'); }
   }
-  if (!send) {   // the big green round button in the lower right
+  if (!send && box) {   // only when the preview is surely open: its big green round button, lower right
     const greens = [...document.querySelectorAll('div, span, button')].filter(e => {
-      if (!vis(e) || inChatList(e)) return false;
+      if (!vis(e) || !outside(e) || !notMic(e)) return false;
       const r = e.getBoundingClientRect();
       if (r.width < 36 || r.width > 90 || Math.abs(r.width - r.height) > 8 || r.left < W * 0.45 || r.top < H * 0.55) return false;
       const m = getComputedStyle(e).backgroundColor.match(/\d+/g); if (!m) return false;
@@ -651,19 +659,36 @@ _PREVIEW_JS = r"""
                                             - a.getBoundingClientRect().right - a.getBoundingClientRect().bottom);
                          send = greens[0]; how = 'green round button ' + desc(send); }
   }
-  const boxes = [...document.querySelectorAll("[contenteditable='true']")]
-    .filter(e => vis(e) && !inChatList(e) && !e.closest('#main footer'));
-  const named = boxes.filter(e => /caption|message/i.test((e.getAttribute('aria-label') || '') + ' ' +
-                                   (e.getAttribute('aria-placeholder') || '') + ' ' + (e.getAttribute('data-placeholder') || '')));
-  const box = (named.length ? named : boxes).slice(-1)[0] || null;
   // Return where they are on screen: WhatsApp redraws these elements often, so
   // Chimera clicks the spot (like a person) instead of holding on to the element.
   const pt = e => { if (!e) return null; e.scrollIntoView({block: 'nearest'}); const r = e.getBoundingClientRect();
                     return {x: r.left + r.width / 2, y: r.top + r.height / 2}; };
   if (token === 'click-send' && send) send.click();   // in-page click (when something covers the spot)
-  return {send: pt(send), how, box: pt(box)};
+  return {send: pt(send), how, box: pt(box), open: !!(box || send)};
 }
 """
+_RECORDING_JS = r"""
+() => {
+  // A voice recording in the chat bar (timer + delete): cancel it, never send it.
+  const f = document.querySelector('#main footer'); if (!f) return false;
+  const txt = f.innerText || '';
+  const rec = /\b\d{1,2}:\d{2}\b/.test(txt) && f.querySelector("[aria-label*='delete' i], [aria-label*='cancel' i], [data-icon*='delete'], [data-icon*='trash']");
+  if (!rec) return false;
+  const del = f.querySelector("[aria-label*='delete' i], [aria-label*='cancel' i]") ||
+              (f.querySelector("[data-icon*='delete'], [data-icon*='trash']") || {}).closest?.('[role=button], button');
+  if (del) { del.click(); return true; }
+  return false;
+}
+"""
+
+
+async def _cancel_recording(page):
+    try:
+        if await page.evaluate(_RECORDING_JS):
+            WA.log("A voice recording had started in the chat — cancelled it (nothing was sent).", "warn")
+            await page.wait_for_timeout(500)
+    except Exception:
+        pass
 
 
 async def _preview(page, timeout_ms=20000):
@@ -671,7 +696,7 @@ async def _preview(page, timeout_ms=20000):
     deadline = time.time() + timeout_ms / 1000
     while True:
         r = await page.evaluate(_PREVIEW_JS, [""])
-        if r["send"] or time.time() >= deadline:
+        if r["open"] or time.time() >= deadline:
             return r["send"], r["box"], r["how"]
         await page.wait_for_timeout(400)
 
@@ -710,21 +735,23 @@ async def _send_files(page, files, caption, which="photos"):
             await _tap(page, box)
             await page.keyboard.press("Enter")
         await page.wait_for_timeout(1500)
-        still, box2, _h = await _preview(page, 1500)
-        if still is not None:                          # preview still open: try the other way once
+        still_send, box2, _h = await _preview(page, 1500)
+        if still_send is not None or box2 is not None:     # preview still open: try the other way once
             await page.evaluate(_PREVIEW_JS, ["click-send"])
             await page.wait_for_timeout(1500)
-            still, box2, _h = await _preview(page, 1500)
-            if still is not None and box2 is not None:
+            still_send, box2, _h = await _preview(page, 1500)
+            if box2 is not None:
                 await _tap(page, box2)
                 await page.keyboard.press("Enter")
                 await page.wait_for_timeout(1500)
-            still, _b, _h = await _preview(page, 1500)
-            if still is not None:
+            still_send, box2, _h = await _preview(page, 1500)
+            if still_send is not None or box2 is not None:
+                await _cancel_recording(page)
                 shot = await _shot(page, "send_button")
                 dump = await _dump_page(page, "send_button")
                 raise WAError(f"The preview opened but pressing Send didn't send it (found Send by {how})."
                               + (f" Screenshot: {shot}" if shot else "") + (f" Page details: {dump}" if dump else ""))
+        await _cancel_recording(page)
         if not await _wait_sent(page):
             raise WAError("WhatsApp is still sending after 90 s (slow connection?). Check the chat.")
         i += n

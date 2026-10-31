@@ -63,6 +63,23 @@ def events(limit=30):
                        "action": "whatsapp"})
     except Exception:
         pass
+    try:
+        import loading_store as LS
+        pend = LS.pending_items()
+        if pend:
+            ev.append({"time": max(p["prepared_at"] or "" for p in pend), "level": "warn", "source": "loadings",
+                       "title": f"{len(pend)} loading(s) waiting for your approval",
+                       "text": ", ".join(p["distributor_name"] for p in pend[:6]) + (" …" if len(pend) > 6 else ""),
+                       "action": "loadings-approve", "sticky": True})
+        for r in LS.list_runs(10):
+            if r["status"] == "running":
+                continue
+            ev.append({"time": r["finished_at"] or r["started_at"],
+                       "level": {"done": "success", "failed": "error", "cancelled": "info"}.get(r["status"], "warn"),
+                       "source": "loadings", "title": f"Distributor loadings — {'prepared' if r['kind'] == 'prepare' else 'confirmed'}",
+                       "text": r["message"] or "", "action": "loadings"})
+    except Exception:
+        pass
     ev.sort(key=lambda e: e["time"] or "", reverse=True)
     seen = AS.get_automation_settings().get("notif_seen_at", "")
     for e in ev[:limit]:
