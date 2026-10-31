@@ -30,6 +30,13 @@ if getattr(sys, "frozen", False):
 else:
     FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 
+# Windows touchpads give Edge/WebView2 an "elastic" bounce: scrolling past the
+# top drags the whole page down and shows an empty gap. Chimera is an app, not
+# a web page, so switch that off (frontend/css/theme.css also blocks it).
+_wv_args = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
+if "ElasticOverscroll" not in _wv_args:
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (_wv_args + " --disable-features=ElasticOverscroll").strip()
+
 INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
 ICON_PATH = os.path.join(FRONTEND_DIR, "assets", "chimera.ico")
 

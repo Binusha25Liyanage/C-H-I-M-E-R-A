@@ -16,6 +16,8 @@
 }
 
 * { box-sizing: border-box; }
+/* no rubber-band bounce past the top/bottom (Windows touchpads in WebView2) */
+html, body { overscroll-behavior: none; }
 body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--color-bg); color: var(--color-text); }
 
 .app-shell { display: flex; min-height: 100vh; }
@@ -524,3 +526,6 @@ mark { background: #ffe08a; color: inherit; padding: 0; border-radius: 2px; }
 .ap-shot { border: 1px solid #eee; border-radius: 8px; overflow: auto; max-height: 420px; padding: 4px; }
 .ap-shot img { width: 100%; display: block; }
 @media (max-width: 1100px) { .approve-grid { grid-template-columns: 1fr; } }
+
+/* scrolling inside a panel stops at its edge instead of dragging the page */
+.sidebar, .modal-body, .approve-list, .approve-detail, .ms-box, .combo-list, .log-box, .notif-list, #notif-list { overscroll-behavior: contain; }
