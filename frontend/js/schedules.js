@@ -85,6 +85,7 @@ const SC_SWITCHES = [
   ["auto_sfa_downloads", "SFA report downloads", "Scheduled download jobs run at their times."],
   ["auto_build_reports", "Build reports after downloading", "SKU, Pivot and Hourly are built when a download finishes."],
   ["wa_auto_send", "Send to WhatsApp automatically", "Reports go to the chats in your delivery rules once saved or approved."],
+  ["auto_loadings", "Distributor loadings", "Daily distributors' pending loadings are read on schedule. Confirming always waits for you."],
   ["auto_master_sync", "Master data sync", "Itinerary, Territories and Outlet Master from SFA.", true],
   ["auto_visit_state", "Visit state update", "Mandatory / Optional route changes in SFA.", true],
   ["auto_sequence", "Sequence update", "Outlet visit order in SFA.", true],
