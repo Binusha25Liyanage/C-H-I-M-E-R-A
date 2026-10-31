@@ -483,7 +483,31 @@ svg.nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: .85; }
 .stat-cards.three { grid-template-columns: repeat(3, 1fr); margin: 12px 0; }
 .empty-state { padding: 34px 18px; text-align: center; }
 .empty-state p { margin: 6px 0 14px; }
-.ms-box { max-height: 130px; overflow: auto; border: 1px solid #ddd; border-radius: 6px; padding: 6px 8px; display: grid; gap: 2px; font-size: 12px; }
+.ms-box { max-height: 168px; overflow: auto; border: 1px solid #ddd; border-radius: 6px; padding: 4px; display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 6px; font-size: 13px; background: #fff; }
+/* filter-table gives every input width:100% — checkboxes must stay small and sit beside their text */
+.filter-table .ms-box input[type=checkbox] { width: 15px; height: 15px; padding: 0; margin: 0; flex: 0 0 auto; accent-color: var(--color-primary); }
+.ms-opt { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px; cursor: pointer; line-height: 1.25; }
+.ms-opt:hover { background: #f6f6f7; }
+.ms-opt:has(input:checked) { background: #fff1f1; }
+.ms-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-empty { padding: 8px; grid-column: 1 / -1; }
+.ms-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; min-height: 22px; align-items: center; }
+.ms-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--color-primary); color: #fff; border-radius: 12px; padding: 2px 4px 2px 10px; font-size: 12px; font-weight: 600; }
+.ms-chip button { border: none; background: rgba(255,255,255,.22); color: #fff; width: 18px; height: 18px; border-radius: 50%; font-size: 10px; line-height: 18px; padding: 0; cursor: pointer; }
+.ms-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+.ms-tools .ms-search { flex: 1; }
+.ms-tools .link-btn { white-space: nowrap; font-size: 12px; }
+mark { background: #ffe08a; color: inherit; padding: 0; border-radius: 2px; }
+.combo { position: relative; }
+.filter-table .combo .combo-in { padding-right: 30px; }
+.combo-clear { position: absolute; right: 6px; top: 7px; border: none; background: #eee; width: 20px; height: 20px; border-radius: 50%; font-size: 10px; color: #666; cursor: pointer; padding: 0; }
+.combo-list { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 3px); background: #fff; border: 1px solid #ddd; border-radius: 8px;
+              box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 240px; overflow: auto; padding: 4px; }
+.combo-item { padding: 7px 10px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.combo-item:hover, .combo-item.on { background: #fff1f1; }
+.combo-item.on { box-shadow: inset 3px 0 0 var(--color-primary); }
+.combo-none { padding: 8px 10px; font-size: 12px; color: var(--color-ash); }
 .approve-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; background: var(--color-warn-bg);
                   color: var(--color-warn-text); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; }
 .approve-grid { display: grid; grid-template-columns: 290px 1fr; gap: 16px; min-height: 420px; }

@@ -216,6 +216,7 @@ function openDistributorEditor(d) {
     if (m) f.date_mode = m.value;
   });
   draw();
+  ldWirePickers(document.getElementById("de-filters"));
   document.getElementById("de-filters").addEventListener("change", (e) => {
     sync(); if (e.target.classList.contains("fi-type") || e.target.classList.contains("fi-mode")) draw(); });
   document.getElementById("de-filters").addEventListener("click", (e) => {
@@ -257,6 +258,82 @@ function openDistributorEditor(d) {
 }
 window.openDistributorEditor = openDistributorEditor;
 
+// ---------------------------------------------------------------- type-to-search pickers
+const ldChipsHtml = (vals) => vals.length ? vals.map(v => `<span class="ms-chip">${esc(v)}<button type="button" data-unpick="${esc(v)}" title="Remove">✕</button></span>`).join("")
+  : `<span class="hint" style="font-size:12px;">Nothing ticked — leave empty to ignore this filter.</span>`;
+const ldHi = (text, q) => { if (!q) return esc(text); const i = text.toLowerCase().indexOf(q.toLowerCase());
+  return i < 0 ? esc(text) : esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length)); };
+
+function ldComboShow(combo, q) {
+  const opts = JSON.parse(combo.querySelector(".combo-opts").textContent);
+  const ql = (q || "").toLowerCase();
+  const hits = opts.filter(o => !ql || o.toLowerCase().includes(ql))
+    .sort((a, b) => (b.toLowerCase().startsWith(ql) ? 1 : 0) - (a.toLowerCase().startsWith(ql) ? 1 : 0)).slice(0, 80);
+  const list = combo.querySelector(".combo-list");
+  list.innerHTML = hits.length ? hits.map((o, i) => `<div class="combo-item ${i === 0 && ql ? "on" : ""}" data-v="${esc(o)}">${ldHi(o, q)}</div>`).join("")
+    : `<div class="combo-none">No match — this exact text will be typed into SFA.</div>`;
+  list.style.display = "";
+}
+function ldComboPick(combo, v) {
+  const inp = combo.querySelector(".combo-in"); inp.value = v;
+  combo.querySelector(".combo-list").style.display = "none";
+  combo.querySelector(".combo-clear").style.display = v ? "" : "none";
+  inp.dispatchEvent(new Event("change", { bubbles: true }));
+}
+function ldMsRefresh(pick) {
+  const vals = [...pick.querySelectorAll(".fi-ms:checked")].map(c => c.value);
+  pick.querySelector(".ms-chips").innerHTML = ldChipsHtml(vals);
+}
+function ldWirePickers(root) {
+  root.addEventListener("focusin", (e) => { if (e.target.classList.contains("combo-in")) ldComboShow(e.target.closest(".combo"), ""); });
+  root.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.classList.contains("combo-in")) { ldComboShow(t.closest(".combo"), t.value); t.closest(".combo").querySelector(".combo-clear").style.display = t.value ? "" : "none"; }
+    if (t.classList.contains("ms-search")) {
+      const pick = t.closest(".ms-pick"), q = t.value.toLowerCase(); let n = 0;
+      pick.querySelectorAll(".ms-opt").forEach(l => { const show = !q || l.textContent.toLowerCase().includes(q); l.style.display = show ? "" : "none"; n += show;
+        l.querySelector("span").innerHTML = ldHi(l.querySelector("input").value, t.value); });
+      pick.querySelector(".ms-empty").style.display = n ? "none" : "";
+    }
+  });
+  root.addEventListener("keydown", (e) => {
+    const t = e.target;
+    if (t.classList.contains("combo-in")) {
+      const combo = t.closest(".combo"), list = combo.querySelector(".combo-list"), items = [...list.querySelectorAll(".combo-item")];
+      let i = items.findIndex(x => x.classList.contains("on"));
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault(); if (list.style.display === "none") ldComboShow(combo, t.value);
+        const all = [...list.querySelectorAll(".combo-item")]; if (!all.length) return;
+        i = e.key === "ArrowDown" ? Math.min(all.length - 1, i + 1) : Math.max(0, i - 1);
+        all.forEach((x, k) => x.classList.toggle("on", k === i)); all[i].scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") { e.preventDefault(); if (i >= 0) ldComboPick(combo, items[i].dataset.v); else list.style.display = "none"; }
+      else if (e.key === "Escape") { e.stopPropagation(); list.style.display = "none"; }
+    }
+    if (t.classList.contains("ms-search") && e.key === "Enter") {   // Enter ticks the only / first match
+      e.preventDefault(); const pick = t.closest(".ms-pick");
+      const first = [...pick.querySelectorAll(".ms-opt")].find(l => l.style.display !== "none");
+      if (first) { const c = first.querySelector("input"); c.checked = true; c.dispatchEvent(new Event("change", { bubbles: true })); t.select(); }
+    }
+  });
+  root.addEventListener("mousedown", (e) => {   // mousedown so the pick happens before the input loses focus
+    const it = e.target.closest(".combo-item");
+    if (it) { e.preventDefault(); ldComboPick(it.closest(".combo"), it.dataset.v); }
+  });
+  root.addEventListener("focusout", (e) => {
+    if (e.target.classList.contains("combo-in")) setTimeout(() => { const l = e.target.closest(".combo"); if (l) l.querySelector(".combo-list").style.display = "none"; }, 120);
+  });
+  root.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.classList.contains("combo-clear")) { ldComboPick(t.closest(".combo"), ""); t.closest(".combo").querySelector(".combo-in").focus(); }
+    const pick = t.closest(".ms-pick"); if (!pick) return;
+    const fire = () => { ldMsRefresh(pick); pick.dispatchEvent(new Event("change", { bubbles: true })); };
+    if (t.dataset.unpick !== undefined) { const c = [...pick.querySelectorAll(".fi-ms")].find(x => x.value === t.dataset.unpick); if (c) c.checked = false; fire(); }
+    if (t.classList.contains("ms-all")) { pick.querySelectorAll(".ms-opt").forEach(l => { if (l.style.display !== "none") l.querySelector("input").checked = true; }); fire(); }
+    if (t.classList.contains("ms-none")) { pick.querySelectorAll(".fi-ms").forEach(c => { c.checked = false; }); fire(); }
+  });
+  root.addEventListener("change", (e) => { if (e.target.classList.contains("fi-ms")) ldMsRefresh(e.target.closest(".ms-pick")); });
+}
+
 function ldValueInput(f) {
   const opts = f.options || [];
   if (f.type === "date") {
@@ -267,11 +344,19 @@ function ldValueInput(f) {
   if (f.type === "toggle") return `<select class="fi-value"><option value="on" ${f.value === "on" ? "selected" : ""}>On</option><option value="off" ${f.value !== "on" ? "selected" : ""}>Off</option></select>`;
   if (f.type === "multiselect") {
     const cur = Array.isArray(f.value) ? f.value : [];
-    return opts.length ? `<div class="ms-box">${opts.map(o => `<label><input type="checkbox" class="fi-ms" value="${esc(o)}" ${cur.includes(o) ? "checked" : ""}> ${esc(o)}</label>`).join("")}</div>`
-      : `<input class="fi-value" value="${esc(cur.join(", "))}" placeholder="values, separated by commas">`;
+    if (!opts.length) return `<input class="fi-value" value="${esc(cur.join(", "))}" placeholder="values, separated by commas">`;
+    const extra = cur.filter(v => !opts.includes(v));   // kept values SFA no longer lists
+    return `<div class="ms-pick">
+      <div class="ms-chips">${ldChipsHtml(cur)}</div>
+      <div class="ms-tools"><input type="search" class="ms-search" placeholder="Type to search ${opts.length} option(s)…" autocomplete="off">
+        <button type="button" class="link-btn ms-all">Tick shown</button><button type="button" class="link-btn ms-none">Clear</button></div>
+      <div class="ms-box">${opts.concat(extra).map(o => `<label class="ms-opt"><input type="checkbox" class="fi-ms" value="${esc(o)}" ${cur.includes(o) ? "checked" : ""}><span>${esc(o)}</span></label>`).join("")}
+        <div class="ms-empty hint" style="display:none;">No match.</div></div></div>`;
   }
   if (f.type === "dropdown" && opts.length)
-    return `<select class="fi-value"><option value="">— (leave empty)</option>${opts.map(o => `<option ${o === f.value ? "selected" : ""}>${esc(o)}</option>`).join("")}${f.value && !opts.includes(f.value) ? `<option selected>${esc(f.value)}</option>` : ""}</select>`;
+    return `<div class="combo"><input class="fi-value combo-in" value="${esc(f.value || "")}" placeholder="— leave empty, or type to search ${opts.length} option(s)" autocomplete="off">
+      <button type="button" class="combo-clear" title="Clear" ${f.value ? "" : 'style="display:none"'}>✕</button>
+      <div class="combo-list" style="display:none;"></div><script type="application/json" class="combo-opts">${JSON.stringify(opts).replace(/</g, "\\u003c")}</script></div>`;
   return `<input class="fi-value" value="${esc(f.value || "")}" placeholder="exactly as shown in SFA">`;
 }
 

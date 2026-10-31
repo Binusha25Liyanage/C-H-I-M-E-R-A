@@ -70,7 +70,7 @@ _RESULTS_JS = r"""
     if (iC < 0) continue;
     const body = [...t.querySelectorAll('tbody tr')].filter(r => r.children.length > iC);
     const rows = [];
-    let pending = -1;
+    let pending = -1, pendingCount = 0;
     body.forEach((r, k) => {
       const c = r.children, cell = c[iC];
       const txt = norm(cell.innerText);
@@ -79,12 +79,13 @@ _RESULTS_JS = r"""
       rows.push({number: iN >= 0 ? norm(c[iN].innerText) : '', rep: iR >= 0 ? norm(c[iR].innerText) : '',
                  date: iD >= 0 ? norm(c[iD].innerText) : '', time: iT >= 0 ? norm(c[iT].innerText) : '',
                  status: iS >= 0 ? norm(c[iS].innerText) : '', confirm_cell: txt || (clickable ? '✓' : ''), pending: isPending});
+      if (isPending) pendingCount++;
       if (isPending && pending < 0) {
         pending = k;
         (clickable.closest('a, button, [role=button]') || clickable).setAttribute('data-chimera-pending', token);
       }
     });
-    return {table: true, rows, pending};
+    return {table: true, rows, pending, pending_count: pendingCount};
   }
   const empty = /no (data|records?)/i.test(document.body.innerText || '');
   return {table: false, rows: [], pending: -1, empty};
@@ -308,6 +309,11 @@ async def _prepare_lane(context, cfg, url, d, idx, opts, sem):
                 LIVE.lane(idx, status="nothing", message=msg, item_id=iid)
                 LIVE.log(msg, lane=d["name"])
                 return
+            if res.get("pending_count", 1) > 1:
+                nums = ", ".join(r["number"] or "?" for r in res["rows"] if r["pending"])
+                raise StepError("find", f"{res['pending_count']} pending loadings match these filters ({nums}) — Chimera "
+                                        "won't guess which one is this distributor's. Set the Distributor filter so only "
+                                        "this distributor's loading shows.")
             row = res["rows"][res["pending"]]
             LIVE.log(f"Pending loading {row['number'] or ''} ({row['rep']}) — opening it.", lane=d["name"])
             new_page = None
