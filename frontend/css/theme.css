@@ -529,3 +529,57 @@ mark { background: #ffe08a; color: inherit; padding: 0; border-radius: 2px; }
 
 /* scrolling inside a panel stops at its edge instead of dragging the page */
 .sidebar, .modal-body, .approve-list, .approve-detail, .ms-box, .combo-list, .log-box, .notif-list, #notif-list { overscroll-behavior: contain; }
+
+/* "Open saved reports" — folder button + menu */
+.btn-folder { display: inline-flex; align-items: center; gap: 8px; }
+.btn-icon { width: 17px; height: 17px; flex: 0 0 auto; color: var(--color-primary); }
+.folder-split { display: inline-flex; }
+.folder-split .btn-folder { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.folder-split .folder-caret { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; padding: 11px 11px; font-size: 11px; color: var(--color-ash); }
+.folder-menu { position: fixed; z-index: 60; background: #fff; border: 1px solid #e3e3e6; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.14);
+               padding: 6px; width: 340px; animation: popin .12s ease-out; }
+.folder-menu button { display: block; width: 100%; text-align: left; background: none; border: none; border-radius: 7px; padding: 9px 12px; cursor: pointer; font-family: inherit; }
+.folder-menu button:hover:not([disabled]) { background: #fff1f1; }
+.folder-menu button[disabled] { opacity: .55; cursor: default; }
+.folder-menu b { display: block; font-size: 13.5px; color: var(--color-text); }
+.folder-menu span { display: block; font-size: 12px; color: var(--color-ash); margin-top: 2px; word-break: break-all; }
+
+/* Settings > Manager Groups editor */
+.mg-card { padding: 12px; }
+.mg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.mg-head b { margin: 0 !important; flex: 1; font-size: 14px; }
+.mg-row { display: grid; grid-template-columns: 1fr 62px 110px 30px; gap: 6px; align-items: center; padding: 4px 0; border-top: 1px solid #f3f3f3; }
+.mg-row select { padding: 4px 5px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px; font-family: inherit; background: #fff; min-width: 0; }
+.mg-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mg-add { display: flex; gap: 6px; margin-top: 8px; }
+.mg-add input { flex: 1; min-width: 0; padding: 6px 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 12px; font-family: inherit; }
+#mg-groups.group-grid { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+
+/* WhatsApp-style chat picker (delivery rule) */
+.wa-pick { position: relative; }
+.wa-pick { display: block; width: 100%; }
+.wa-pick input { width: 100%; box-sizing: border-box; padding-right: 38px !important; }
+.wa-pick-arrow { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: none; background: none; font-size: 13px; color: var(--color-ash); cursor: pointer; padding: 6px 8px; }
+.wa-list { position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 4px); background: #111b21; border-radius: 10px;
+           box-shadow: 0 14px 34px rgba(0,0,0,.35); max-height: 380px; overflow-y: auto; overscroll-behavior: contain; padding: 4px 0;
+           scrollbar-width: thin; scrollbar-color: #374248 transparent; font-family: "Segoe UI", system-ui, sans-serif; }
+.wa-row { display: flex; align-items: center; gap: 13px; padding: 0 0 0 13px; cursor: pointer; height: 72px; }
+.wa-row:hover { background: #202c33; }
+.wa-row.on { background: #2a3942; }
+.wa-av { width: 49px; height: 49px; border-radius: 50%; overflow: hidden; flex: 0 0 auto; background: #6a7175; }
+.wa-av img, .wa-av svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+.wa-mid { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid #222d34; padding-right: 15px; }
+.wa-row:last-child .wa-mid { border-bottom: none; }
+.wa-top, .wa-bot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wa-name { color: #e9edef; font-size: 16.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wa-name mark { background: none; color: #00a884; font-weight: 600; }
+.wa-time { color: #8696a0; font-size: 12px; flex: 0 0 auto; }
+.wa-time.unread { color: #00a884; }
+.wa-bot { margin-top: 3px; }
+.wa-prev { color: #8696a0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 4px; min-width: 0; }
+.wa-prev svg { flex: 0 0 auto; }
+.wa-who { flex: 0 0 auto; }
+.wa-badge { background: #00a884; color: #111b21; font-size: 12px; font-weight: 600; border-radius: 11px; min-width: 20px; height: 20px; padding: 0 6px;
+            display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.wa-none { color: #8696a0; font-size: 13px; padding: 14px 16px; }
+.wa-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }

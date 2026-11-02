@@ -33,6 +33,15 @@ REQUIRED_INPUTS = {
 DEFAULT_OUTPUT_ROOT = os.path.join(os.path.expanduser("~"), "Chimera", "exports", "SFA Reports")
 
 
+def output_root():
+    """Where saved reports go: Settings > Report Rules > Save location, else the default."""
+    try:
+        chosen = sfa_store.get_settings().get("output_folder") or ""
+    except Exception:
+        chosen = ""
+    return chosen or DEFAULT_OUTPUT_ROOT
+
+
 def init_schema():
     conn = db.get_connection()
     conn.execute("""
@@ -114,7 +123,7 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
 
     Returns {"ok", "status", "run_id", "folder", "imports", "reports": [...]}.
     """
-    output_root = output_root or DEFAULT_OUTPUT_ROOT
+    output_root = output_root or globals()["output_root"]()
     if review is None:
         review = sfa_store.get_settings().get("delivery_mode") == "preview"
     run_id = _log_start(date, trigger)
@@ -155,9 +164,17 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
                 for st in styles:
                     sub = folder if len(styles) == 1 else os.path.join(folder, st.capitalize())
                     pdf, pages = daily_reports_pdf.write_pdf(kind, report, sub, style=st)
-                    turned = []
-                    imgs = daily_reports_pdf.pdf_to_images(pdf, pages, os.path.join(sub, "WhatsApp"),
-                                                           rotate_wide=rotate, rotated_out=turned) if images else []
+                    turned, imgs = [], []
+                    if images:
+                        try:
+                            imgs = daily_reports_pdf.pdf_to_images(pdf, pages, os.path.join(sub, "WhatsApp"),
+                                                                   rotate_wide=rotate, rotated_out=turned)
+                        except ModuleNotFoundError as e:   # PDF is saved; only the images are missing
+                            turned = []
+                            entry["images_error"] = (f"PDF saved, but WhatsApp images couldn't be made: the "
+                                                     f"'{e.name}' package isn't installed. Run: "
+                                                     f"py -m pip install -r requirements.txt")
+                            summary["warning"] = entry["images_error"]
                     outputs.append({"style": st, "pdf": pdf, "images": imgs,
                                     "items": [{"path": im, "page": pg, "group": _page_group(kind, pg), "rotated": rt}
                                               for im, pg, rt in zip(imgs, pages, turned)]})
@@ -213,7 +230,7 @@ def approve_run(run_id):
     if run["status"] != "pending_review":
         return {"ok": False, "message": f"This run is already {run['status'].replace('_', ' ')}."}
     old, summary = run["folder"], run["summary"]
-    new = summary.get("final_folder") or os.path.join(DEFAULT_OUTPUT_ROOT, run["report_date"],
+    new = summary.get("final_folder") or os.path.join(output_root(), run["report_date"],
                                                        datetime.now().strftime("%H%M%S"))
     if not old or not os.path.isdir(old):
         return {"ok": False, "message": "The preview files are missing (were they deleted?)."}

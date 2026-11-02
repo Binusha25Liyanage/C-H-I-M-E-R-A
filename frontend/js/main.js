@@ -536,16 +536,84 @@ document.getElementById("rs-save-btn").addEventListener("click", async () => {
   if (r.ok) loadReportSettings();
 });
 
+let MG = {};
 async function loadManagerGroups() {
   const el = document.getElementById("mg-groups");
   try {
     const st = await window.pywebview.api.get_daily_status(localToday());
-    const names = Object.keys(st.groups);
-    if (names.length === 0) { el.innerHTML = "<p class='hint'>No groups yet.</p>"; return; }
-    el.innerHTML = names.map(g => `<div class="group-card"><b>${escapeHtml(g)}</b>${st.groups[g].map(t =>
-      `${escapeHtml(t.territory)}<span class="model">${t.model}</span>`).join("<br>")}</div>`).join("");
-  } catch (err) { el.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`; }
+    MG = st.groups;
+  } catch (err) { el.innerHTML = `<p class="error">Error: ${escapeHtml(String(err))}</p>`; return; }
+  const names = Object.keys(MG).sort((a, b) => a.localeCompare(b));
+  if (names.length === 0) { el.innerHTML = "<p class='hint'>No groups yet — add one, or import the Territories file / SalesPulse database.</p>"; return; }
+  const moveOpts = (cur) => names.map(g => `<option value="${escapeHtml(g)}" ${g === cur ? "selected" : ""}>${escapeHtml(g)}</option>`).join("")
+    + `<option value="__new__">New group…</option>`;
+  el.innerHTML = names.map(g => `<div class="group-card mg-card" data-group="${escapeHtml(g)}">
+      <div class="mg-head"><b>${escapeHtml(g)}</b><span class="hint">${MG[g].length}</span>
+        <button class="icon-action" data-mg-rename>Rename</button></div>
+      ${MG[g].map(t => `<div class="mg-row" data-terr="${escapeHtml(t.territory)}">
+        <span class="mg-name">${escapeHtml(t.territory)}</span>
+        <select class="mg-model" title="Van or Pre selling"><option ${t.model === "Van" ? "selected" : ""}>Van</option><option ${t.model === "Pre" ? "selected" : ""}>Pre</option></select>
+        <select class="mg-move" title="Move to another manager">${moveOpts(g)}</select>
+        <button class="icon-action danger" data-mg-del title="Remove from groups">✕</button></div>`).join("")}
+      <div class="mg-add"><input class="mg-new-terr" placeholder="Add territory (as in SFA)"><button class="icon-action" data-mg-add>Add</button></div>
+    </div>`).join("");
 }
+function mgSay(msg, ok = true) { document.getElementById("mg-result").innerHTML = `<div class="${ok ? "ok-box" : "problem-box"}">${escapeHtml(msg)}</div>`; }
+async function mgDo(call) { const r = await call; mgSay(r.message, r.ok); if (r.ok) await loadManagerGroups(); return r; }
+function mgAskName(title, value, label, onOk) {
+  openModal({ title, body: `<label class="field">${label} <input id="mg-name-in" value="${escapeHtml(value || "")}"></label><div id="mg-name-err"></div>`,
+    footer: `<button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" id="mg-name-ok">Save</button>` });
+  const inp = document.getElementById("mg-name-in"); inp.focus(); inp.select();
+  const go = async () => { const v = inp.value.trim(); if (!v) return; const msg = await onOk(v);
+    if (msg) document.getElementById("mg-name-err").innerHTML = `<div class="problem-box">${escapeHtml(msg)}</div>`; else closeModal(true); };
+  document.getElementById("mg-name-ok").onclick = go;
+  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+}
+const API_ = () => window.pywebview.api;
+document.getElementById("mg-groups").addEventListener("change", async (e) => {
+  const row = e.target.closest(".mg-row"); if (!row) return;
+  const g = row.closest(".mg-card").dataset.group, t = row.dataset.terr;
+  const model = row.querySelector(".mg-model").value;
+  if (e.target.classList.contains("mg-model")) return mgDo(API_().save_territory_group(t, g, model));
+  if (e.target.classList.contains("mg-move")) {
+    if (e.target.value === "__new__") {
+      e.target.value = g;
+      return mgAskName(`Move ${t} to a new group`, "", "New manager name", async (v) => {
+        const r = await API_().save_territory_group(t, v, model); if (!r.ok) return r.message; mgSay(r.message); loadManagerGroups(); });
+    }
+    return mgDo(API_().save_territory_group(t, e.target.value, model));
+  }
+});
+document.getElementById("mg-groups").addEventListener("click", async (e) => {
+  const card = e.target.closest(".mg-card"); if (!card) return;
+  const g = card.dataset.group;
+  if (e.target.matches("[data-mg-rename]")) {
+    mgAskName(`Rename ${g}`, g, "Manager name", async (v) => {
+      const r = await API_().rename_manager_group(g, v); if (!r.ok) return r.message; mgSay(r.message); loadManagerGroups(); });
+  }
+  if (e.target.matches("[data-mg-del]")) {
+    const t = e.target.closest(".mg-row").dataset.terr;
+    confirmModal("Remove territory", `Remove <b>${escapeHtml(t)}</b> from ${escapeHtml(g)}? It won't appear in any manager's report until it's added again.`, "Remove",
+      () => mgDo(API_().delete_territory_group(t)), true);
+  }
+  if (e.target.matches("[data-mg-add]")) {
+    const inp = card.querySelector(".mg-new-terr"); const t = inp.value.trim(); if (!t) { inp.focus(); return; }
+    const model = (MG[g] && MG[g][0] && MG[g][0].model) || "Van";
+    mgDo(API_().save_territory_group(t, g, model));
+  }
+});
+document.getElementById("mg-groups").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList.contains("mg-new-terr")) e.target.closest(".mg-add").querySelector("[data-mg-add]").click();
+});
+document.getElementById("mg-add-group").addEventListener("click", () => {
+  mgAskName("New manager group", "", "Manager name", async (v) => {
+    if (MG[v]) return `${v} already exists — add territories in its card.`;
+    MG[v] = []; closeModal(true);
+    mgAskName(`First territory for ${v}`, "", "Territory (as in SFA) — moves it here if it's in another group", async (t) => {
+      const r = await API_().save_territory_group(t, v, "Van"); if (!r.ok) return r.message; mgSay(r.message); loadManagerGroups(); });
+    return null;
+  });
+});
 document.getElementById("mg-import-btn").addEventListener("click", async () => {
   const el = document.getElementById("mg-result");
   el.innerHTML = "<p class='hint'>Waiting for file selection…</p>";
@@ -644,12 +712,42 @@ window.addEventListener("pywebviewready", refreshStyleDefaultLabel);
 
 
 // ---------------- Saved reports folder ----------------
+async function openReportsFolder(which, btn) {
+  let r; try { r = await window.pywebview.api.open_reports_folder(which); } catch (e) { r = { ok: false, message: String(e) }; }
+  if (!r.ok) {
+    openModal({ title: "Saved reports", body: `<div class="problem-box">${escapeHtml(r.message || "Couldn't open the folder.")}</div>`,
+                footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
+    return;
+  }
+  const span = btn && btn.querySelector("span");   // short confirmation; Explorer may open behind Chimera
+  if (span) { const t = span.dataset.label || span.textContent; span.dataset.label = t; span.textContent = "Opened in File Explorer ✓";
+              clearTimeout(btn._t); btn._t = setTimeout(() => { span.textContent = t; }, 2200); }
+}
+function closeFolderMenu() { const m = document.getElementById("folder-menu"); if (m) m.remove(); }
 document.addEventListener("click", async (e) => {
+  const item = e.target.closest("[data-folder-pick]");
+  if (item) { const btn = item.closest("#folder-menu")._btn; closeFolderMenu(); openReportsFolder(item.dataset.folderPick, btn); return; }
+  const caret = e.target.closest("[data-folder-menu]");
+  if (caret) {
+    e.stopPropagation();
+    if (document.getElementById("folder-menu")) { closeFolderMenu(); return; }
+    let loc = {}; try { loc = await window.pywebview.api.reports_location(); } catch (err) {}
+    const m = document.createElement("div"); m.id = "folder-menu"; m.className = "folder-menu";
+    m._btn = caret.parentElement.querySelector(".btn-folder");
+    m.innerHTML = `<button data-folder-pick="latest" ${loc.latest ? "" : "disabled"}><b>Newest saved reports</b>
+        <span>${loc.latest ? escapeHtml(loc.latest_label) : "No saved reports yet"}</span></button>
+      <button data-folder-pick="root"><b>All saved reports</b><span>${escapeHtml(loc.root || "")}</span></button>`;
+    const r = caret.parentElement.getBoundingClientRect();
+    m.style.top = `${r.bottom + 6}px`; m.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+    document.body.appendChild(m);
+    return;
+  }
+  if (!e.target.closest("#folder-menu")) closeFolderMenu();
   const b = e.target.closest("[data-open-reports]"); if (!b) return;
-  const r = await window.pywebview.api.open_reports_folder(b.dataset.openReports);
-  if (!r.ok) openModal({ title: "Saved reports", body: `<div class="problem-box">${escapeHtml(r.message)}</div>`,
-                         footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
+  openReportsFolder(b.dataset.openReports, b);
 });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFolderMenu(); });
+window.addEventListener("scroll", closeFolderMenu, true);
 
 
 // ---------------- Settings: save location ----------------
@@ -670,4 +768,4 @@ document.getElementById("of-reset").addEventListener("click", async () => {
   document.getElementById("of-result").innerHTML = `<p class="hint">${escapeHtml(r.message)}</p>`;
   loadOutputFolder();
 });
-document.getElementById("of-open").addEventListener("click", () => window.pywebview.api.open_reports_folder("root"));
+document.getElementById("of-open").addEventListener("click", (e) => openReportsFolder("root", e.currentTarget));

@@ -101,6 +101,21 @@ def list_rules():
              "send_as": r[6] or "images", "orientation": r[7] or "portrait"} for r in rows]
 
 
+def rename_group_in_rules(old, new):
+    """A manager group was renamed: delivery rules that named it follow the new name."""
+    conn = db.get_connection()
+    n = 0
+    for rid, g in conn.execute("SELECT id, groups FROM wa_rules").fetchall():
+        groups = json.loads(g or '["*"]')
+        if old in groups:
+            groups = list(dict.fromkeys(new if x == old else x for x in groups))
+            conn.execute("UPDATE wa_rules SET groups=? WHERE id=?", (json.dumps(groups), rid))
+            n += 1
+    conn.commit()
+    conn.close()
+    return n
+
+
 def save_rule(data):
     chat = str(data.get("chat_name", "")).strip()
     if not chat:
@@ -831,41 +846,113 @@ def _start(action, target):
 
 def link_whatsapp():
     async def fn(page):
-        AS.save_automation_settings({"wa_chats_cache": json.dumps(await _read_chats(page))})
+        _save_chats(await _read_chats(page))
         WA.log("WhatsApp is linked. Chimera will stay signed in.")
         return {"ok": True, "message": "WhatsApp linked."}
     return _start("link", lambda: _run("link", False, fn))
 
 
-_CHAT_NAMES_JS = r"""
-() => {
-  // Only the contact / group NAME of each chat row (the first title in the row) —
-  // not the last-message preview, which also carries a title.
+AVATAR_DIR = os.path.join(os.path.expanduser("~"), "Chimera", "data", "wa_avatars")
+
+_CHAT_ROWS_JS = r"""
+(token) => {
+  // Each visible chat row: name (first title in the row), the time, the last-message
+  // preview, unread count, and whether it has a photo (marked so Python can snap it).
   const pane = document.querySelector('#pane-side'); if (!pane) return [];
-  const rows = [...pane.querySelectorAll("[role=listitem], [role=row]")];
-  const names = rows.length
-    ? rows.map(r => { const t = r.querySelector('span[title]'); return t ? t.getAttribute('title') : ''; })
-    : [...pane.querySelectorAll('span[title]')].filter(s => {
-        const row = s.closest('div[tabindex], [aria-selected]') || s.parentElement;
-        return row.querySelector('span[title]') === s;          // first title in its row
-      }).map(s => s.getAttribute('title'));
-  return names.map(n => (n || '').trim()).filter(Boolean);
+  let rows = [...pane.querySelectorAll("[role=listitem], [role=row]")];
+  if (!rows.length) rows = [...new Set([...pane.querySelectorAll('span[title]')].map(s =>
+      s.closest('div[tabindex], [aria-selected]') || s.parentElement))];
+  const TIME = /^(\d{1,2}[:.]\d{2}(\s?[ap]\.?m\.?)?|yesterday|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}\/\d{1,2}\/\d{2,4})$/i;
+  const out = [];
+  rows.forEach((r, k) => {
+    const t = r.querySelector('span[title]'); if (!t) return;
+    const name = (t.getAttribute('title') || '').trim(); if (!name) return;
+    const lines = (r.innerText || '').split('\n').map(x => x.trim()).filter(Boolean);
+    let time = '', unread = '';
+    const rest = [];
+    let skippedName = false;
+    for (const l of lines) {
+      if (!skippedName && l === name) { skippedName = true; continue; }
+      if (!time && TIME.test(l)) { time = l; continue; }
+      rest.push(l);
+    }
+    const ub = r.querySelector('[aria-label*="unread" i]');
+    if (ub && /\d/.test(ub.textContent || ub.getAttribute('aria-label'))) unread = ((ub.textContent || '').match(/\d+/) || (ub.getAttribute('aria-label').match(/\d+/)) || [''])[0];
+    if (rest.length && /^\d{1,4}$/.test(rest[rest.length - 1])) { const u = rest.pop(); unread = unread || u; }
+    let preview = rest.join(' ').replace(/\s+/g, ' ').trim();
+    if (unread && ub && preview.endsWith(unread) && !/\s\d+$/.test(preview)) preview = preview.slice(0, -unread.length).trim();
+    const titles = [...r.querySelectorAll('span[title]')].map(s => s.getAttribute('title')).filter(x => x && x !== name && !TIME.test(x));
+    if (!preview && titles.length) preview = titles[0];
+    const icons = [...r.querySelectorAll('[data-icon]')].map(e => e.getAttribute('data-icon'));
+    const img = [...r.querySelectorAll('img')].find(im => im.complete && im.naturalWidth > 8 && im.getBoundingClientRect().width >= 24);
+    if (img) img.setAttribute('data-chimera-av', token + '-' + k);
+    out.push({name, time, unread, preview: preview.slice(0, 120), av: img ? token + '-' + k : '',
+              group: icons.some(x => /default-group|group/i.test(x || '')),
+              icon: (icons.find(x => /status-(image|video|vcard|document|ptt|location|sticker|gif)|call|missed|mic|camera|photo|video|document/i.test(x || '')) || '')});
+  });
+  return out;
 }
 """
 
 
+def _avatar_path(name):
+    import hashlib
+    return os.path.join(AVATAR_DIR, hashlib.sha1(name.encode("utf-8")).hexdigest()[:16] + ".jpg")
+
+
 async def _read_chats(page, scrolls=12):
-    names = []
+    """Chat list as WhatsApp shows it: [{name, time, preview, unread, group, icon, avatar}]."""
+    os.makedirs(AVATAR_DIR, exist_ok=True)
+    chats, seen = [], set()
     pane = page.locator("#pane-side")
-    for _ in range(scrolls):
-        found = await page.evaluate(_CHAT_NAMES_JS)
-        for n in found:
-            if n not in names and not re.match(r"^\d{1,2}:\d{2}", n):
-                names.append(n)
+    for n in range(scrolls):
+        token = f"c{n}{uuid.uuid4().hex[:4]}"
+        try:
+            found = await page.evaluate(_CHAT_ROWS_JS, token)
+        except Exception:
+            found = []
+        for c in found:
+            name = c["name"]
+            if name in seen or re.match(r"^\d{1,2}:\d{2}", name):
+                continue
+            seen.add(name)
+            avatar = ""
+            if c.get("av"):
+                try:
+                    el = page.locator(f"img[data-chimera-av='{c['av']}']").first
+                    path = _avatar_path(name)
+                    await el.screenshot(path=path, type="jpeg", quality=80, timeout=2500)
+                    avatar = path
+                except Exception:
+                    avatar = _avatar_path(name) if os.path.exists(_avatar_path(name)) else ""
+            chats.append({"name": name, "time": c.get("time", ""), "preview": c.get("preview", ""),
+                          "unread": c.get("unread", ""), "group": bool(c.get("group")), "icon": c.get("icon", ""),
+                          "avatar": avatar})
         if await pane.count():
             await pane.evaluate("el => el.scrollBy(0, el.clientHeight)")
         await page.wait_for_timeout(400)
-    return names[:400]
+    return chats[:400]
+
+
+def _save_chats(chats):
+    AS.save_automation_settings({"wa_chats_cache": json.dumps(chats)})
+
+
+def cached_chats():
+    """Chat info from the last read; older Chimera versions cached names only."""
+    try:
+        raw = json.loads(AS.get_automation_settings()["wa_chats_cache"] or "[]")
+    except ValueError:
+        raw = []
+    out = []
+    for c in raw:
+        if isinstance(c, str):
+            c = {"name": c}
+        if isinstance(c, dict) and c.get("name"):
+            out.append({"name": c["name"], "time": c.get("time", ""), "preview": c.get("preview", ""),
+                        "unread": c.get("unread", ""), "group": bool(c.get("group")), "icon": c.get("icon", ""),
+                        "avatar": c.get("avatar", "")})
+    return out
 
 
 def load_chats():
@@ -873,10 +960,11 @@ def load_chats():
         s = AS.get_automation_settings()
 
         async def fn(page):
-            names = await _read_chats(page)
-            AS.save_automation_settings({"wa_chats_cache": json.dumps(names)})
-            WA.log(f"Found {len(names)} chats.")
-            return {"ok": True, "message": f"Found {len(names)} chats.", "chats": names}
+            chats = await _read_chats(page)
+            _save_chats(chats)
+            pics = sum(1 for c in chats if c["avatar"])
+            WA.log(f"Found {len(chats)} chats ({pics} with a profile photo).")
+            return {"ok": True, "message": f"Found {len(chats)} chats.", "chats": [c["name"] for c in chats]}
         _run("chats", s["wa_show_browser"] != "1", fn)
     return _start("chats", go)
 
@@ -973,4 +1061,4 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
 
 def linked_status():
     exists = os.path.isdir(PROFILE_DIR) and any(os.scandir(PROFILE_DIR))
-    return {"profile_exists": exists, "chats": json.loads(AS.get_automation_settings()["wa_chats_cache"] or "[]")}
+    return {"profile_exists": exists, "chats": [c["name"] for c in cached_chats()]}

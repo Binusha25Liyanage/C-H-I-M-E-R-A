@@ -92,7 +92,7 @@
               <p class="hint">Real-time status of export data imports and routing metrics.</p>
             </div>
             <div class="heading-actions">
-              <button class="btn-outline" data-open-reports="latest">&#128193; Open saved reports</button>
+              <div class="folder-split"><button class="btn-outline btn-folder" data-open-reports="latest" title="Open the folder of the newest saved reports"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Open saved reports</span></button><button class="btn-outline folder-caret" data-folder-menu title="Choose which folder">&#9662;</button></div>
               <button class="btn-outline" data-goto="daily">Daily Reports</button>
               <button class="btn-primary" id="ov-run-btn">&#9654; Run all downloads now</button>
             </div>
@@ -266,7 +266,7 @@
                 no manual merging. Each file is identified from its own headers and banner, so you can select them all at once.</p>
             </div>
             <div class="heading-actions">
-              <button class="btn-outline" data-open-reports="latest" title="Open the folder of the newest saved reports">&#128193; Open saved reports</button>
+              <div class="folder-split"><button class="btn-outline btn-folder" data-open-reports="latest" title="Open the folder of the newest saved reports"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Open saved reports</span></button><button class="btn-outline folder-caret" data-folder-menu title="Choose which folder">&#9662;</button></div>
               <label class="inline-date">Report date <input type="date" id="dr-date"></label>
             </div>
           </div>
@@ -692,7 +692,7 @@
             <div class="folder-row"><code id="of-path">&hellip;</code></div>
             <div class="form-row" style="margin-top:10px;">
               <button class="btn-primary" id="of-choose">Change folder&hellip;</button>
-              <button class="btn-outline" id="of-open">Open</button>
+              <button class="btn-outline btn-folder" id="of-open"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Open</span></button>
               <button class="btn-outline" id="of-reset">Use the default</button>
             </div>
             <div id="of-result"></div>
@@ -703,9 +703,11 @@
           <div class="card">
             <div class="card-header-row">
               <h3>Manager groups</h3>
-              <button id="mg-import-btn" class="btn-outline">Import from SalesPulse database&hellip;</button>
+              <span><button id="mg-add-group" class="btn-primary btn-small">+ New manager group</button>
+              <button id="mg-import-btn" class="btn-outline">Import from SalesPulse database&hellip;</button></span>
             </div>
-            <p class="hint">Which territories belong to which manager, and whether each is Van or Pre selling. Also updated by the Territories import on the Import Data screen (columns Group, Territory, Sale Model).</p>
+            <p class="hint">Which territories belong to which manager, and whether each is Van or Pre selling. Also updated by the Territories import on the Import Data screen (columns Group, Territory, Sale Model).
+              Change a manager with <b>Rename</b>, move a territory with its <b>Move to</b> list. Reports built after a change use the new groups — rebuild today's from Daily Reports.</p>
             <div id="mg-result"></div>
             <div id="mg-groups" class="group-grid"></div>
           </div>

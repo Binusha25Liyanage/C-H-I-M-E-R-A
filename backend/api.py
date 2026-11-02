@@ -354,6 +354,23 @@ class Api:
         os.makedirs(path, exist_ok=True)
         return self.open_path(path)
 
+    # Settings > Manager Groups editing
+    def save_territory_group(self, territory, group, model="Van", old_territory=None):
+        ok, msg = sfa_store.save_territory(territory, group, model, old_territory)
+        return {"ok": ok, "message": msg}
+
+    def delete_territory_group(self, territory):
+        ok = sfa_store.delete_territory(territory)
+        return {"ok": ok, "message": "Removed." if ok else "That territory isn't in any group."}
+
+    def rename_manager_group(self, old, new):
+        ok, msg, merged = sfa_store.rename_group(old, new)
+        if ok and old != new:
+            n = whatsapp_sender.rename_group_in_rules(str(old).strip(), str(new).strip())
+            if n:
+                msg += f" {n} WhatsApp delivery rule(s) updated to {str(new).strip()}."
+        return {"ok": ok, "message": msg}
+
     def get_report_settings(self):
         return sfa_store.get_settings()
 
@@ -832,6 +849,19 @@ class Api:
                 "live": whatsapp_sender.WA.snapshot(),
                 "last_saved_run": next((r for r in report_pipeline.get_runs(30)
                                         if r["status"] in ("success", "partial")), None)}
+
+    def get_whatsapp_chat_list(self):
+        """The chat picker: names, last message, time and small profile photos (base64 JPEG)."""
+        out = []
+        for c in whatsapp_sender.cached_chats():
+            pic = None
+            p = c.get("avatar") or ""
+            real = os.path.realpath(p) if p else ""
+            if real and real.startswith(os.path.realpath(whatsapp_sender.AVATAR_DIR) + os.sep) and os.path.exists(real):
+                with open(real, "rb") as f:
+                    pic = base64.b64encode(f.read()).decode("ascii")
+            out.append({**{k: c[k] for k in ("name", "time", "preview", "unread", "group", "icon")}, "photo": pic})
+        return {"chats": out}
 
     def save_whatsapp_rule(self, data):
         ok, msg = whatsapp_sender.save_rule(data or {})

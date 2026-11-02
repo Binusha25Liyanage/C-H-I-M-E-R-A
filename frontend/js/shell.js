@@ -392,8 +392,9 @@ function openRuleModal(rule) {
   openModal({ title: rule ? "Edit delivery rule" : "Add delivery rule", body: `
     <div id="wr-err"></div>
     <label class="field">Chat or group name (exactly as in WhatsApp)
-      <input id="wr-chat" list="wr-chats" value="${esc(r.chat_name)}" placeholder="${w.chats.length ? "Start typing…" : "Press “Load my chats” first, or type the name"}">
-      <datalist id="wr-chats">${w.chats.map(c => `<option value="${esc(c)}">`).join("")}</datalist></label>
+      <div class="wa-pick"><input id="wr-chat" value="${esc(r.chat_name)}" autocomplete="off" placeholder="${w.chats.length ? "Search or pick a chat…" : "Press “Load my chats” first, or type the name"}">
+        <button type="button" class="wa-pick-arrow" tabindex="-1" title="Show chats">&#9662;</button>
+        <div class="wa-list" id="wr-chat-list" style="display:none;"></div></div></label>
     <div class="section-title">Reports to send</div>
     <div class="form-row">${[["sku", "SKU Report"], ["pivot", "Pivot Report"], ["hourly", "Hourly BC & SV"]].map(([k, l]) => `<label class="check"><input type="checkbox" class="wr-kind" value="${k}" ${r.kinds.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div>
     <div class="section-title">Send as</div>
@@ -414,6 +415,7 @@ function openRuleModal(rule) {
     <label class="field">Caption (optional) <input id="wr-caption" value="${esc(r.caption)}"><span>Use {report}, {date} and {time}.</span></label>
     <label class="check" style="display:flex;gap:6px;margin-top:12px;font-size:14px;"><input type="checkbox" id="wr-enabled" ${r.enabled ? "checked" : ""}> Enabled</label>`,
     footer: `<button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" id="wr-save">Save rule</button>` });
+  waChatPicker(document.getElementById("wr-chat"), document.getElementById("wr-chat-list"));
   document.querySelectorAll('input[name="wr-g"]').forEach(x => x.onchange = () => {
     const some = document.querySelector('input[name="wr-g"]:checked').value === "some";
     document.getElementById("wr-groups").style.cssText = some ? "" : "opacity:.45;pointer-events:none;"; });
@@ -429,6 +431,73 @@ function openRuleModal(rule) {
     if (!res.ok) { document.getElementById("wr-err").innerHTML = `<div class="problem-box">${esc(res.message)}</div>`; return; }
     closeModal(); loadWhatsApp();
   };
+}
+
+// ---------------------------------------------------------------- WhatsApp-style chat picker
+const WA_SVG = {
+  user: '<svg viewBox="0 0 212 212"><path fill="#dfe5e7" d="M106 0C47.5 0 0 47.5 0 106s47.5 106 106 106 106-47.5 106-106S164.5 0 106 0z"/><path fill="#fff" d="M173 165c-15 18-38 30-67 30s-52-12-67-30c6-15 22-27 46-33-14-7-23-21-23-37 0-23 19-42 44-42s44 19 44 42c0 16-9 30-23 37 24 6 40 18 46 33z"/></svg>',
+  group: '<svg viewBox="0 0 212 212"><path fill="#dfe5e7" d="M106 0C47.5 0 0 47.5 0 106s47.5 106 106 106 106-47.5 106-106S164.5 0 106 0z"/><path fill="#fff" d="M102 89c0 15-12 27-27 27s-27-12-27-27 12-27 27-27 27 12 27 27zm62 0c0 15-12 27-27 27s-27-12-27-27 12-27 27-27 27 12 27 27zM30 158c4-18 23-31 45-31s41 13 45 31v10H30zm92 10v-10c0-11-4-21-11-29 8-1 17-2 26-2 22 0 41 13 45 31v10z"/></svg>',
+  photo: '<svg viewBox="0 0 16 20" width="15" height="17"><path fill="currentColor" d="M13.8 4.2H2.2C1.5 4.2 1 4.7 1 5.4v9.2c0 .7.5 1.2 1.2 1.2h11.6c.7 0 1.2-.5 1.2-1.2V5.4c0-.7-.5-1.2-1.2-1.2zM3 13.6l2.6-3.4 1.9 2.3 2.6-3.4 3.4 4.5z"/></svg>',
+  call: '<svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M19.95 21q-3.1 0-6.13-1.35-3.02-1.35-5.5-3.83-2.47-2.47-3.82-5.5Q3.15 7.3 3.15 4.2q0-.45.3-.75t.75-.3H8.25q.35 0 .63.24.27.23.32.56l.65 3.5q.05.4-.03.68-.07.27-.27.47L7.1 11.1q.5.92 1.18 1.79.68.86 1.5 1.66.77.78 1.63 1.44.85.66 1.81 1.22l2.35-2.35q.22-.22.58-.33.37-.11.72-.06l3.45.7q.35.1.57.36.23.27.23.6v4.05q0 .45-.3.75t-.75.3z"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-3.1a7 7 0 0 0 6-6.9z"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-1 7V3.5L18.5 9z"/></svg>',
+};
+SH.waChats = null;
+function waIconFor(c) {
+  const i = (c.icon || "").toLowerCase(), p = (c.preview || "").toLowerCase();
+  if (/call|missed/.test(i) || /voice call|video call|missed/.test(p)) return WA_SVG.call;
+  if (/ptt|mic/.test(i) || /^voice message/.test(p)) return WA_SVG.mic;
+  if (/document/.test(i) || /\.pdf\b|document/.test(p)) return WA_SVG.doc;
+  if (/image|photo|camera|video|gif|sticker/.test(i) || /^(~?[^:]{0,40}:\s*)?(photo|video|gif|sticker)\b/.test(p)) return WA_SVG.photo;
+  return "";
+}
+function waHi(text, q) {
+  if (!q) return esc(text); const i = text.toLowerCase().indexOf(q.toLowerCase());
+  return i < 0 ? esc(text) : esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+}
+function waRowHtml(c, q, on) {
+  const av = c.photo ? `<img src="data:image/jpeg;base64,${c.photo}" alt="">` : (c.group ? WA_SVG.group : WA_SVG.user);
+  const prev = c.preview || "";
+  const pfx = prev.match(/^(~?[^:]{1,40}):\s*(.*)$/);   // "~Sadeepa: Cancel bill"
+  const body = pfx ? `<span class="wa-who">${esc(pfx[1])}:</span> ${esc(pfx[2])}` : esc(prev);
+  return `<div class="wa-row ${on ? "on" : ""}" data-v="${esc(c.name)}">
+    <div class="wa-av">${av}</div>
+    <div class="wa-mid"><div class="wa-top"><span class="wa-name">${waHi(c.name, q)}</span><span class="wa-time ${c.unread ? "unread" : ""}">${esc(c.time || "")}</span></div>
+      <div class="wa-bot"><span class="wa-prev">${waIconFor(c)}<span class="wa-txt">${body || "&nbsp;"}</span></span>${c.unread ? `<span class="wa-badge">${esc(c.unread)}</span>` : ""}</div></div></div>`;
+}
+async function waChatPicker(input, list) {
+  const arrow = input.parentElement.querySelector(".wa-pick-arrow");
+  let chats = SH.waChats || (SH.wa && SH.wa.chats || []).map(n => ({ name: n }));
+  const draw = () => {
+    const q = input.value.trim(), ql = q.toLowerCase();
+    const showAll = input.dataset.all === "1";
+    const hits = chats.filter(c => showAll || !ql || c.name.toLowerCase().includes(ql))
+      .sort((a, b) => ql && !showAll ? (b.name.toLowerCase().startsWith(ql) ? 1 : 0) - (a.name.toLowerCase().startsWith(ql) ? 1 : 0) : 0);
+    list.innerHTML = hits.length ? hits.slice(0, 150).map((c, i) => waRowHtml(c, showAll ? "" : q, i === 0 && ql && !showAll)).join("")
+      : `<div class="wa-none">${chats.length ? "No chat matches — this exact name will be used." : "No chats loaded yet — close this, press “Load my chats”, then try again. Or type the exact name."}</div>`;
+    list.style.display = "";
+  };
+  const hide = () => { list.style.display = "none"; input.dataset.all = ""; };
+  const pick = (v) => { input.value = v; hide(); };
+  input.addEventListener("focus", () => { input.dataset.all = "1"; draw(); });
+  input.addEventListener("input", () => { input.dataset.all = ""; draw(); });
+  input.addEventListener("blur", () => setTimeout(hide, 150));
+  arrow.addEventListener("mousedown", (e) => { e.preventDefault(); if (list.style.display === "none") { input.focus(); input.dataset.all = "1"; draw(); } else hide(); });
+  list.addEventListener("mousedown", (e) => { const r = e.target.closest(".wa-row"); if (r) { e.preventDefault(); pick(r.dataset.v); } });
+  input.addEventListener("keydown", (e) => {
+    const rows = [...list.querySelectorAll(".wa-row")]; let i = rows.findIndex(x => x.classList.contains("on"));
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault(); if (list.style.display === "none") draw();
+      const all = [...list.querySelectorAll(".wa-row")]; if (!all.length) return;
+      i = e.key === "ArrowDown" ? Math.min(all.length - 1, i + 1) : Math.max(0, i - 1);
+      all.forEach((x, k) => x.classList.toggle("on", k === i)); all[i].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter") { if (list.style.display !== "none" && i >= 0) { e.preventDefault(); pick(rows[i].dataset.v); } }
+    else if (e.key === "Escape" && list.style.display !== "none") { e.stopPropagation(); e.preventDefault(); hide(); }
+  });
+  try {   // photos + last messages (from the last "Load my chats")
+    const r = await window.pywebview.api.get_whatsapp_chat_list();
+    if (r && r.chats && r.chats.length) { SH.waChats = chats = r.chats; if (list.style.display !== "none") draw(); }
+  } catch (e) {}
 }
 
 // ---------------------------------------------------------------- start-up

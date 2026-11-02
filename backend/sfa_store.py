@@ -15,6 +15,7 @@ list SalesPulse used — so there is one source of truth for it.
 """
 
 import json
+import os
 import sqlite3
 from collections import defaultdict
 from datetime import datetime
@@ -37,6 +38,7 @@ DEFAULT_SETTINGS = {
     "pre_sv_target": "125000",
     "output_style": "classic",      # classic (SalesPulse look) | professional (Chimera) | both
     "delivery_mode": "save",        # save = save straight away | preview = hold for review before saving/sending
+    "output_folder": "",            # where saved reports go ('' = Documents-like default under ~/Chimera/exports)
 }
 
 OUTPUT_STYLES = ("classic", "professional", "both")
@@ -150,6 +152,17 @@ def save_settings(values):
         elif k == "output_style":
             if v not in OUTPUT_STYLES:
                 return False, f"Output style must be one of: {', '.join(OUTPUT_STYLES)}."
+        elif k == "output_folder":
+            if v:
+                v = os.path.abspath(os.path.expanduser(v))
+                try:
+                    os.makedirs(v, exist_ok=True)
+                    probe = os.path.join(v, ".chimera_write_test")
+                    with open(probe, "w") as fh:
+                        fh.write("ok")
+                    os.remove(probe)
+                except OSError as e:
+                    return False, f"Chimera can't save reports in that folder: {e}"
         elif k == "delivery_mode":
             if v not in ("save", "preview"):
                 return False, "Choose 'Save straight away' or 'Preview before saving'."
@@ -185,6 +198,62 @@ def get_groups():
     for g, t, m in rows:
         groups[g].append((t, "Pre" if (m or "").lower().startswith("pre") else "Van"))
     return dict(groups)
+
+
+def _model_label(m):
+    return "Pre Selling" if str(m or "").lower().startswith("pre") else "Van Selling"
+
+
+def save_territory(territory, group, model="Van", old_territory=None):
+    """Add a territory, or move / re-model one (Settings > Manager Groups)."""
+    t, g = str(territory or "").strip(), str(group or "").strip()
+    if not t:
+        return False, "Type the territory name exactly as SFA shows it."
+    if not g:
+        return False, "Choose the manager group."
+    conn = db.get_connection()
+    try:
+        if old_territory and old_territory.strip().lower() != t.lower():
+            if conn.execute("SELECT 1 FROM territories WHERE lower(territory)=lower(?)", (t,)).fetchone():
+                return False, f"{t} is already in a group."
+            conn.execute("DELETE FROM territories WHERE territory=?", (old_territory.strip(),))
+        prev = conn.execute("SELECT group_name FROM territories WHERE lower(territory)=lower(?)", (t,)).fetchone()
+        conn.execute("""INSERT INTO territories (territory, group_name, sale_model) VALUES (?, ?, ?)
+                        ON CONFLICT(territory) DO UPDATE SET group_name=excluded.group_name,
+                        sale_model=excluded.sale_model""", (t, g, _model_label(model)))
+        conn.commit()
+    finally:
+        conn.close()
+    if prev and prev[0] != g:
+        return True, f"{t} moved from {prev[0]} to {g}."
+    return True, f"{t} saved in {g}." if not prev else f"{t} updated."
+
+
+def delete_territory(territory):
+    conn = db.get_connection()
+    n = conn.execute("DELETE FROM territories WHERE territory=?", (str(territory or "").strip(),)).rowcount
+    conn.commit()
+    conn.close()
+    return n > 0
+
+
+def rename_group(old, new):
+    """Rename a manager group (all its territories). Renaming onto an existing group merges them."""
+    old, new = str(old or "").strip(), str(new or "").strip()
+    if not new:
+        return False, "Type the new manager name.", False
+    if old == new:
+        return True, "Nothing changed.", False
+    conn = db.get_connection()
+    try:
+        merged = bool(conn.execute("SELECT 1 FROM territories WHERE group_name=?", (new,)).fetchone())
+        n = conn.execute("UPDATE territories SET group_name=? WHERE group_name=?", (new, old)).rowcount
+        conn.commit()
+    finally:
+        conn.close()
+    if not n:
+        return False, f"There is no group called {old}.", False
+    return True, (f"{old} merged into {new} ({n} territories)." if merged else f"{old} is now {new}."), merged
 
 
 def import_salespulse_db(path, include_history=True):
