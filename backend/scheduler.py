@@ -173,6 +173,11 @@ class InAppScheduler:
 
     def _loop(self):
         while not self._stop.wait(self.interval):
+            try:                # WhatsApp reminders go whatever else is running (they use WhatsApp, not SFA)
+                import reminders
+                threading.Thread(target=reminders.run_due, daemon=True, name="chimera-reminders").start()
+            except Exception:
+                pass
             try:
                 import sfa_automation
                 import loading_automation
@@ -297,6 +302,11 @@ def wanted_task_times(now=None):
         if j["frequency"] == "once" and j["once_date"] < now.date().isoformat():
             continue
         times.update(j["times_list"])
+    try:                        # WhatsApp reminders (e.g. 15 minutes before each report)
+        import reminders
+        times.update(reminders.task_times())
+    except Exception:
+        pass
     return sorted(times)
 
 

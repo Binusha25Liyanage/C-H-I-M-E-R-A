@@ -19,6 +19,7 @@ const VIEW_META = {
   "rep-attendance": ["Attendance", "Rep Attendance"],
   "data-sync": ["Data", "Data Sync"],
   "activity": ["Monitoring", "Activity Monitor"],
+  "running": ["Monitoring", "Running now"],
   "outlet-master": ["Data", "Outlets & Territories"],
   "maintenance": ["System", "Maintenance"],
   "settings": ["System", "Settings"],
@@ -65,6 +66,7 @@ function switchView(view, tab) {
   if (view === "loadings" && window.loadLoadings) window.loadLoadings();
   if (view === "outlet-updates" && window.loadOutletUpdates) window.loadOutletUpdates();
   if (view === "activity" && window.loadActivity) window.loadActivity();
+  if (window.onRunningView) window.onRunningView(view === "running");
   if (view === "automation" && tab && window.selectAutomationTab) window.selectAutomationTab(tab);
   setShellTitle(view, tab);
 }

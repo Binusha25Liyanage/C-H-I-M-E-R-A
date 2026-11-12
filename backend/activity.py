@@ -102,9 +102,25 @@ def events(d_from=None, d_to=None):
     for did, rr, chat, files, status, msg, at in _q(
             "SELECT id, report_run_id, chat_name, files, status, message, sent_at FROM wa_deliveries "
             "WHERE sent_at BETWEEN ? AND ? ORDER BY sent_at", (lo, hi)):
+        if (msg or "").startswith("Reminder:"):
+            continue                                   # shown once per reminder below
         out.append({"time": at, "process": "whatsapp", "status": _status(status), "trigger": "",
                     "title": f"WhatsApp → {chat}: {files} file(s) {status}", "detail": msg or "",
                     "ref": {"source": "whatsapp", "id": did}})
+    for sid, name, send_at, rep, status, chats, msg, at in _q(
+            "SELECT s.id, COALESCE(r.name, 'Reminder'), s.send_at, s.report_time, s.status, s.chats, s.message, s.at "
+            "FROM wa_reminder_sends s LEFT JOIN wa_reminders r ON r.id=s.reminder_id WHERE s.at BETWEEN ? AND ? "
+            "ORDER BY s.at", (lo, hi)):
+        cs = _j(chats, [])
+        rep_l = ""
+        if rep:
+            h, m = (int(x) for x in rep.split(":"))
+            rep_l = f" ({(h % 12) or 12}.{m:02d} {'AM' if h < 12 else 'PM'} report)"
+        out.append({"time": at, "process": "whatsapp", "trigger": f"reminder {send_at}",
+                    "status": {"sent": "ok", "partial": "warn", "failed": "fail", "skipped": "warn"}.get(status, "info"),
+                    "title": f"Reminder {'skipped' if status == 'skipped' else status} — {name}{rep_l}",
+                    "detail": (", ".join(f"{c['chat']}{'' if c.get('ok') else ' ✗ ' + c.get('message', '')}" for c in cs)
+                               if cs else "") or (msg or ""), "ref": {"source": "reminder", "id": sid}})
     for rid, kind, st, fin, trig, status, msg in _q(
             "SELECT id, kind, started_at, finished_at, trigger, status, message FROM loading_runs "
             "WHERE started_at BETWEEN ? AND ? ORDER BY started_at", (lo, hi)):
@@ -305,6 +321,18 @@ def detail(source, rid):
                            f"{l['new_seq'] or '-'}  {l['cur_state'] or '-'} → {l['new_state'] or '-'}  "
                            f"{OUTLET_OUTCOME.get(l['outcome'], 'waiting')}  {l['message']}")
         return "\n".join(out)
+    if source == "reminder":
+        r = _q("SELECT s.day, s.send_at, s.report_time, s.status, s.chats, s.text, s.message, s.at, r.name "
+               "FROM wa_reminder_sends s LEFT JOIN wa_reminders r ON r.id=s.reminder_id WHERE s.id=?", (rid,))
+        if not r:
+            return ""
+        day, send_at, rep, status, chats, text, msg, at, name = r[0]
+        lines = [f"Reminder: {name or '(deleted)'}", f"Planned {day} {send_at}" + (f" — before the {rep} report" if rep else ""),
+                 f"Result: {status} at {at.replace('T', ' ')} — {msg}", ""]
+        lines += [f"{'✓' if c.get('ok') else '✗'} {c['chat']} {c.get('message', '')}".rstrip() for c in _j(chats, [])]
+        if text:
+            lines += ["", "Message:", text]
+        return "\n".join(lines)
     if source == "seq_run":
         r = _q("SELECT log, message FROM seq_runs WHERE id=?", (rid,))
         return (r[0][0] or r[0][1] or "") if r else ""

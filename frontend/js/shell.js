@@ -195,6 +195,7 @@ const HELP = {
   reports: ["Combined SKU + Invoice Report", "Route-wise per-outlet report anchored to the previous visit date, from the itinerary and sales data imported on the Import Data screen."],
   "import-data": ["Import Data", "Imports itinerary, territories, invoices, sales orders, outlet master and SKU sales files for the route reports. For the daily SKU/Pivot/Hourly reports use <b>Daily SFA Reports</b> instead — it reads raw SFA exports directly."],
   settings: ["Settings", "<b>SFA Connection</b> — the login Chimera uses for automation; <b>Test Connection</b> shows a screenshot.<br><b>Daily report rules</b> — first-bill time, gap highlight, targets, output style.<br><b>Manager groups</b> — which territories belong to which manager (import from SalesPulse)."],
+  "running": ["Running now", "Everything Chimera is doing right now: SFA report downloads and building, WhatsApp (reports, reminders), distributor loadings, itinerary reads and rep sheets — each with its progress, steps, latest log line and its own <b>Stop</b> (the others keep going). <b>Coming up</b> lists the next 6 hours: scheduled runs, WhatsApp reminders and the 23:59 itinerary preparation — a reminder that won't go (paused, job off, holiday) says why. <b>Just finished</b> shows today's latest results. The sidebar shows how many are running."],
   "outlet-updates": ["Outlet Updates", "<b>Today's Routes</b> — the route each working territory's rep works on the chosen day, read from the SFA monthly itinerary (<b>H</b> = holiday, <b>-</b> = no route). From the prepare time (23:59) Chimera works on tomorrow; if the PC was off, it catches up the next time Chimera runs.<br><b>Working Territories</b> — switch on the territories Chimera looks after; <b>Detect territories from SFA</b> lists them all.<br><b>Itinerary</b> on a card shows the whole month as SFA has it.<br><b>Rep sheets</b> — the route sheets reps fill (New Sequence, Top 15). Chimera matches each to its SFA route by Route Code, reads the route's outlets from SFA and shows a preview: the new visit order (numbered outlets first, blanks after in their current order) and Top 15 outlets set to Mandatory — change any outlet singly or in bulk. Approve to save sequence + Visit State in SFA (phones fixed to 10 characters on the way). Dry run and approval are in Settings. Coming next: sheets straight from the reps' WhatsApp group and Google Sheets, and Chimera's own branded sheet."],
   about: ["About & Support", "Who built Chimera and how to get in touch."],
 };
@@ -363,6 +364,7 @@ window.selectAutomationTab = selectAutomationTab;
 document.getElementById("au-tabs").addEventListener("click", (e) => { if (e.target.dataset.tab === "whatsapp") loadWhatsApp(); });
 
 async function loadWhatsApp() {
+  if (window.loadReminders) window.loadReminders();
   let w; try { w = await window.pywebview.api.get_whatsapp_overview(); } catch (e) {
     document.getElementById("wa-rules").innerHTML = `<div class="problem-box">${esc(String(e))}</div>`; return; }
   SH.wa = w;

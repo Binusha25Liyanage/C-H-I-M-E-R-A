@@ -231,6 +231,29 @@ class RepSheetsTest(unittest.TestCase):
         self.assertTrue(SS.discard(new)[0])
         self.assertFalse(SS.discard(sid)[0])
 
+    def test_never_stuck_on_starting(self):
+        import time
+        # nothing waiting: refused up front, the screen is never told a run started
+        r = SQ.start_background(trigger="manual")
+        self.assertFalse(r["ok"])
+        self.assertIn("No route sheet is waiting", r["message"])
+        self.assertFalse(SQ.LIVE.snapshot().get("active"))
+        # a run that crashes still ends on screen
+        sid, _p = self._sheet()
+        orig = SQ.run
+        SQ.run = lambda **kw: (_ for _ in ()).throw(RuntimeError("boom"))
+        try:
+            self.assertTrue(SQ.start_background(trigger="manual")["ok"])
+            for _ in range(100):
+                if not SQ.LIVE.snapshot().get("active"):
+                    break
+                time.sleep(0.02)
+        finally:
+            SQ.run = orig
+        snap = SQ.LIVE.snapshot()
+        self.assertFalse(snap["active"])
+        self.assertIn("boom", snap["result"]["message"])
+
     def test_activity_record(self):
         import activity
         sid, _p = self._sheet()

@@ -39,6 +39,7 @@
         <button class="nav-btn" data-view="outlet-master"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg><span>Outlets &amp; Territories</span><em class="nav-soon">Soon</em></button>
         <button class="nav-btn" data-view="import-data"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6M9 15l3-3 3 3"/></svg><span>Manual Import</span></button>
         <div class="nav-group">Monitoring</div>
+        <button class="nav-btn" data-view="running"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Running now</span><em class="nav-badge live" id="nav-run-badge" style="display:none;"></em></button>
         <button class="nav-btn" data-view="activity"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>Activity Monitor</span></button>
       </nav>
 
@@ -247,6 +248,16 @@
                 <div class="form-row" style="margin-top:10px;"><label>When <b>Both</b> styles are built, send
                   <select id="wa-style"><option value="classic">Classic</option><option value="professional">Professional</option></select></label></div>
                 <div class="banner-warning" style="margin:6px 0 0;">Chimera uses <b>your own WhatsApp</b> through WhatsApp Web (scan the QR once). WhatsApp doesn't officially support automated sending from personal accounts &mdash; a few report messages to your own groups is fine, but avoid bulk messaging.</div>
+              </div>
+            </div>
+            <div class="card" id="rm-card">
+              <div class="card-header-row"><h3>Reminders</h3><button class="btn-outline btn-small" id="rm-add">+ Add reminder</button></div>
+              <p class="hint">Messages that go out on their own &mdash; e.g. &ldquo;Please sync your bills for the 12.15 PM Sales Report&rdquo; &mdash;
+                a set number of minutes before each report time, to their own chats (they can be groups that never get reports).
+                A reminder only goes when its report run is really going to happen.</p>
+              <div class="two-col rm-cols">
+                <div id="rm-list"></div>
+                <div><div class="section-title" style="margin-top:0;">Today</div><div id="rm-today"></div></div>
               </div>
             </div>
             <div class="card card-flush"><div class="card-header-row" style="padding:16px 18px 0;"><h3>Recent deliveries</h3></div><div id="wa-deliveries"></div></div>
@@ -632,6 +643,22 @@
           <div class="card"><h3>Data Sync</h3><p class="hint">Planned: download SFA Excels (Itinerary, Territories, Outlet Master and more) on their
             own schedules and keep Chimera's tables up to date. It will be built once the example Excels and URLs are ready.</p></div>
         </section>
+        <section id="view-running" class="view" style="display:none;">
+          <div class="rn-head">
+            <p class="hint" style="margin:0;flex:1;">Everything Chimera is doing right now, live &mdash; each with its progress, steps, log and its own Stop &mdash;
+              then what the schedule does next, and what just finished.</p>
+            <span id="rn-clock" class="rn-clock"></span>
+            <button class="btn-stop" id="rn-stop-all" title="Stop everything that is running">&#9632; Stop everything</button>
+          </div>
+          <div id="rn-paused"></div>
+          <div class="section-title">Running</div>
+          <div id="rn-running"></div>
+          <div class="two-col">
+            <div class="card card-flush"><div class="am-card-head"><h3>Coming up</h3><span class="hint">next 6 hours</span></div><div id="rn-coming"></div></div>
+            <div class="card card-flush"><div class="am-card-head"><h3>Just finished</h3><button class="link-btn" id="rn-to-activity">Activity Monitor &rarr;</button></div><div id="rn-ended"></div></div>
+          </div>
+        </section>
+
         <section id="view-activity" class="view" style="display:none;">
           <p class="hint view-intro">Everything Chimera did over a period &mdash; SFA downloads, reports, WhatsApp messages, loadings,
             itineraries, the distributor list and scheduled jobs &mdash; in one timeline. Read only: nothing here changes SFA.</p>
@@ -990,6 +1017,8 @@
   <script src="js/outlet_updates.js"></script>
   <script src="js/rep_sheets.js"></script>
   <script src="js/activity.js"></script>
+  <script src="js/running.js"></script>
+  <script src="js/reminders.js"></script>
   <script src="js/shell.js"></script>
 </body>
 </html>

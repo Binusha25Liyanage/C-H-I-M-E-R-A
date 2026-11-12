@@ -17,6 +17,7 @@ under the hood.
 
 import os
 import base64
+import threading
 import webview
 import db
 import excel_import
@@ -50,6 +51,8 @@ class Api:
         outlet_store.mark_interrupted()
         import sequence_store
         sequence_store.init_schema()
+        import reminders
+        reminders.init_schema()
         sequence_store.mark_interrupted()
         whatsapp_sender.init_schema()
         # IMPORTANT: anything that is not an API method must start with "_".
@@ -943,6 +946,67 @@ class Api:
         except Exception as e:
             return {"ok": False, "message": f"Couldn't export: {e}"}
         return {"ok": True, "path": path, "folder": os.path.dirname(path)}
+
+    # ------------------------------------------------------------
+    # Running now (every process, live)
+    # ------------------------------------------------------------
+    def get_running_now(self):
+        import running_now
+        return running_now.overview()
+
+    def stop_process(self, pid):
+        """Stops one running process right away (the others keep going)."""
+        import running_now
+        return running_now.stop(pid)
+
+    # ------------------------------------------------------------
+    # WhatsApp reminders
+    # ------------------------------------------------------------
+    def get_reminders(self):
+        import reminders as R
+        import schedule_store
+        plan = R.plan_day()
+        return {"reminders": R.list_reminders(), "default_text": R.DEFAULT_TEXT,
+                "jobs": [{"id": j["id"], "name": j["name"], "times": j["times_list"], "enabled": j["enabled"],
+                          "type": j["job_type"]} for j in schedule_store.list_jobs()],
+                "today": [{**x, "at": x["at"].strftime("%H:%M"), "report_label": R.fmt_time(x["report_time"])}
+                          for x in plan],
+                "recent": R.recent_sends(30)}
+
+    def save_reminder(self, data):
+        import reminders as R
+        ok, msg, rid = R.save_reminder(data or {})
+        if ok:
+            self._sync_tasks_quietly()
+        return {"ok": ok, "message": msg, "id": rid}
+
+    def set_reminder_enabled(self, rid, enabled):
+        import reminders as R
+        R.set_enabled(rid, enabled)
+        self._sync_tasks_quietly()
+        return {"ok": True}
+
+    def delete_reminder(self, rid):
+        import reminders as R
+        R.delete_reminder(rid)
+        self._sync_tasks_quietly()
+        return {"ok": True}
+
+    def send_reminder_test(self, rid):
+        import reminders as R
+        return R.send_test(rid)
+
+    def preview_reminder(self, text, report_time=""):
+        import reminders as R
+        return R.render(str(text or ""), str(report_time or ""))
+
+    def _sync_tasks_quietly(self):
+        """Windows must also wake Chimera at reminder times (when it's set to use Task Scheduler)."""
+        try:
+            if automation_store.get_automation_settings().get("use_task_scheduler") == "1":
+                threading.Thread(target=scheduler.sync_windows_tasks, daemon=True).start()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------
     # Windows notifications

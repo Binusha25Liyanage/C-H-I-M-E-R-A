@@ -50,7 +50,7 @@ DOWNLOAD_DIR = os.path.join(os.path.expanduser("~"), "Chimera", "downloads", "ro
 SHOT_DIR = os.path.join(os.path.expanduser("~"), "Chimera", "screenshots", "outlet_updates")
 
 LIVE = SA.LiveState("outlets")
-_ACTIVE = {"loop": None, "browser": None}
+_ACTIVE = {"loop": None, "browser": None, "thread": None}
 BLANK_PHONE = "0000000000"
 
 
@@ -524,7 +524,10 @@ def run(sheet_ids=None, trigger="manual", headless=None):
     pick = lambda states: [s for s in SS.list_sheets(states) if not sheet_ids or s["id"] in sheet_ids]
     todo = sorted(pick(("received", "approved")), key=lambda s: s["id"])
     if not todo:
-        return {"ok": True, "status": "nothing", "message": "No sheet is waiting for SFA."}
+        res = {"ok": True, "status": "nothing", "message": "No route sheet is waiting for SFA."}
+        if LIVE.snapshot().get("active"):
+            LIVE.set(active=False, phase="done", result=res)
+        return res
     if not AS.acquire_lock(f"outlet updates ({datetime.now():%H:%M})"):
         holder = AS.lock_holder() or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
@@ -824,8 +827,30 @@ def start_background(target="run", **kw):
             loading_automation.LIVE.snapshot().get("active") or itinerary_automation.LIVE.snapshot().get("active"):
         return {"ok": False, "message": "Another SFA run is already in progress."}
     fn = run_routes if target == "routes" else run
+    if target != "routes":
+        ids = kw.get("sheet_ids")
+        if not [x for x in SS.list_sheets(("received", "approved")) if not ids or x["id"] in ids]:
+            return {"ok": False, "message": "No route sheet is waiting for SFA. Add filled sheets first"
+                                            + ("" if SS.routes_info()["routes"] else " — and read SFA's route list "
+                                               "(Update from SFA) so they can be matched to their routes") + "."}
     LIVE.reset(kind="routes" if target == "routes" else "sequence", trigger=kw.get("trigger", "manual"))
-    threading.Thread(target=fn, kwargs=kw, daemon=True, name=f"chimera-seq-{target}").start()
+
+    def guarded():
+        """Whatever happens in the run, the screen is told it ended (never stuck on 'Starting…')."""
+        try:
+            res = fn(**kw)
+        except Exception as e:
+            res = {"ok": False, "status": "failed", "message": f"Unexpected error: {type(e).__name__}: {e}"}
+            holder = AS.lock_holder() or {}
+            if str(holder.get("owner", "")).startswith(("outlet updates", "route list")):
+                AS.release_lock()
+        if LIVE.snapshot().get("active"):
+            LIVE.set(active=False, phase="done", result=res if isinstance(res, dict) else
+                     {"ok": False, "status": "failed", "message": "The run ended without a result."})
+
+    t = threading.Thread(target=guarded, daemon=True, name=f"chimera-seq-{target}")
+    _ACTIVE["thread"] = t
+    t.start()
     return {"ok": True, "message": "Started."}
 
 
@@ -840,6 +865,9 @@ def force_stop(timeout=10):
             asyncio.run_coroutine_threadsafe(browser.close(), loop).result(timeout)
         except Exception:
             pass
+    t = _ACTIVE.get("thread")
+    if LIVE.snapshot().get("active") and (t is None or not t.is_alive()):
+        LIVE.set(active=False, phase="done", result={"ok": False, "status": "cancelled", "message": "Stopped by you."})
     return was
 
 

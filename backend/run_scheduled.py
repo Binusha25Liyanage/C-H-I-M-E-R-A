@@ -33,6 +33,14 @@ def main(argv=None):
         r = sfa_automation.run_automation(trigger="cli")
         print(f"{r['status'].upper()}: {r.get('message', '')}")
         return 0 if r.get("ok") else 1
+    try:                                   # WhatsApp reminders due now (e.g. 15 minutes before a report)
+        import reminders
+        reminders.init_schema()
+        rr = reminders.run_due()
+        if rr.get("sent") or rr.get("skipped") or rr.get("missed"):
+            print(f"Reminders: {rr.get('sent', 0)} sent, {rr.get('skipped', 0) + rr.get('missed', 0)} skipped.")
+    except Exception as e:
+        print(f"Reminders: {e}")
     r = scheduler.run_due("scheduled")
     if not r["ran"]:
         print(f"Nothing to do: {r['reason']}")
