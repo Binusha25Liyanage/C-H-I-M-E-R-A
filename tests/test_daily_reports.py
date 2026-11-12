@@ -328,6 +328,31 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(plan["Mgr1 team"]["orientation"], "portrait")
         self.assertTrue(all(pg.startswith("Hourly") for pg in plan["All"]["pages"]))
 
+    def test_preview_first_run_of_day_only(self):
+        conn = db.get_connection()
+        conn.execute("DELETE FROM report_runs")
+        conn.commit()
+        conn.close()
+        self.assertTrue(sfa_store.save_settings({"delivery_mode": "preview_first"})[0])
+        try:
+            out = tempfile.mkdtemp()
+            r1 = P.run_reports(D, output_root=out, kinds=["sku"], images=False)        # 10:00 — first run
+            self.assertEqual(r1["status"], "pending_review")
+            r2 = P.run_reports(D, output_root=out, kinds=["sku"], images=False)        # 15:00 — still not approved
+            self.assertEqual(r2["status"], "pending_review")
+            self.assertEqual(P.get_run(r1["run_id"])["status"], "discarded")            # stale preview replaced
+            self.assertFalse(P.approved_on(D))
+            self.assertTrue(P.approve_run(r2["run_id"])["ok"])
+            self.assertTrue(P.approved_on(D))
+            r3 = P.run_reports(D, output_root=out, kinds=["sku"], images=False)        # 17:30 — goes straight out
+            self.assertEqual(r3["status"], "success")
+            self.assertIn("already approved", r3["review_note"])
+            self.assertEqual(P.run_reports("2026-01-01", output_root=out, kinds=["sku"], images=False,
+                                           allow_missing_inputs=True)["review"], True)    # another day asks again
+            self.assertFalse(sfa_store.save_settings({"delivery_mode": "sometimes"})[0])
+        finally:
+            sfa_store.save_settings({"delivery_mode": "save"})
+
     def test_classic_focus_label(self):
         import daily_reports_pdf as PDF
         self.assertEqual(PDF._focus_short("Lakposha 200g"), "Lakposha200")

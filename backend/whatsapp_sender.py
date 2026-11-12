@@ -87,18 +87,20 @@ def init_schema():
         conn.execute("ALTER TABLE wa_rules ADD COLUMN send_as TEXT NOT NULL DEFAULT 'images'")
     if "orientation" not in cols:  # portrait (wide pages turned upright) | landscape (pages as they are)
         conn.execute("ALTER TABLE wa_rules ADD COLUMN orientation TEXT NOT NULL DEFAULT 'portrait'")
+    if "pre_message" not in cols:  # text sent to the chat right before its reports ('' = none)
+        conn.execute("ALTER TABLE wa_rules ADD COLUMN pre_message TEXT NOT NULL DEFAULT ''")
     conn.commit()
     conn.close()
 
 
 def list_rules():
     conn = db.get_connection()
-    rows = conn.execute("SELECT id, chat_name, kinds, groups, caption, enabled, send_as, orientation "
+    rows = conn.execute("SELECT id, chat_name, kinds, groups, caption, enabled, send_as, orientation, pre_message "
                         "FROM wa_rules ORDER BY id").fetchall()
     conn.close()
     return [{"id": r[0], "chat_name": r[1], "kinds": [k for k in r[2].split(",") if k],
              "groups": json.loads(r[3] or '["*"]'), "caption": r[4], "enabled": bool(r[5]),
-             "send_as": r[6] or "images", "orientation": r[7] or "portrait"} for r in rows]
+             "send_as": r[6] or "images", "orientation": r[7] or "portrait", "pre_message": r[8] or ""} for r in rows]
 
 
 def rename_group_in_rules(old, new):
@@ -133,18 +135,21 @@ def save_rule(data):
     orientation = data.get("orientation") or "portrait"
     if orientation not in ("portrait", "landscape"):
         return False, "Orientation must be portrait or landscape."
+    pre = str(data.get("pre_message") or "").replace("\r\n", "\n").strip()
+    if len(pre) > 2000:
+        return False, "The message before the reports is too long (2,000 characters at most)."
     conn = db.get_connection()
     try:
         vals = (chat, ",".join(kinds), json.dumps(groups), caption, 1 if data.get("enabled", True) else 0, send_as,
-                orientation)
+                orientation, pre)
         if data.get("id"):
             n = conn.execute("UPDATE wa_rules SET chat_name=?, kinds=?, groups=?, caption=?, enabled=?, send_as=?, "
-                             "orientation=? WHERE id=?", vals + (data["id"],)).rowcount
+                             "orientation=?, pre_message=? WHERE id=?", vals + (data["id"],)).rowcount
             if not n:
                 return False, "That rule no longer exists."
         else:
-            conn.execute("INSERT INTO wa_rules (chat_name, kinds, groups, caption, enabled, send_as, orientation) "
-                         "VALUES (?, ?, ?, ?, ?, ?, ?)", vals)
+            conn.execute("INSERT INTO wa_rules (chat_name, kinds, groups, caption, enabled, send_as, orientation, pre_message) "
+                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", vals)
         conn.commit()
     finally:
         conn.close()
@@ -196,6 +201,13 @@ def _caption(rule, run, label):
         .replace("{time}", datetime.now().strftime("%H:%M"))
 
 
+def fill_message(text, report_date, now=None):
+    """The message before the reports: {date} = report date, {time} = send time, {day} = today's weekday."""
+    now = now or datetime.now()
+    return (text or "").replace("{date}", report_date or "").replace("{time}", now.strftime("%H:%M")) \
+        .replace("{day}", now.strftime("%A"))
+
+
 def plan_delivery(run, rules=None):
     """
     What goes to which chat for this report run. Images are sent report by
@@ -240,6 +252,7 @@ def plan_delivery(run, rules=None):
         labels = ", ".join(b["label"] for b in batches) or ", ".join(
             r["label"] for r in run["summary"].get("reports", []) if r.get("ok") and r["kind"] in rule["kinds"])
         plan.append({"rule_id": rule["id"], "chat_name": rule["chat_name"], "batches": batches,
+                     "pre_message": fill_message(rule.get("pre_message", ""), run["report_date"]),
                      "files": [f for b in batches for f in b["files"]], "pdfs": pdfs, "send_as": send_as,
                      "orientation": "landscape" if landscape else "portrait",
                      "pages": [pg for b in batches for pg in b["pages"]], "caption": _caption(rule, run, labels)})
@@ -777,15 +790,19 @@ async def _send_images(page, files, caption):
     await _send_files(page, files, caption, "photos")
 
 
-async def _send_text(page, text):
+async def _send_text(page, text, what="The test message"):
     box = await _first(page, SEL_COMPOSE, 8000)
     if box is None:
         raise WAError("Couldn't find the message box.")
     await _click(box, "the message box")
-    await box.type(text, delay=15)
+    for k, line in enumerate(text.split("\n")):     # Shift+Enter keeps a multi-line message in one message
+        if k:
+            await page.keyboard.press("Shift+Enter")
+        if line:
+            await box.type(line, delay=12)
     await page.keyboard.press("Enter")
     if not await _wait_sent(page, 45):
-        raise WAError("The test message is still pending.")
+        raise WAError(f"{what} is still pending.")
 
 
 async def _session(action, headless, fn, link_timeout=180):
@@ -1025,6 +1042,9 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
                 try:
                     WA.log(f"Opening '{item['chat_name']}'…")
                     await _open_chat(page, item["chat_name"])
+                    if item.get("pre_message"):                    # the group's own message, right before its reports
+                        await _send_text(page, item["pre_message"], "The message before the reports")
+                        WA.log(f"{item['chat_name']}: sent the message before the reports.")
                     for bt in item.get("batches") or []:          # SKU, then Pivot, then Hourly
                         for k in range(0, len(bt["files"]), BATCH):
                             chunk = bt["files"][k:k + BATCH]
@@ -1034,7 +1054,9 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
                     if pdfs:
                         await _send_files(page, pdfs, "" if item["files"] else item["caption"], "document")
                         WA.log(f"{item['chat_name']}: sent {len(pdfs)} PDF(s) (Document).")
-                    _log_delivery(report_run_id, item["chat_name"], len(item["files"]) + len(pdfs), "sent", item["caption"])
+                    _log_delivery(report_run_id, item["chat_name"], len(item["files"]) + len(pdfs), "sent",
+                                  (f"Message first: “{item['pre_message'][:120]}{'…' if len(item['pre_message']) > 120 else ''}” · "
+                                   if item.get("pre_message") else "") + item["caption"])
                     sent += 1
                 except Exception as e:
                     shot = await _shot(page, "send_failed")
@@ -1049,6 +1071,13 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
                     except Exception:
                         pass
             msg = f"Sent to {sent} chat(s)" + (f", {failed} failed" if failed else "") + "."
+            try:
+                import desktop_notify
+                desktop_notify.event("failed" if failed else "finished", "whatsapp",
+                                     f"WhatsApp — reports for {run['report_date']}",
+                                     msg + (" Open WhatsApp in Chimera for details." if failed else ""), action="whatsapp")
+            except Exception:
+                pass
             return {"ok": failed == 0 and sent > 0, "message": msg, "sent": sent, "failed": failed}
         return _run("send", s["wa_show_browser"] != "1", fn)
 

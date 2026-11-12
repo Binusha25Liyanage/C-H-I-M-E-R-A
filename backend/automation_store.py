@@ -65,6 +65,26 @@ DEFAULT_AUTOMATION = {
     "auto_loadings": "1",                # Distributor Loadings: prepare on schedule (never confirms by itself)
     "loading_url": "https://lakmee.salespro.lk/it/loading",   # SFA View Loadings page
     "loading_tabs": "12",
+    "auto_distributor_sync": "1",        # scheduled "Distributor list update" jobs run
+    "users_url": "https://lakmee.salespro.lk/it/users",   # SFA Users page (distributor list for Loadings)
+    "add_loading_url": "https://lakmee.salespro.lk/it/loading/create",   # SFA ADD LOADING page
+    "add_loading_for": "Today",          # 'Loading For' on ADD LOADING
+    "add_loading_company": "",           # 'Product Company' (empty = leave what SFA picks)
+    "add_loading_dry_run": "1",          # fill the page but stop before SAVE (switch off after testing)
+    "auto_outlet_updates": "1",          # Outlet Updates: read itineraries / prepare the next day by itself
+    "ou_itinerary_url": "https://lakmee.salespro.lk/it/month-itinerary",   # SFA View SR Individual Itinerary
+    "ou_outlets_url": "https://lakmee.salespro.lk/it/level-eight",         # SFA View Outlets
+    "ou_territory_url": "https://lakmee.salespro.lk/it/level-six",        # SFA View Territory
+    "ou_prepare_time": "23:59",          # from this time, Chimera prepares the NEXT day
+    "ou_tabs": "6",                      # territories read at the same time
+    "ou_routes_url": "https://lakmee.salespro.lk/it/level-seven",         # SFA View Route (active route list)
+    "seq_need_approval": "1",            # rep sheets: show the preview and wait for approval before saving in SFA
+    "seq_dry_run": "1",                  # rep sheets: open every outlet but don't press UPDATE (switch off after testing)
+    "notify_desktop": "1",               # Windows notifications (master switch)
+    "notify_started": "1",               #   a scheduled time arrived / a run started
+    "notify_approval": "1",              #   something waits for your approval
+    "notify_finished": "1",              #   a run finished
+    "notify_failed": "1",                #   a run failed or couldn't start
     "clock_offset_s": "",                # SFA server time minus PC time, seconds (last check)
     "clock_source": "",
     "clock_checked_at": "",
@@ -387,8 +407,24 @@ def save_automation_settings(values):
             pass
         elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
                    "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence",
-                   "auto_loadings"):
+                   "auto_loadings", "auto_outlet_updates", "auto_distributor_sync", "add_loading_dry_run",
+                   "seq_need_approval", "seq_dry_run", "notify_desktop", "notify_started", "notify_approval",
+                   "notify_finished", "notify_failed"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
+        elif k in ("add_loading_for", "add_loading_company"):
+            v = v[:120]
+        elif k in ("ou_itinerary_url", "ou_outlets_url", "ou_territory_url", "users_url", "add_loading_url",
+                   "ou_routes_url"):
+            if not re.match(r"^https?://", v):
+                return False, "SFA page addresses must start with http:// or https://"
+        elif k == "ou_prepare_time":
+            m = re.match(r"^(\d{1,2}):(\d{2})$", v)
+            if not m or not (0 <= int(m[1]) < 24 and 0 <= int(m[2]) < 60):
+                return False, f"'{v}' is not a valid time (use HH:MM, 24-hour)."
+            v = f"{int(m[1]):02d}:{m[2]}"
+        elif k == "ou_tabs":
+            if not v.isdigit() or not 1 <= int(v) <= MAX_PARALLEL_TABS:
+                return False, f"Territories at once must be between 1 and {MAX_PARALLEL_TABS}."
         elif k == "loading_url":
             if not re.match(r"^https?://", v):
                 return False, "The View Loadings URL must start with http:// or https://"

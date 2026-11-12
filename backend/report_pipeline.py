@@ -124,14 +124,24 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
     Returns {"ok", "status", "run_id", "folder", "imports", "reports": [...]}.
     """
     output_root = output_root or globals()["output_root"]()
+    review_note = ""
     if review is None:
-        review = sfa_store.get_settings().get("delivery_mode") == "preview"
+        mode = sfa_store.get_settings().get("delivery_mode")
+        if mode == "preview_first":
+            if approved_on(date):
+                review, review_note = False, ("Reports for this day were already approved — saved and sent "
+                                              "without asking again (Preview the first run of each day).")
+            else:
+                review, review_note = True, ("First run for this day — waiting for your approval. Later runs for "
+                                             "this day will save and send by themselves once you approve.")
+        else:
+            review = mode == "preview"
     run_id = _log_start(date, trigger)
     final_folder = os.path.join(output_root, date, datetime.now().strftime("%H%M%S"))
     folder = os.path.join(output_root, "_pending", f"run_{run_id}") if review else final_folder
     images = images or review          # previews are the page images
     summary = {"imports": [], "reports": [], "review": bool(review), "final_folder": final_folder,
-               "output_root": output_root}
+               "output_root": output_root, "review_note": review_note}
     try:
         if files:
             summary["imports"] = sfa_store.import_files(files)
@@ -190,6 +200,7 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
         summary["final_status"] = state
         if review and oks:
             state = "pending_review"
+            _supersede_pending(date, run_id)
         elif review and os.path.isdir(folder):
             shutil.rmtree(folder, ignore_errors=True)
         _log_finish(run_id, state, folder if oks else None, summary)
@@ -220,6 +231,19 @@ def _rewrite_paths(obj, old, new):
     if isinstance(obj, dict):
         return {k: _rewrite_paths(v, old, new) for k, v in obj.items()}
     return obj
+
+
+def approved_on(report_date):
+    """True once any previewed run for this report date has been approved (saved)."""
+    return any(r["report_date"] == report_date and r["status"] in ("success", "partial")
+               and (r.get("summary") or {}).get("review") for r in get_runs(200))
+
+
+def _supersede_pending(report_date, keep_id):
+    """A newer preview for the same day replaces older unapproved ones — never approve stale reports."""
+    for r in list_pending():
+        if r["report_date"] == report_date and r["id"] != keep_id:
+            discard_run(r["id"])
 
 
 def approve_run(run_id):

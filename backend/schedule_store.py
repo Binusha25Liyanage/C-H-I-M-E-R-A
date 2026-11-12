@@ -42,11 +42,15 @@ JOB_TYPES = {
     "loadings": {"label": "Distributor loadings (prepare)", "available": True,
                  "hint": "Reads the pending loading of every Daily distributor and asks for your approval — "
                          "it never confirms a loading on its own."},
+    "distributors": {"label": "Distributor list update", "available": True,
+                     "hint": "Reads the distributor list (Active and Inactive) from SFA's Users page and updates "
+                             "Distributor Loadings — new distributors are added, inactive ones blocked."},
 }
 REPORT_DAYS = ("today", "yesterday")
 # Each job type has an on/off switch in automation_settings (Schedules > Automations).
 TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "master_sync": "auto_master_sync",
-               "visit_state": "auto_visit_state", "sequence": "auto_sequence", "loadings": "auto_loadings"}
+               "visit_state": "auto_visit_state", "sequence": "auto_sequence", "loadings": "auto_loadings",
+               "distributors": "auto_distributor_sync"}
 
 
 def type_on(job, settings):
@@ -228,7 +232,9 @@ def _clean_job(j):
             missing = [i for i in ids if i not in known]
             if missing:
                 raise ValueError("Some selected report profiles no longer exist — reopen the job and choose again.")
-        opts = {"report_day": rd, "profile_ids": ids}
+        times = out["times"].split(",")
+        review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})
+        opts = {"report_day": rd, "profile_ids": ids, "review_times": review}
     out["options"] = json.dumps(opts)
     return out
 

@@ -80,6 +80,35 @@ def events(limit=30):
                        "text": r["message"] or "", "action": "loadings"})
     except Exception:
         pass
+    try:
+        import outlet_store as OS
+        for r in OS.list_runs(8):
+            if r["status"] == "running":
+                continue
+            ev.append({"time": r["finished_at"] or r["started_at"],
+                       "level": {"done": "success", "failed": "error", "cancelled": "info"}.get(r["status"], "warn"),
+                       "source": "outlets", "title": f"Itinerary read ({r['trigger']}) — for {r['target_day'] or '?'}",
+                       "text": r["message"] or "", "action": "outlet-updates"})
+    except Exception:
+        pass
+    try:
+        import sequence_store as SQS
+        ready = SQS.list_sheets(("ready",), limit=50)
+        if ready:
+            ev.append({"time": max(x["read_at"] or x["received_at"] for x in ready), "level": "warn", "source": "outlets",
+                       "title": f"{len(ready)} rep sheet(s) waiting for your approval",
+                       "text": ", ".join(x["route_name"] for x in ready[:5]) + (" …" if len(ready) > 5 else ""),
+                       "action": "rep-sheets", "sticky": True})
+        for r in SQS.list_runs(8):
+            if r["status"] == "running":
+                continue
+            ev.append({"time": r["finished_at"] or r["started_at"],
+                       "level": {"done": "success", "failed": "error", "cancelled": "info"}.get(r["status"], "warn"),
+                       "source": "outlets", "title": {"routes": "Route list update", "read": "Rep sheets — previews read",
+                                                      "apply": "Rep sheets — SFA run"}.get(r["kind"], r["kind"]),
+                       "text": r["message"] or "", "action": "rep-sheets"})
+    except Exception:
+        pass
     ev.sort(key=lambda e: e["time"] or "", reverse=True)
     seen = AS.get_automation_settings().get("notif_seen_at", "")
     for e in ev[:limit]:

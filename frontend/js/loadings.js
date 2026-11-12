@@ -3,9 +3,9 @@
 // once) and confirm runs. Relies on openModal/closeModal/esc/API/chip from
 // automation.js, copyText/escapeHtml/localToday from main.js.
 
-const LD = { ov: null, sel: new Set(), filter: "all", q: "", poll: null, wasActive: false, monOpen: false,
+const LD = { ov: null, sel: new Set(), filter: "all", status: "active", asm: "", q: "", poll: null, wasActive: false, monOpen: false,
              approve: null, approveSel: new Set(), current: null, draft: null };
-const LD_STEP_LABEL = { login: "Log in", open: "Open", filters: "Filters", search: "Search", find: "Find pending",
+const LD_STEP_LABEL = { export: "Excel", login: "Log in", open: "Open", filters: "Filters", search: "Search", find: "Find pending",
                         read: "Read loading", check: "Check", confirm: "Confirm", verify: "Verify" };
 const LD_STATE = {
   pending_approval: ["chip-warn", "Waiting for approval"], nothing_pending: ["chip-grey", "Nothing pending"],
@@ -51,7 +51,15 @@ function renderLdTop() {
 function ldFiltered() {
   const q = LD.q.toLowerCase();
   return LD.ov.distributors.filter(d => (LD.filter === "all" || d.frequency === LD.filter)
-    && (!q || d.name.toLowerCase().includes(q) || (d.code || "").toLowerCase().includes(q) || (d.area || "").toLowerCase().includes(q)));
+    && (LD.status === "all" || (LD.status === "inactive") === !!d.blocked)
+    && (!LD.asm || d.asm === LD.asm)
+    && (!q || [d.name, d.code, d.area, d.territory, d.asm, d.ase, d.sa, d.phone].some(x => (x || "").toLowerCase().includes(q))));
+}
+
+function ldTags(d) {
+  return (d.vacant ? '<span class="chip chip-warn ld-tag">Vacant</span>' : "")
+    + (d.sfa_status === "inactive" ? '<span class="chip chip-missing ld-tag">Inactive in SFA</span>' : "")
+    + (d.in_sfa === 0 ? '<span class="chip chip-grey ld-tag">Not in SFA list</span>' : "");
 }
 
 function ldFilterSummary(d) {
@@ -68,18 +76,21 @@ function renderLdTable() {
       <th style="width:40px"><input type="checkbox" id="ld-all" ${all ? "checked" : ""}></th><th style="width:190px">Loading</th><th>Distributor</th>
       <th>Filters</th><th style="width:200px">Last result</th><th style="width:250px"></th></tr></thead><tbody>${rows.map(d => {
         const last = d.last;
-        return `<tr class="${d.problems.length ? "row-warn" : ""}">
+        const sub = [d.code, d.territory || d.area].filter(Boolean).join(" · ");
+        const mgr = [d.asm, d.ase].filter(Boolean).join(" · ");
+        return `<tr class="${d.blocked ? "row-off" : d.problems.length ? "row-warn" : ""}">
           <td><input type="checkbox" class="ld-sel" value="${d.id}" ${LD.sel.has(d.id) ? "checked" : ""}></td>
-          <td><label class="radio sm"><input type="radio" name="ld-f-${d.id}" data-freq="daily" data-id="${d.id}" ${d.frequency === "daily" ? "checked" : ""}> Daily</label>
+          <td><label class="radio sm" ${d.blocked ? 'title="Only distributors active in SFA can be Daily"' : ""}><input type="radio" name="ld-f-${d.id}" data-freq="daily" data-id="${d.id}" ${d.frequency === "daily" ? "checked" : ""} ${d.blocked ? "disabled" : ""}> Daily</label>
               <label class="radio sm"><input type="radio" name="ld-f-${d.id}" data-freq="request" data-id="${d.id}" ${d.frequency === "request" ? "checked" : ""}> On request</label></td>
-          <td><b>${esc(d.name)}</b>${d.code ? `<div class="hint" style="font-size:12px;">${esc(d.code)}</div>` : ""}${d.area ? `<div class="hint" style="font-size:12px;">${esc(d.area)}</div>` : ""}</td>
+          <td><b>${esc(d.name)}</b> ${ldTags(d)}${sub ? `<div class="hint" style="font-size:12px;">${esc(sub)}</div>` : ""}${mgr ? `<div class="hint" style="font-size:12px;">${esc(mgr)}</div>` : ""}${d.phone ? `<div class="hint" style="font-size:12px;">&#9742; ${esc(d.phone)}</div>` : ""}</td>
           <td style="font-size:12px;">${d.problems.length ? `<span class="error">${esc(d.problems[0])}</span>` : esc(ldFilterSummary(d))}</td>
           <td style="font-size:12px;">${last ? `${ldChip(last.state)}<div class="hint" style="font-size:11px;margin-top:3px;">${esc((last.at || "").replace("T", " ").slice(0, 16))}${last.loading_number ? " · " + esc(last.loading_number) : ""}</div>` : '<span class="hint">never</span>'}</td>
           <td style="text-align:right;white-space:nowrap;"><button class="icon-action" data-ld-edit="${d.id}">Edit</button>
-            <button class="icon-action" data-ld-test="${d.id}" title="Read this distributor's pending loading now (never confirms)">Prepare</button>
+            <button class="icon-action" data-ld-test="${d.id}" ${d.blocked ? "disabled" : ""} title="Read this distributor's pending loading now (never confirms)">Prepare</button>
+            <button class="icon-action" data-ld-add="${d.id}" ${d.blocked ? "disabled" : ""} title="Add a new loading in SFA for this distributor">Add loading</button>
             <button class="icon-action" data-ld-copy="${d.id}">Copy</button><button class="icon-action danger" data-ld-del="${d.id}">✕</button></td></tr>`; }).join("")}</tbody></table>`
-    : `<div class="empty-state"><b>No distributors yet.</b><p class="hint">Add your first distributor: its View Loadings filters (Distributor, Territory…) and whether it needs a loading every day.</p>
-        <button class="btn-primary" onclick="openDistributorEditor(null)">+ Add distributor</button></div>`;
+    : `<div class="empty-state"><b>No distributors yet.</b><p class="hint">Get the distributor list from SFA's Users page (all of them, with their Distributor filter ready), or add one by hand.</p>
+        <button class="btn-primary" onclick="startLdSync()">&#8635; Get distributors from SFA</button> <button class="btn-outline" onclick="openDistributorEditor(null)">+ Add distributor</button></div>`;
   renderLdBulk();
 }
 
@@ -96,6 +107,23 @@ function renderLdBulk() {
 
 function renderLdSettings() {
   const s = LD.ov.settings;
+  document.getElementById("al-url").value = s.add_loading_url || "";
+  document.getElementById("al-for").value = s.add_loading_for || "";
+  document.getElementById("al-company").value = s.add_loading_company || "";
+  document.getElementById("al-dry").checked = s.add_loading_dry_run !== "0";
+  document.getElementById("al-mode-chip").innerHTML = s.add_loading_dry_run !== "0"
+    ? '<span class="chip chip-warn">Dry run — nothing is saved in SFA</span>' : '<span class="chip chip-missing">Live — Create saves in SFA</span>';
+  document.getElementById("ld-users-url").value = s.users_url;
+  const ls = LD.ov.last_sync, sj = LD.ov.sync_jobs || [];
+  document.getElementById("ld-sync-info").innerHTML = `<p class="hint" style="margin:6px 0;">${ls
+      ? `Last update: <b>${esc(ls.started_at.replace("T", " ").slice(0, 16))}</b> (${esc(ls.trigger)}) ${chip({ done: "success", failed: "failed", cancelled: "cancelled", running: "running" }[ls.status] || ls.status)} ${esc(ls.message || "")}`
+      : "Not updated from SFA yet."}</p>` + (sj.length
+      ? `<ul class="result-list">${sj.map(j => `<li>${j.enabled ? "✓" : "○"} <b>${esc(j.name)}</b> — ${esc(j.summary)}</li>`).join("")}</ul>`
+      : `<p class="hint" style="margin:0;">No automatic update yet — add one so new and inactive distributors are picked up by themselves.</p>`);
+  const asms = [...new Set(LD.ov.distributors.map(d => d.asm).filter(Boolean))].sort();
+  const sel = document.getElementById("ld-asm");
+  sel.innerHTML = `<option value="">All ASMs</option>` + asms.map(a => `<option ${a === LD.asm ? "selected" : ""}>${esc(a)}</option>`).join("");
+  sel.style.display = asms.length ? "" : "none";
   document.getElementById("ld-url").value = s.loading_url;
   document.getElementById("ld-tabs").value = s.loading_tabs; document.getElementById("ld-tabs-val").textContent = s.loading_tabs;
   document.getElementById("ld-jobs").innerHTML = LD.ov.jobs.length
@@ -106,7 +134,7 @@ function renderLdSettings() {
 function renderLdRuns() {
   const r = LD.ov.runs;
   document.getElementById("ld-runs").innerHTML = r.length ? `<table class="report-table"><thead><tr><th>#</th><th>Started</th><th>Run</th><th>By</th><th>Result</th><th></th></tr></thead><tbody>${r.map(x => `
-      <tr><td>${x.id}</td><td>${esc(x.started_at.replace("T", " "))}</td><td>${x.kind === "prepare" ? "Prepare (read only)" : "Confirm"}</td><td>${esc(x.trigger)}</td>
+      <tr><td>${x.id}</td><td>${esc(x.started_at.replace("T", " "))}</td><td>${{ prepare: "Prepare (read only)", confirm: "Confirm", sync: "Distributor list" }[x.kind] || x.kind}</td><td>${esc(x.trigger)}</td>
         <td style="font-size:12px;">${chip({ done: "success", failed: "failed", cancelled: "cancelled", running: "running" }[x.status] || x.status)} ${esc(x.message || "")}</td>
         <td style="text-align:right;"><button class="icon-action" data-ld-run="${x.id}">Details</button></td></tr>`).join("")}</tbody></table>`
     : `<p class="hint" style="padding:18px;">Nothing has run yet.</p>`;
@@ -121,7 +149,7 @@ document.getElementById("ld-table").addEventListener("change", async (e) => {
   const t = e.target;
   if (t.id === "ld-all") { ldFiltered().forEach(d => t.checked ? LD.sel.add(d.id) : LD.sel.delete(d.id)); renderLdTable(); return; }
   if (t.classList.contains("ld-sel")) { t.checked ? LD.sel.add(Number(t.value)) : LD.sel.delete(Number(t.value)); renderLdBulk(); return; }
-  if (t.dataset.freq) { await API().set_distributor_frequency([Number(t.dataset.id)], t.dataset.freq); loadLoadings(); }
+  if (t.dataset.freq) { ldFreqResult(await API().set_distributor_frequency([Number(t.dataset.id)], t.dataset.freq)); loadLoadings(); }
 });
 document.getElementById("ld-table").addEventListener("click", async (e) => {
   const t = e.target;
@@ -131,14 +159,51 @@ document.getElementById("ld-table").addEventListener("click", async (e) => {
   if (t.dataset.ldDel) { const d = find(t.dataset.ldDel);
     confirmModal("Delete distributor", `Delete “${esc(d.name)}” from Chimera? Nothing changes in SFA.`, "Delete", async () => { await API().delete_distributor(d.id); LD.sel.delete(d.id); loadLoadings(); }, true); }
   if (t.dataset.ldTest) startLdPrepare([Number(t.dataset.ldTest)]);
+  if (t.dataset.ldAdd) openAddLoading(Number(t.dataset.ldAdd));
 });
 document.getElementById("ld-bulk").addEventListener("click", async (e) => {
   const t = e.target;
   if (t.id === "ld-prep-sel") startLdPrepare([...LD.sel]);
   if (t.id === "ld-desel") { LD.sel.clear(); renderLdTable(); }
-  if (t.dataset.bulkFreq) { await API().set_distributor_frequency([...LD.sel], t.dataset.bulkFreq); loadLoadings(); }
+  if (t.dataset.bulkFreq) { ldFreqResult(await API().set_distributor_frequency([...LD.sel], t.dataset.bulkFreq)); loadLoadings(); }
 });
 document.getElementById("ld-add").addEventListener("click", () => openDistributorEditor(null));
+function ldFreqResult(r) {
+  if (r && r.refused && r.refused.length)
+    openModal({ title: "Only active distributors can be Daily", body: `<p>${esc(r.message)}</p>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
+}
+async function startLdSync() {
+  const r = await API().start_distributor_sync(false);
+  if (!r.ok) { openModal({ title: "Couldn't start", body: `<div class="problem-box">${esc(r.message)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); return; }
+  openLdMonitor("Updating the distributor list from SFA");
+}
+window.startLdSync = startLdSync;
+document.getElementById("ld-sync").addEventListener("click", startLdSync);
+document.getElementById("ld-sync-now").addEventListener("click", startLdSync);
+document.getElementById("ld-sync-import").addEventListener("click", async () => {
+  const r = await API().import_distributor_excel();
+  if (r.message === "No file selected.") return;
+  openModal({ title: r.ok ? "Distributor list imported" : "Couldn't import", body: `<div class="${r.ok ? "ok-box" : "problem-box"}">${esc(r.message)}</div>`,
+    footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` });
+  loadLoadings();
+});
+document.getElementById("ld-users-url-save").addEventListener("click", async () => {
+  const r = await API().save_loading_settings({ users_url: document.getElementById("ld-users-url").value.trim() });
+  document.getElementById("ld-sync-info").insertAdjacentHTML("afterbegin", `<p class="${r.ok ? "hint" : "error"}">${r.ok ? "Users page address saved." : esc(r.message)}</p>`);
+});
+document.getElementById("ld-status-filter").addEventListener("click", (e) => {
+  const v = e.target.dataset.s; if (!v) return; LD.status = v;
+  document.querySelectorAll("#ld-status-filter button").forEach(b => b.classList.toggle("on", b.dataset.s === v)); renderLdTable(); });
+document.getElementById("ld-asm").addEventListener("change", (e) => { LD.asm = e.target.value; renderLdTable(); });
+document.getElementById("ld-sync-job").addEventListener("click", async () => {
+  const r = await API().save_schedule_job({ name: "Distributor list update", job_type: "distributors", frequency: "daily",
+                                            times: ["07:00"], enabled: true, skip_holidays: false, options: {} });
+  if (!r.ok) { openModal({ title: "Couldn't add the schedule", body: `<div class="problem-box">${esc(r.message)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); return; }
+  switchView("schedules");
+  let tries = 0; const t = setInterval(() => {
+    tries++; const job = (typeof SC !== "undefined" && SC.ov) ? SC.ov.jobs.find(x => x.id === (r.job || {}).id) : null;
+    if (job) { clearInterval(t); openJobEditor(job); } else if (tries > 20) clearInterval(t); }, 250);
+});
 document.getElementById("ld-prepare-daily").addEventListener("click", () => {
   const n = LD.ov ? LD.ov.stats.daily : 0;
   if (!n) { openModal({ title: "No Daily distributors", body: `<p>Set the distributors that need a loading every day to <b>Daily</b> (radio buttons in the list), or select some and press “Prepare selected now”.</p>`,
@@ -377,14 +442,15 @@ function openLdMonitor(title) {
   ldStartPoll();
 }
 
-function ldLaneHtml(l, steps) {
+function ldLaneHtml(l, steps, kind) {
+  const labels = kind === "sync" ? { ...LD_STEP_LABEL, open: "Open Users", read: "Read list" } : LD_STEP_LABEL;
   const icon = (st) => st === "done" ? "✓" : st === "failed" ? "!" : st === "skipped" ? "–" : "";
   const statusChip = { ready: ["chip-warn", "Waiting for approval"], nothing: ["chip-grey", "Nothing pending"], confirmed: ["chip-ok", "Confirmed"],
                        changed: ["chip-missing", "Changed — not confirmed"], failed: ["chip-missing", "Failed"], running: ["chip-warn", "Running"],
-                       queued: ["chip-grey", "Queued"], cancelled: ["chip-grey", "Stopped"] }[l.status] || ["chip-grey", l.status];
+                       queued: ["chip-grey", "Queued"], cancelled: ["chip-grey", "Stopped"], done: ["chip-ok", "Done"] }[l.status] || ["chip-grey", l.status];
   return `<div class="lane ${["failed", "changed"].includes(l.status) ? "failed" : ["ready", "confirmed", "nothing"].includes(l.status) ? "done" : ""}">
     <div><div class="lane-name">${esc(l.name)}</div><div class="lane-msg">${esc(l.message || (l.status === "queued" ? "Waiting for a free tab…" : ""))}</div></div>
-    <div class="stepper">${steps.map(s => `<div class="st ${l.steps[s]}"><span class="dot">${icon(l.steps[s])}</span>${LD_STEP_LABEL[s] || s}</div>`).join("")}</div>
+    <div class="stepper">${steps.map(s => `<div class="st ${l.steps[s]}"><span class="dot">${icon(l.steps[s])}</span>${labels[s] || s}</div>`).join("")}</div>
     <div class="lane-meta"><span class="chip ${statusChip[0]}">${esc(statusChip[1])}</span><div>${l.elapsed ? l.elapsed + "s" : ""}</div>
       ${l.screenshot ? `<div>${openPathButton(l.screenshot, "screenshot")}</div>` : ""}</div></div>`;
 }
@@ -394,13 +460,14 @@ function renderLdMonitor(s) {
   const lanes = s.lanes || [], steps = s.steps || [];
   const total = lanes.length * steps.length || 1;
   const done = lanes.reduce((a, l) => a + steps.filter(x => ["done", "skipped"].includes(l.steps[x]) || ["failed", "cancelled", "nothing", "changed"].includes(l.status)).length, 0);
-  const phase = { logging_in: "Logging in to SFA…", preparing: "Reading pending loadings…", confirming: "Confirming approved loadings…", done: "Finished" }[s.phase] || "Starting…";
+  const phase = { logging_in: "Logging in to SFA…", preparing: "Reading pending loadings…", confirming: "Confirming approved loadings…",
+                  syncing: "Reading the distributor list from SFA…", done: "Finished" }[s.phase] || "Starting…";
   el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;">
-      <div><b>${esc(phase)}</b> <span class="hint">· ${s.kind === "confirm" ? "confirm" : "prepare (read only)"} · ${esc(s.trigger || "")}${s.run_id ? ` · run #${s.run_id}` : ""}</span></div>
+      <div><b>${esc(phase)}</b> <span class="hint">· ${{ confirm: "confirm", sync: "distributor list (read only)" }[s.kind] || "prepare (read only)"} · ${esc(s.trigger || "")}${s.run_id ? ` · run #${s.run_id}` : ""}</span></div>
       <div>${s.result ? chip({ done: "success", failed: "failed", cancelled: "cancelled", busy: "busy" }[s.result.status] || s.result.status) : ""}</div></div>
     <div class="progress"><div style="width:${s.active ? Math.min(99, Math.round(100 * done / total)) : 100}%"></div></div>
     ${s.result && s.result.message ? `<div class="${s.result.ok ? "ok-box" : "problem-box"}">${esc(s.result.message)}${/already in progress/i.test(s.result.message) ? ` <button class="btn-stop btn-small" onclick="openStopNow()">&#9632; Stop it now</button>` : ""}</div>` : ""}
-    <div class="lanes">${lanes.map(l => ldLaneHtml(l, steps)).join("")}</div>
+    <div class="lanes">${lanes.map(l => ldLaneHtml(l, steps, s.kind)).join("")}</div>
     <div class="section-title">Log <button class="btn-outline btn-small" id="ldm-copy">Copy log</button></div>
     <div class="log-box">${(s.log || []).slice(-150).map(x => `<div class="lv-${x.level}">${esc(x.t)} ${x.lane ? `<span class="who">[${esc(x.lane)}]</span> ` : ""}${esc(x.msg)}</div>`).join("")}</div>`;
   const stop = document.getElementById("ldm-stop"); if (stop) stop.style.display = s.active ? "" : "none";
@@ -521,3 +588,142 @@ function askConfirm(ids) {
 window.addEventListener("pywebviewready", () => {
   API().get_loadings_overview().then(ov => { LD.ov = ov; renderLdTop(); if (ov.live_active) { LD.wasActive = true; ldStartPoll(); } }).catch(() => {});
 });
+
+
+// ---------------------------------------------------------------- Add Loading (creates a loading in SFA)
+document.getElementById("al-save").addEventListener("click", async () => {
+  const r = await API().save_loading_settings({ add_loading_url: document.getElementById("al-url").value.trim(),
+    add_loading_for: document.getElementById("al-for").value.trim(), add_loading_company: document.getElementById("al-company").value.trim(),
+    add_loading_dry_run: document.getElementById("al-dry").checked ? "1" : "0" });
+  document.getElementById("al-msg").innerHTML = `<span class="${r.ok ? "hint" : "error"}">${esc(r.ok ? "Saved." : r.message)}</span>`;
+  if (r.ok) loadLoadings();
+});
+
+const AL = { id: null, d: null, fields: null, reps: null, products: [], number: "", dry: true, log: [] };
+const alFmt = (n) => Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+async function openAddLoading(id) {
+  const r = await API().get_add_loading_fields(id);
+  if (!r.ok) { openModal({ title: "Add loading", body: `<div class="problem-box">${esc(r.message)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); return; }
+  AL.id = id; AL.d = LD.ov.distributors.find(x => x.id === id); AL.fields = r.fields; AL.dry = r.dry_run; AL.reps = null;
+  if (r.blocked) { openModal({ title: `Add loading — ${AL.d.name}`, body: `<div class="problem-box">${esc(r.problem)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); return; }
+  alFieldsStep();
+}
+
+function alModeBox() {
+  return AL.dry ? `<div class="ok-box" style="background:#fff6e5;color:#9a6a00;"><b>Dry run is on</b> — Chimera fills SFA's page and stops before SAVE. Nothing is saved.
+                   (Distributor Loadings › Add Loading › Dry run)</div>`
+                : `<div class="problem-box"><b>Live</b> — “Create loading” saves a real loading in SFA.</div>`;
+}
+
+function alFieldsStep(msg) {
+  const f = AL.fields;
+  openModal({ title: `Add loading — ${AL.d.name}`, size: "lg", body: `${alModeBox()}
+    ${msg ? `<div class="problem-box">${esc(msg)}</div>` : ""}
+    <p class="hint">Chimera fills these on SFA's ADD LOADING page, then reads the products. Nothing is saved yet.</p>
+    <div class="grid-2">
+      <label class="field">Territory <input id="al-f-terr" value="${esc(f.territory)}" placeholder="leave empty if SFA fills it"></label>
+      <label class="field">Distributor <input id="al-f-dist" value="${esc(f.distributor)}"></label>
+      <label class="field">Sales Rep ${AL.reps ? `<select id="al-f-rep">${AL.reps.map(o => `<option ${o === f.sales_rep ? "selected" : ""}>${esc(o)}</option>`).join("")}</select>`
+        : `<input id="al-f-rep" value="${esc(f.sales_rep)}" placeholder="automatic when SFA offers only one">`}</label>
+    </div>`,
+    footer: `<button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" id="al-read">Read from SFA</button>` });
+  document.getElementById("al-read").onclick = alRead;
+}
+
+async function alRead() {
+  AL.fields = { territory: document.getElementById("al-f-terr").value.trim(), distributor: document.getElementById("al-f-dist").value.trim(),
+                sales_rep: document.getElementById("al-f-rep").value.trim() };
+  document.getElementById("modal-body").innerHTML = `${alModeBox()}<p><span class="spinner"></span> Opening ADD LOADING in SFA and filling the fields for <b>${esc(AL.d.name)}</b>… (nothing is saved)</p>`;
+  document.getElementById("modal-footer").innerHTML = "";
+  AU.busyModal = true;
+  let r; try { r = await API().read_add_loading(AL.id, AL.fields, false); } finally { AU.busyModal = false; }
+  AL.log = r.log || [];
+  if (r.need_rep) { AL.reps = r.need_rep; if (r.fields) AL.fields = { ...r.fields, sales_rep: r.need_rep[0] }; alFieldsStep(r.message); return; }
+  if (r.blocked) { alResult("SFA didn't allow a new loading", `<div class="problem-box"><b>SFA says:</b> ${esc(r.message)}</div>
+      <p class="hint">Nothing was saved. For “previously loaded quantities are not unloaded”, the rep (${esc((r.fields || {}).sales_rep || "")}) has to unload
+      the previous loading in SFA first; then try again.</p>`); return; }
+  if (!r.ok) { alResult("Couldn't read the Add Loading page", `<div class="problem-box">${esc(r.message)}</div>`, true); return; }
+  AL.fields = r.fields; AL.products = r.products.map(p => ({ ...p, qty: p.stock })); AL.number = r.number; AL.dry = r.dry_run;
+  AL.hidden = r.hidden_zero;
+  alQtyStep();
+}
+
+function alResult(title, html, back) {
+  openModal({ title: `${title} — ${AL.d.name}`, size: "lg", body: html + (AL.log.length ? `<div class="section-title">What Chimera did</div><div class="log-box">${AL.log.map(x => `<div>${esc(x)}</div>`).join("")}</div>` : ""),
+    footer: `${AL.log.length ? '<button class="btn-outline left" id="al-copy">Copy log</button>' : ""}${back ? '<button class="btn-outline" id="al-back">Back</button>' : ""}<button class="btn-primary" onclick="closeModal()">Close</button>` });
+  const c = document.getElementById("al-copy"); if (c) c.onclick = (e) => copyText(AL.log.join("\n"), e.target);
+  const b = document.getElementById("al-back"); if (b) b.onclick = () => alFieldsStep();
+}
+
+function alQtyStep() {
+  openModal({ title: `Add loading — ${AL.d.name}`, size: "xl", body: `${alModeBox()}
+    <div class="hint" style="margin:6px 0 10px;">Loading number <b>${esc(AL.number || "—")}</b> · ${esc(AL.fields.distributor)} · ${esc(AL.fields.sales_rep)}${AL.fields.territory ? " · " + esc(AL.fields.territory) : ""}
+      ${AL.hidden ? ` · ${AL.hidden} product(s) with no stock left out` : ""}</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;"><button class="btn-outline btn-small" id="al-all">Set every quantity to the stock</button>
+      <button class="btn-outline btn-small" id="al-none">Clear all</button></div>
+    <table class="report-table compact al-table"><thead><tr><th>Product</th><th>Code</th><th>Price</th><th>Available stock</th><th>Last unloaded</th>
+      <th style="width:130px">Quantity</th><th>Amount</th></tr></thead><tbody>${AL.products.map((p, i) => `<tr>
+      <td>${esc(p.name)}</td><td>${esc(p.code)}</td><td>${p.price.toFixed(2)}</td><td>${p.stock}</td><td>${p.last_unloaded}</td>
+      <td><input type="number" class="al-q" data-i="${i}" min="0" max="${p.stock}" step="1" value="${p.qty}"></td><td class="al-amt" data-i="${i}"></td></tr>`).join("")}
+      <tr class="ap-total"><td colspan="5"><b>Total</b></td><td><b id="al-tq"></b></td><td><b id="al-ta"></b></td></tr></tbody></table>
+    <div id="al-err"></div>`,
+    footer: `<button class="btn-outline" id="al-back2">Back</button><button class="btn-primary" id="al-go">${AL.dry ? "Dry run: fill SFA's page" : "Create loading in SFA"}</button>` });
+  const recalc = () => {
+    let tq = 0, ta = 0; const bad = [];
+    document.querySelectorAll(".al-q").forEach(inp => {
+      const i = Number(inp.dataset.i), p = AL.products[i], v = Number(inp.value);
+      p.qty = isNaN(v) ? 0 : v;
+      const wrong = isNaN(v) || v < 0 || v > p.stock;
+      inp.classList.toggle("bad", wrong); if (wrong) bad.push(p.name);
+      document.querySelector(`.al-amt[data-i="${i}"]`).textContent = alFmt(p.qty * p.price);
+      tq += p.qty; ta += p.qty * p.price; });
+    document.getElementById("al-tq").textContent = alFmt(tq); document.getElementById("al-ta").textContent = alFmt(ta);
+    document.getElementById("al-err").innerHTML = bad.length ? `<div class="problem-box">More than the available stock (or not a number): ${esc(bad.join(", "))}</div>`
+      : tq <= 0 ? `<div class="problem-box">Enter at least one quantity.</div>` : "";
+    document.getElementById("al-go").disabled = !!bad.length || tq <= 0;
+    return { tq, ta };
+  };
+  document.querySelector(".al-table").addEventListener("input", recalc);
+  document.getElementById("al-all").onclick = () => { document.querySelectorAll(".al-q").forEach(i => { i.value = AL.products[i.dataset.i].stock; }); recalc(); };
+  document.getElementById("al-none").onclick = () => { document.querySelectorAll(".al-q").forEach(i => { i.value = 0; }); recalc(); };
+  document.getElementById("al-back2").onclick = () => alFieldsStep();
+  document.getElementById("al-go").onclick = () => alConfirm(recalc());
+  recalc();
+}
+
+function alConfirm(t) {
+  const lines = AL.products.filter(p => p.qty > 0);
+  openModal({ title: AL.dry ? "Dry run — fill SFA's Add Loading page?" : `Create this loading in SFA?`, body: `
+    ${AL.dry ? `<div class="ok-box" style="background:#fff6e5;color:#9a6a00;">Chimera opens ADD LOADING again (fresh stock), types these quantities and <b>stops before SAVE</b>. Nothing is saved.</div>`
+             : `<div class="problem-box">Chimera opens ADD LOADING again (fresh stock), types these quantities, presses <b>SAVE</b> and answers <b>Yes</b>. This creates a real loading in SFA.</div>`}
+    <div class="stat-cards three"><div class="stat-card"><div class="stat-label">PRODUCTS</div><div class="stat-value">${lines.length}</div></div>
+      <div class="stat-card"><div class="stat-label">TOTAL QUANTITY</div><div class="stat-value stat-value-small">${alFmt(t.tq)}</div></div>
+      <div class="stat-card"><div class="stat-label">TOTAL AMOUNT</div><div class="stat-value stat-value-small">${alFmt(t.ta)}</div></div></div>
+    ${AL.dry ? "" : `<label class="check" style="margin-top:10px;"><input type="checkbox" id="al-ok"> I've checked the quantities</label>`}`,
+    footer: `<button class="btn-outline" id="al-cancel">Back</button><button class="btn-primary" id="al-yes" ${AL.dry ? "" : "disabled"}>${AL.dry ? "Fill the page" : "Yes, create in SFA"}</button>` });
+  const ok = document.getElementById("al-ok"); if (ok) ok.onchange = (e) => { document.getElementById("al-yes").disabled = !e.target.checked; };
+  document.getElementById("al-cancel").onclick = () => alQtyStep();
+  document.getElementById("al-yes").onclick = alCreate;
+}
+
+async function alCreate() {
+  const qty = Object.fromEntries(AL.products.filter(p => p.qty > 0).map(p => [p.code, p.qty]));
+  document.getElementById("modal-body").innerHTML = `<p><span class="spinner"></span> ${AL.dry ? "Filling SFA's Add Loading page (dry run)…" : "Creating the loading in SFA…"}</p>`;
+  document.getElementById("modal-footer").innerHTML = "";
+  AU.busyModal = true;
+  let r; try { r = await API().create_add_loading(AL.id, qty, AL.fields, false); } finally { AU.busyModal = false; }
+  AL.log = r.log || [];
+  loadLoadings(); if (typeof refreshBell === "function") refreshBell();
+  if (!r.ok) {
+    alResult(r.blocked ? "Not saved" : "Couldn't add the loading", `<div class="problem-box">${esc(r.message)}</div>
+      ${r.screenshot ? `<div class="section-title">SFA page</div><div class="ap-shot" id="al-shot"></div>` : ""}`, true);
+  } else {
+    alResult(r.dry_run ? "Dry run done" : "Loading created", `<div class="ok-box">${esc(r.message)}</div>
+      ${r.screenshot ? `<div class="section-title">${r.dry_run ? "SFA's page, filled (not saved)" : "SFA's page before SAVE"}</div><div class="ap-shot" id="al-shot"></div>` : ""}
+      ${r.saved ? `<p><button class="btn-primary btn-small" id="al-prep">Prepare it for approval now</button></p>` : ""}`);
+    const pr = document.getElementById("al-prep"); if (pr) pr.onclick = () => { closeModal(true); startLdPrepare([AL.id]); };
+  }
+  if (r.screenshot) API().get_image_b64(r.screenshot).then(b64 => { const box = document.getElementById("al-shot"); if (box && b64) box.innerHTML = `<img src="data:image/png;base64,${b64}">`; });
+}
+window.openAddLoading = openAddLoading;

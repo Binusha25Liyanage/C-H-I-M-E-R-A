@@ -35,6 +35,12 @@ async function refreshRunPill() {
   let ls = null;   // a Distributor Loadings run shows in the same pill
   try { if (window.pywebview.api.get_loading_live) ls = await window.pywebview.api.get_loading_live(); } catch (e) { ls = null; }
   if (ls && window.onLoadingLive) window.onLoadingLive(ls);
+  let is = null;   // an Outlet Updates itinerary read too
+  try { if (window.pywebview.api.get_itinerary_live) is = await window.pywebview.api.get_itinerary_live(); } catch (e) { is = null; }
+  if (is && window.onItineraryLive) window.onItineraryLive(is);
+  let rs = null;   // Outlet Updates rep sheets (read / save in SFA) too
+  try { if (window.pywebview.api.get_rep_sheets_live) rs = await window.pywebview.api.get_rep_sheets_live(); } catch (e) { rs = null; }
+  if (rs && window.onRepSheetsLive) window.onRepSheetsLive(rs);
   let s; try { s = await window.pywebview.api.get_live_run(); } catch (e) { return; }
   if (ls && ls.active && !s.active) {
     const lanes = ls.lanes || [], done = lanes.filter(l => !["queued", "running"].includes(l.status)).length;
@@ -42,6 +48,18 @@ async function refreshRunPill() {
     document.getElementById("tb-run").style.display = ""; SH.pillLoading = true; return;
   }
   SH.pillLoading = false;
+  if (is && is.active && !s.active) {
+    const lanes = is.lanes || [], done = lanes.filter(l => !["queued", "running"].includes(l.status)).length;
+    document.getElementById("tb-run-text").textContent = `Reading itineraries ${done}/${lanes.length}`;
+    document.getElementById("tb-run").style.display = ""; SH.pillItinerary = true; return;
+  }
+  SH.pillItinerary = false;
+  if (rs && rs.active && !s.active) {
+    const lanes = rs.lanes || [], done = lanes.filter(l => ["done", "failed", "cancelled"].includes(l.status)).length;
+    document.getElementById("tb-run-text").textContent = rs.kind === "routes" ? "Reading SFA's routes" : `Outlet updates ${done}/${lanes.length}`;
+    document.getElementById("tb-run").style.display = ""; SH.pillSheets = true; return;
+  }
+  SH.pillSheets = false;
   const pill = document.getElementById("tb-run");
   if (!SH.pillPrimed) {   // a finished run from before this window opened isn't "new"
     SH.pillPrimed = true;
@@ -55,6 +73,8 @@ async function refreshRunPill() {
 }
 document.getElementById("tb-run-open").addEventListener("click", () => {
   if (SH.pillLoading && window.openLdMonitor) { switchView("loadings"); openLdMonitor("Distributor loadings"); return; }
+  if (SH.pillItinerary && window.openOuMonitor) { switchView("outlet-updates"); openOuMonitor(); return; }
+  if (SH.pillSheets && window.openRsMonitor) { switchView("outlet-updates"); selectOuTab("sheets"); openRsMonitor(); return; }
   if (typeof openMonitor === "function") openMonitor(); });
 document.getElementById("tb-run-stop").addEventListener("click", () => openStopNow());
 
@@ -79,6 +99,8 @@ function openStopNow() {
     if (SH.view === "schedules" && window.loadSchedules) loadSchedules();
     if (SH.view === "automation" && window.loadAutomation) loadAutomation();
     if (SH.view === "loadings" && window.loadLoadings) loadLoadings();
+    if (SH.view === "outlet-updates" && window.loadOutletUpdates) loadOutletUpdates();
+    if (SH.view === "activity" && window.loadActivity) loadActivity();
   };
 }
 window.openStopNow = openStopNow;
@@ -128,11 +150,30 @@ document.getElementById("notif-list").addEventListener("click", (e) => {
   const it = e.target.closest(".notif-item"); if (!it) return;
   const ev = SH.notifs[Number(it.dataset.i)];
   document.getElementById("notif-panel").style.display = "none";
-  if (ev.action.startsWith("preview:")) openPreview(Number(ev.action.split(":")[1]));
-  else if (ev.action === "whatsapp") { switchView("automation"); selectAutomationTab("whatsapp"); }
-  else if (ev.action === "loadings-approve") { switchView("loadings"); if (window.openApproveLoadings) openApproveLoadings(); }
-  else switchView(ev.action);
+  openAction(ev.action);
 });
+
+// The bell and Windows notifications (when clicked) open a screen by the same action names.
+function openAction(action) {
+  action = action || "overview";
+  if (action.startsWith("preview:")) openPreview(Number(action.split(":")[1]));
+  else if (action === "whatsapp") { switchView("automation"); selectAutomationTab("whatsapp"); }
+  else if (action === "loadings-approve") { switchView("loadings"); if (window.openApproveLoadings) openApproveLoadings(); }
+  else if (action === "rep-sheets") { switchView("outlet-updates"); if (window.selectOuTab) selectOuTab("sheets"); }
+  else if (action === "settings") { switchView("settings"); const b = document.querySelector('#st-tabs .tab[data-tab="notify"]'); if (b) b.click(); }
+  else if (action === "schedules") switchView("schedules");
+  else if (document.getElementById("view-" + action)) switchView(action);
+  else switchView("overview");
+}
+window.openAction = openAction;
+// a notification clicked while Chimera is open (or the one that started it)
+setInterval(async () => {
+  try {
+    if (!window.pywebview || !window.pywebview.api.take_open_request) return;
+    const a = await window.pywebview.api.take_open_request();
+    if (a) openAction(a);
+  } catch (e) { /* not ready yet */ }
+}, 2000);
 document.addEventListener("click", (e) => {
   const p = document.getElementById("notif-panel");
   if (p.style.display !== "none" && !p.contains(e.target)) p.style.display = "none";
@@ -154,8 +195,7 @@ const HELP = {
   reports: ["Combined SKU + Invoice Report", "Route-wise per-outlet report anchored to the previous visit date, from the itinerary and sales data imported on the Import Data screen."],
   "import-data": ["Import Data", "Imports itinerary, territories, invoices, sales orders, outlet master and SKU sales files for the route reports. For the daily SKU/Pivot/Hourly reports use <b>Daily SFA Reports</b> instead — it reads raw SFA exports directly."],
   settings: ["Settings", "<b>SFA Connection</b> — the login Chimera uses for automation; <b>Test Connection</b> shows a screenshot.<br><b>Daily report rules</b> — first-bill time, gap highlight, targets, output style.<br><b>Manager groups</b> — which territories belong to which manager (import from SalesPulse)."],
-  "visit-state": ["Visit State Update", "Planned: bulk Mandatory ↔ Optional changes in SFA with a dry run first. Not active yet."],
-  sequence: ["Sequence Update", "Planned: bulk outlet sequence changes in SFA. Not active yet."],
+  "outlet-updates": ["Outlet Updates", "<b>Today's Routes</b> — the route each working territory's rep works on the chosen day, read from the SFA monthly itinerary (<b>H</b> = holiday, <b>-</b> = no route). From the prepare time (23:59) Chimera works on tomorrow; if the PC was off, it catches up the next time Chimera runs.<br><b>Working Territories</b> — switch on the territories Chimera looks after; <b>Detect territories from SFA</b> lists them all.<br><b>Itinerary</b> on a card shows the whole month as SFA has it.<br><b>Rep sheets</b> — the route sheets reps fill (New Sequence, Top 15). Chimera matches each to its SFA route by Route Code, reads the route's outlets from SFA and shows a preview: the new visit order (numbered outlets first, blanks after in their current order) and Top 15 outlets set to Mandatory — change any outlet singly or in bulk. Approve to save sequence + Visit State in SFA (phones fixed to 10 characters on the way). Dry run and approval are in Settings. Coming next: sheets straight from the reps' WhatsApp group and Google Sheets, and Chimera's own branded sheet."],
   about: ["About & Support", "Who built Chimera and how to get in touch."],
 };
 document.getElementById("tb-help").addEventListener("click", () => {
@@ -178,14 +218,24 @@ async function loadOverviewFeed() {
 }
 
 // ---------------------------------------------------------------- preview before saving
+const DR_MODE_HINT = {
+  save: "Runs save (and send to WhatsApp) straight away.",
+  preview_first: "The first run of each day waits for your approval; after you approve, later runs that day save and send by themselves.",
+  preview: "Every run waits for your approval.",
+};
+const DR_SCHED_NOTE = " Scheduled jobs: approval is chosen per time in Schedules › Jobs › Edit (Ask me first / Sends automatically).";
 async function loadDeliveryMode() {
   try {
     const s = await window.pywebview.api.get_report_settings();
-    document.querySelectorAll('input[name="dr-mode"]').forEach(r => { r.checked = r.value === (s.delivery_mode || "save"); });
+    const m = s.delivery_mode || "save";
+    document.querySelectorAll('input[name="dr-mode"]').forEach(r => { r.checked = r.value === m; });
+    document.getElementById("dr-mode-hint").textContent = DR_MODE_HINT[m] +
+      (m === "preview_first" ? (s.approved_today ? " Today: approved ✓." : " Today: not approved yet.") : "") + DR_SCHED_NOTE;
   } catch (e) {}
 }
 document.querySelectorAll('input[name="dr-mode"]').forEach(r => r.addEventListener("change", async () => {
   await window.pywebview.api.save_report_settings({ delivery_mode: r.value });
+  loadDeliveryMode();
 }));
 
 async function loadPending() {
@@ -270,7 +320,7 @@ async function openPreview(runId) {
                                                : ` WhatsApp: ${res.whatsapp.message}`;
       openModal({ title: res.ok ? "Reports saved" : "Couldn't save", body: `<p>${esc(msg)}</p>`,
         footer: `${res.folder ? openPathButton(res.folder, "Open folder") : ""}<button class="btn-primary" onclick="closeModal()">OK</button>` });
-      loadPending(); refreshBell(); if (typeof loadRuns === "function") loadRuns();
+      loadPending(); refreshBell(); loadDeliveryMode(); if (typeof loadRuns === "function") loadRuns();
       if (send) startWaPoll();
     };
     if (document.getElementById("pv-save")) document.getElementById("pv-save").onclick = () => act(false);
@@ -329,7 +379,8 @@ async function loadWhatsApp() {
   document.getElementById("wa-rules").innerHTML = w.rules.length ? w.rules.map(r => `
     <div class="rule-card ${r.enabled ? "" : "off"}"><div>
       <div class="who">${esc(r.chat_name)} ${r.enabled ? "" : '<span class="chip chip-grey">off</span>'}</div>
-      <div class="what">${r.kinds.map(k => kindLabel[k]).join(" · ")} as ${{ images: "photos", pdf: "PDF files", both: "photos + PDF" }[r.send_as || "images"]}${(r.send_as || "images") !== "pdf" ? ` (${r.orientation || "portrait"})` : ""} — ${r.groups.includes("*") ? "all managers" : esc(r.groups.join(", "))}${r.caption ? ` · “${esc(r.caption)}”` : ""}</div></div>
+      <div class="what">${r.kinds.map(k => kindLabel[k]).join(" · ")} as ${{ images: "photos", pdf: "PDF files", both: "photos + PDF" }[r.send_as || "images"]}${(r.send_as || "images") !== "pdf" ? ` (${r.orientation || "portrait"})` : ""} — ${r.groups.includes("*") ? "all managers" : esc(r.groups.join(", "))}${r.caption ? ` · “${esc(r.caption)}”` : ""}</div>
+      ${r.pre_message ? `<div class="what wa-pre" title="${esc(r.pre_message)}">&#128172; Message first: “${esc(r.pre_message.length > 90 ? r.pre_message.slice(0, 88) + "…" : r.pre_message)}”</div>` : ""}</div>
       <div class="row-actions"><button class="icon-action" data-wa-edit="${r.id}">Edit</button><button class="icon-action" data-wa-test="${esc(r.chat_name)}">Test</button><button class="icon-action danger" data-wa-del="${r.id}">✕</button></div></div>`).join("")
     : `<p class="hint">No rules yet. Example: send the SKU and Pivot pages for <b>Asela</b> to Asela's team group, and the Hourly report to the management group.</p>`;
   document.getElementById("wa-deliveries").innerHTML = w.deliveries.length ? `<table class="report-table"><thead><tr><th>When</th><th>Chat</th><th>Images</th><th>Status</th><th>Details</th></tr></thead><tbody>${w.deliveries.map(d => `
@@ -386,7 +437,7 @@ document.getElementById("wa-rules").addEventListener("click", (e) => {
 document.getElementById("wa-add-rule").addEventListener("click", () => openRuleModal(null));
 
 function openRuleModal(rule) {
-  const w = SH.wa; const r = rule || { chat_name: "", kinds: ["sku", "pivot", "hourly"], groups: ["*"], caption: "{report} — {date}", enabled: true, send_as: "images", orientation: "portrait" };
+  const w = SH.wa; const r = rule || { chat_name: "", kinds: ["sku", "pivot", "hourly"], groups: ["*"], caption: "{report} — {date}", enabled: true, send_as: "images", orientation: "portrait", pre_message: "" };
   const sendAs = r.send_as || "images", orient = r.orientation || "portrait";
   const all = r.groups.includes("*");
   openModal({ title: rule ? "Edit delivery rule" : "Add delivery rule", body: `
@@ -412,10 +463,21 @@ function openRuleModal(rule) {
     <div class="radio-row" style="margin-bottom:10px;"><label class="radio"><input type="radio" name="wr-g" value="all" ${all ? "checked" : ""}> All managers</label>
       <label class="radio"><input type="radio" name="wr-g" value="some" ${all ? "" : "checked"}> Only these:</label></div>
     <div class="form-row" id="wr-groups" style="${all ? "opacity:.45;pointer-events:none;" : ""}">${w.groups.map(g => `<label class="check"><input type="checkbox" class="wr-group" value="${esc(g)}" ${r.groups.includes(g) ? "checked" : ""}> ${esc(g)}</label>`).join("") || '<span class="hint">No manager groups set up.</span>'}</div>
+    <label class="field">Message before the reports (optional)
+      <textarea id="wr-pre" rows="3" maxlength="2000" placeholder="e.g. Good morning team, here are the reports for {date}.">${esc(r.pre_message || "")}</textarea>
+      <span>Sent to this chat as its own message right before the reports, every time they go out. Leave empty for none.
+        Use {date} (report date), {time} (send time) and {day} (today, e.g. Wednesday). New lines are kept.</span></label>
+    <div class="wa-pre-preview" id="wr-pre-preview"></div>
     <label class="field">Caption (optional) <input id="wr-caption" value="${esc(r.caption)}"><span>Use {report}, {date} and {time}.</span></label>
     <label class="check" style="display:flex;gap:6px;margin-top:12px;font-size:14px;"><input type="checkbox" id="wr-enabled" ${r.enabled ? "checked" : ""}> Enabled</label>`,
     footer: `<button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" id="wr-save">Save rule</button>` });
   waChatPicker(document.getElementById("wr-chat"), document.getElementById("wr-chat-list"));
+  const prePrev = () => { const t = document.getElementById("wr-pre").value.trim(), now = new Date();
+    const d = new Date(now); d.setDate(d.getDate() - 1);
+    document.getElementById("wr-pre-preview").innerHTML = t ? `<div class="wa-bubble">${esc(t.replaceAll("{date}", d.toISOString().slice(0, 10))
+      .replaceAll("{time}", now.toTimeString().slice(0, 5)).replaceAll("{day}", now.toLocaleDateString("en-GB", { weekday: "long" })))}</div>
+      <span class="hint">How it will look (example date)</span>` : ""; };
+  document.getElementById("wr-pre").oninput = prePrev; prePrev();
   document.querySelectorAll('input[name="wr-g"]').forEach(x => x.onchange = () => {
     const some = document.querySelector('input[name="wr-g"]:checked').value === "some";
     document.getElementById("wr-groups").style.cssText = some ? "" : "opacity:.45;pointer-events:none;"; });
@@ -427,7 +489,8 @@ function openRuleModal(rule) {
       kinds: [...document.querySelectorAll(".wr-kind:checked")].map(c => c.value), groups,
       caption: document.getElementById("wr-caption").value, enabled: document.getElementById("wr-enabled").checked,
       send_as: document.querySelector('input[name="wr-as"]:checked').value,
-      orientation: document.querySelector('input[name="wr-or"]:checked').value });
+      orientation: document.querySelector('input[name="wr-or"]:checked').value,
+      pre_message: document.getElementById("wr-pre").value });
     if (!res.ok) { document.getElementById("wr-err").innerHTML = `<div class="problem-box">${esc(res.message)}</div>`; return; }
     closeModal(); loadWhatsApp();
   };

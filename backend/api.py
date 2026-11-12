@@ -30,6 +30,7 @@ import report_pipeline
 import automation_store
 import schedule_store
 import loading_store
+import outlet_store
 import scheduler
 import notifications
 import whatsapp_sender
@@ -45,6 +46,11 @@ class Api:
         schedule_store.init_schema()
         loading_store.init_schema()
         loading_store.mark_interrupted()
+        outlet_store.init_schema()
+        outlet_store.mark_interrupted()
+        import sequence_store
+        sequence_store.init_schema()
+        sequence_store.mark_interrupted()
         whatsapp_sender.init_schema()
         # IMPORTANT: anything that is not an API method must start with "_".
         # pywebview walks every public attribute of this object to build
@@ -372,7 +378,10 @@ class Api:
         return {"ok": ok, "message": msg}
 
     def get_report_settings(self):
-        return sfa_store.get_settings()
+        s = dict(sfa_store.get_settings())
+        from datetime import date as _d
+        s["approved_today"] = report_pipeline.approved_on(_d.today().isoformat())
+        return s
 
     def save_report_settings(self, values):
         ok, message = sfa_store.save_settings(values or {})
@@ -561,8 +570,8 @@ class Api:
                     if nxt else None,
             "controls": {k: settings[k] for k in ("paused", "skip_date", "use_task_scheduler")},
             "switches": {k: settings.get(k, "1") for k in ("auto_sfa_downloads", "auto_build_reports", "wa_auto_send",
-                                                           "auto_loadings", "auto_master_sync", "auto_visit_state",
-                                                           "auto_sequence")},
+                                                           "auto_loadings", "auto_outlet_updates", "auto_distributor_sync",
+                                                           "auto_master_sync")},
             "clock": scheduler.clock_status(settings),
             "task_times": scheduler.wanted_task_times(),
             "is_windows": os.name == "nt",
@@ -636,6 +645,12 @@ class Api:
             done.append("Stopped the SFA run in this window.")
         if loading_automation.force_stop():
             done.append("Stopped the Distributor Loadings run (nothing more will be confirmed).")
+        import itinerary_automation
+        if itinerary_automation.force_stop():
+            done.append("Stopped the itinerary read (Outlet Updates).")
+        import sequence_automation
+        if sequence_automation.force_stop():
+            done.append("Stopped the rep-sheet run (outlets not saved yet are saved next time).")
         if whatsapp_sender.force_stop():
             done.append("Closed the WhatsApp sending window.")
         holder = automation_store.lock_holder()
@@ -648,7 +663,9 @@ class Api:
                 if killed:
                     automation_store.release_lock()
                     automation_store.mark_interrupted_runs()
-            elif not sfa_automation.LIVE.snapshot().get("active") and not loading_automation.LIVE.snapshot().get("active"):
+            elif not sfa_automation.LIVE.snapshot().get("active") and not loading_automation.LIVE.snapshot().get("active") \
+                    and not itinerary_automation.LIVE.snapshot().get("active") \
+                    and not sequence_automation.LIVE.snapshot().get("active"):
                 automation_store.release_lock()
                 automation_store.mark_interrupted_runs()
                 done.append("Cleared a run that was left unfinished when Chimera was closed.")
@@ -682,9 +699,301 @@ class Api:
             whatsapp_sender.force_stop(timeout=5)
             import loading_automation
             loading_automation.force_stop(timeout=5)
+            import itinerary_automation
+            itinerary_automation.force_stop(timeout=5)
+            import sequence_automation
+            sequence_automation.force_stop(timeout=5)
         except Exception:
             pass
         automation_store.release_lock(only_if_mine=True)
+
+    # ------------------------------------------------------------
+    # Outlet Updates — working territories, itineraries, routes board
+    # ------------------------------------------------------------
+    def get_outlet_updates_overview(self, day=None):
+        import itinerary_automation as IA
+        from datetime import date as _date, timedelta as _td
+        st = IA.settings()
+        target = outlet_store.target_day(None, st["prepare_time"])
+        day = day or target.isoformat()
+        terrs = outlet_store.list_territories()
+        working = [t for t in terrs if t["enabled"]]
+        d0 = _date.fromisoformat(day)
+        months = sorted({outlet_store.month_key(d0), outlet_store.month_key(target),
+                         outlet_store.month_key((d0.replace(day=28) + _td(days=5)))})
+        board = outlet_store.board(day)
+        _tday, due = outlet_store.due_territories(None, st["prepare_time"])
+        counts = {}
+        for b in board:
+            counts[b["state"]] = counts.get(b["state"], 0) + 1
+        settings = automation_store.get_automation_settings()
+        cfg = sfa_config.load_config()
+        return {"day": day, "target_day": target.isoformat(), "today": _date.today().isoformat(),
+                "board": board, "counts": counts, "due": due,
+                "territories": terrs, "working_count": len(working),
+                "months": months, "month_status": outlet_store.month_status_map([t["territory"] for t in terrs], months),
+                "settings": {k: settings.get(k, automation_store.DEFAULT_AUTOMATION.get(k, ""))
+                             for k in ("auto_outlet_updates", "ou_itinerary_url", "ou_outlets_url", "ou_territory_url",
+                                       "ou_prepare_time", "ou_tabs", "paused")},
+                "live_active": IA.LIVE.snapshot().get("active", False),
+                "login_ready": bool(cfg.get("login_url") and cfg.get("username") and cfg.get("password")),
+                "runs": outlet_store.list_runs(12)}
+
+    def get_itinerary_month(self, territory, month):
+        return outlet_store.get_month(territory, month)
+
+    def detect_outlet_territories(self):
+        import itinerary_automation as IA
+        return IA.detect_territories()
+
+    def add_outlet_territory(self, name):
+        ok, msg = outlet_store.add_territory(name)
+        return {"ok": ok, "message": msg}
+
+    def set_outlet_territories_enabled(self, names, on):
+        outlet_store.set_enabled([str(n) for n in names or []], bool(on))
+        return {"ok": True}
+
+    def update_outlet_territory(self, name, values):
+        ok, msg = outlet_store.update_territory(name, values or {})
+        return {"ok": ok, "message": msg}
+
+    def remove_outlet_territory(self, name):
+        outlet_store.remove_territory(name)
+        return {"ok": True}
+
+    def save_outlet_settings(self, values):
+        vals = {k: v for k, v in (values or {}).items()
+                if k in ("auto_outlet_updates", "ou_itinerary_url", "ou_outlets_url", "ou_territory_url", "ou_prepare_time",
+                         "ou_tabs")}
+        ok, msg = automation_store.save_automation_settings(vals)
+        return {"ok": ok, "message": msg}
+
+    def start_itinerary_read(self, territories=None, month=None, show_browser=False):
+        """Read now. territories None = every working territory; month 'YYYY-MM' (default: the day being prepared)."""
+        import itinerary_automation as IA
+        months = None
+        if month:
+            y, m = str(month).split("-")[:2]
+            months = [(int(y), int(m))]
+        return IA.start_background(territories=list(territories) if territories else None, months=months,
+                                   trigger="manual", headless=False if show_browser else None)
+
+    def get_itinerary_live(self):
+        import itinerary_automation as IA
+        s = IA.LIVE.snapshot()
+        s["step_labels"] = IA.STEP_LABELS
+        return s
+
+    def get_itinerary_log_text(self, run_id=None):
+        import itinerary_automation as IA
+        return outlet_store.get_run_log(int(run_id)) if run_id else IA.log_text()
+
+    # ------------------------------------------------------------
+    # Outlet Updates — rep sheets (visit sequence + Visit State)
+    # ------------------------------------------------------------
+    def get_rep_sheets_overview(self):
+        import sequence_store as SS
+        import sequence_automation as SQ
+        st = SQ.settings()
+        sheets = SS.list_sheets(limit=150)
+        counts = {}
+        for x in sheets:
+            counts[x["state"]] = counts.get(x["state"], 0) + 1
+        live = SQ.LIVE.snapshot()
+        return {"sheets": sheets, "counts": counts, "routes": SS.routes_info(),
+                "settings": {"ou_routes_url": st["routes_url"], "ou_outlets_url": st["outlets_url"],
+                             "seq_need_approval": "1" if st["need_approval"] else "0",
+                             "seq_dry_run": "1" if st["dry_run"] else "0"},
+                "live_active": bool(live.get("active")), "live_kind": live.get("kind"),
+                "runs": SS.list_runs(12)}
+
+    def get_rep_sheet(self, sheet_id):
+        import sequence_store as SS
+        s = SS.get_sheet(int(sheet_id))
+        return {"ok": bool(s), "sheet": s, "message": "" if s else "That sheet no longer exists."}
+
+    def add_rep_sheets(self):
+        """Pick one or more filled route sheets (Excel). A copy is kept in Chimera's data folder."""
+        import shutil
+        import sequence_automation as SQ
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True,
+                                          file_types=("Excel files (*.xlsx)", "All files (*.*)"))
+        if not paths:
+            return {"ok": False, "message": "No file selected."}
+        return self._add_rep_files(list(paths) if isinstance(paths, (list, tuple)) else [paths], "upload")
+
+    def _add_rep_files(self, paths, source, sender=""):
+        import shutil
+        from datetime import datetime as _dt
+        import sequence_automation as SQ
+        folder = os.path.join(db.APP_DATA_DIR, "rep_sheets", _dt.now().strftime("%Y-%m"))
+        os.makedirs(folder, exist_ok=True)
+        kept = []
+        for p in paths:
+            dst = os.path.join(folder, f"{_dt.now():%Y%m%d_%H%M%S}_{os.path.basename(p)}")
+            try:
+                shutil.copy2(p, dst)
+                kept.append(dst)
+            except OSError:
+                kept.append(p)
+        res = SQ.add_files(kept, source=source, sender=sender)
+        ok = [r for r in res if r["ok"]]
+        auto = None
+        if ok and automation_store.get_automation_settings().get("paused") != "1":
+            auto = SQ.start_background(trigger=source)        # read SFA for the preview straight away
+        return {"ok": bool(ok), "results": res, "started": bool(auto and auto.get("ok")),
+                "message": (f"{len(ok)} route sheet(s) added" + (" — reading SFA for the preview now." if auto and auto.get("ok")
+                            else ". Click 'Read SFA' to make the preview." if ok else ".")) if ok
+                           else "No usable route sheet in what you picked."}
+
+    def set_rep_sheet_states(self, sheet_id, line_ids, state):
+        import sequence_store as SS
+        ok, msg = SS.set_states(int(sheet_id), list(line_ids or []), str(state))
+        return {"ok": ok, "message": msg}
+
+    def approve_rep_sheet(self, sheet_ids, run_now=True):
+        import sequence_store as SS
+        import sequence_automation as SQ
+        ids = [int(i) for i in (sheet_ids if isinstance(sheet_ids, (list, tuple)) else [sheet_ids])]
+        errs = []
+        for i in ids:
+            ok, msg = SS.approve(i, by="you")
+            if not ok:
+                errs.append(f"#{i}: {msg}")
+        done = len(ids) - len(errs)
+        started = SQ.start_background(sheet_ids=ids, trigger="manual") if done and run_now else None
+        msg = (f"{done} sheet(s) approved" + (" — saving in SFA now." if started and started.get("ok") else
+               f". {started['message']} They'll be saved on the next run." if started else ".")) if done else ""
+        return {"ok": done > 0, "message": (msg + (" " if msg and errs else "") + " ".join(errs)).strip(),
+                "started": bool(started and started.get("ok"))}
+
+    def discard_rep_sheet(self, sheet_id):
+        import sequence_store as SS
+        ok, msg = SS.discard(int(sheet_id))
+        return {"ok": ok, "message": msg}
+
+    def reread_rep_sheet(self, sheet_id):
+        """Read SFA's current values again (e.g. after the preview got old, or a read failed)."""
+        import sequence_store as SS
+        import sequence_automation as SQ
+        s = SS.get_sheet(int(sheet_id), lines=False)
+        if not s or s["state"] not in ("ready", "failed", "received"):
+            return {"ok": False, "message": "Only a sheet waiting for approval or one that failed can be read again."}
+        if any(p["level"] == "error" and not p.get("from_sfa") for p in s["problems"]):
+            return {"ok": False, "message": "This sheet's file has a problem — fix the file and send it again."}
+        SS.set_sheet(int(sheet_id), state="received", message="")
+        return SQ.start_background(sheet_ids=[int(sheet_id)], trigger="manual")
+
+    def start_rep_sheets_run(self, show_browser=False):
+        import sequence_automation as SQ
+        return SQ.start_background(trigger="manual", headless=False if show_browser else None)
+
+    def start_routes_sync(self, show_browser=False):
+        import sequence_automation as SQ
+        return SQ.start_background(target="routes", trigger="manual", headless=False if show_browser else None)
+
+    def import_routes_excel(self):
+        import sequence_automation as SQ
+        import sequence_reader as SR
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False,
+                                          file_types=("Excel files (*.xlsx)", "All files (*.*)"))
+        if not paths:
+            return {"ok": False, "message": "No file selected."}
+        try:
+            return SQ.import_routes_excel(paths[0] if isinstance(paths, (list, tuple)) else paths)
+        except SR.ReadError as e:
+            return {"ok": False, "message": str(e)}
+
+    def list_sfa_routes(self, territory=None):
+        import sequence_store as SS
+        return SS.list_routes(territory or None)
+
+    def save_rep_sheet_settings(self, values):
+        vals = {k: v for k, v in (values or {}).items()
+                if k in ("ou_routes_url", "ou_outlets_url", "seq_need_approval", "seq_dry_run")}
+        ok, msg = automation_store.save_automation_settings(vals)
+        return {"ok": ok, "message": msg}
+
+    def get_rep_sheets_live(self):
+        import sequence_automation as SQ
+        s = SQ.LIVE.snapshot()
+        s["step_labels"] = SQ.STEP_LABELS
+        return s
+
+    def get_rep_sheets_log_text(self, run_id=None):
+        import sequence_store as SS
+        import sequence_automation as SQ
+        s = SQ.LIVE.snapshot()
+        if run_id is None or s.get("run_id") == run_id:
+            return SQ.log_text(s)
+        return SS.get_run_log(int(run_id))
+
+    def export_rep_sheet(self, sheet_id):
+        """The sheet's preview / results as an Excel file."""
+        import sequence_report
+        try:
+            path = sequence_report.export_sheet(int(sheet_id))
+        except Exception as e:
+            return {"ok": False, "message": f"Couldn't export: {e}"}
+        return {"ok": True, "path": path, "folder": os.path.dirname(path)}
+
+    # ------------------------------------------------------------
+    # Windows notifications
+    # ------------------------------------------------------------
+    def get_desktop_notify(self):
+        import desktop_notify
+        st = automation_store.get_automation_settings()
+        return {"settings": {k: st.get(k, "1") for k in ("notify_desktop", "notify_started", "notify_approval",
+                                                         "notify_finished", "notify_failed")},
+                **desktop_notify.status()}
+
+    def save_desktop_notify(self, values):
+        vals = {k: ("1" if str(v) in ("1", "true", "True") else "0") for k, v in (values or {}).items()
+                if k in ("notify_desktop", "notify_started", "notify_approval", "notify_finished", "notify_failed")}
+        ok, msg = automation_store.save_automation_settings(vals)
+        return {"ok": ok, "message": msg}
+
+    def test_desktop_notify(self):
+        import desktop_notify
+        ok, msg = desktop_notify.test()
+        return {"ok": ok, "message": msg}
+
+    def take_open_request(self):
+        """A Chimera notification was clicked while the window was open: which screen to show."""
+        import desktop_notify
+        return desktop_notify.take_open_request()
+
+    # ------------------------------------------------------------
+    # Activity Monitor
+    # ------------------------------------------------------------
+    def get_activity(self, date_from=None, date_to=None, process="all", search=""):
+        import activity
+        try:
+            return {"ok": True, **activity.overview(date_from, date_to, process, search)}
+        except Exception as e:
+            return {"ok": False, "message": f"Couldn't read the activity: {e}"}
+
+    def get_activity_detail(self, source, ref_id):
+        import activity
+        try:
+            return {"ok": True, "text": activity.detail(source, ref_id) or "No further details were recorded."}
+        except Exception as e:
+            return {"ok": False, "message": str(e)}
+
+    def export_activity(self, date_from=None, date_to=None, process="all", search=""):
+        import activity
+        try:
+            path = activity.export_excel(date_from, date_to, process, search)
+        except Exception as e:
+            return {"ok": False, "message": f"Couldn't export: {e}"}
+        return {"ok": True, "path": path, "folder": os.path.dirname(path)}
 
     # ------------------------------------------------------------
     # Distributor Loadings
@@ -702,9 +1011,19 @@ class Api:
                           "prepared_today": sum(today.values()), "nothing_today": today.get("nothing_pending", 0)},
                 "settings": {"loading_url": settings.get("loading_url") or loading_store.DEFAULT_URL,
                              "loading_tabs": settings.get("loading_tabs") or "12",
-                             "auto_loadings": settings.get("auto_loadings", "1")},
+                             "auto_loadings": settings.get("auto_loadings", "1"),
+                             "users_url": settings.get("users_url") or "https://lakmee.salespro.lk/it/users",
+                             "auto_distributor_sync": settings.get("auto_distributor_sync", "1"),
+                             "add_loading_url": settings.get("add_loading_url") or "https://lakmee.salespro.lk/it/loading/create",
+                             "add_loading_for": settings.get("add_loading_for", "Today"),
+                             "add_loading_company": settings.get("add_loading_company", ""),
+                             "add_loading_dry_run": settings.get("add_loading_dry_run", "1")},
                 "jobs": [{"id": j["id"], "name": j["name"], "summary": j["summary"], "enabled": j["enabled"]}
                          for j in schedule_store.list_jobs() if j["job_type"] == "loadings"],
+                "sync_jobs": [{"id": j["id"], "name": j["name"], "summary": j["summary"], "enabled": j["enabled"],
+                               }
+                              for j in schedule_store.list_jobs() if j["job_type"] == "distributors"],
+                "last_sync": loading_store.last_sync(),
                 "live_active": LA.LIVE.snapshot().get("active", False),
                 "login_ready": bool(cfg.get("login_url") and cfg.get("username") and cfg.get("password")),
                 "filter_types": list(automation_store.FILTER_TYPES), "date_modes": list(automation_store.DATE_MODES),
@@ -723,11 +1042,14 @@ class Api:
         return {"ok": ok, "message": msg, "distributor": d}
 
     def set_distributor_frequency(self, ids, frequency):
-        ok = loading_store.set_frequency([int(i) for i in ids or []], frequency)
-        return {"ok": ok}
+        ok, refused = loading_store.set_frequency([int(i) for i in ids or []], frequency)
+        return {"ok": ok, "refused": refused,
+                "message": (f"Not set to Daily (inactive in SFA or no longer listed): {', '.join(refused)}." if refused else "")}
 
     def save_loading_settings(self, values):
-        vals = {k: v for k, v in (values or {}).items() if k in ("loading_url", "loading_tabs", "auto_loadings")}
+        vals = {k: v for k, v in (values or {}).items()
+                if k in ("loading_url", "loading_tabs", "auto_loadings", "users_url", "auto_distributor_sync",
+                         "add_loading_url", "add_loading_for", "add_loading_company", "add_loading_dry_run")}
         ok, msg = automation_store.save_automation_settings(vals)
         return {"ok": ok, "message": msg}
 
@@ -756,6 +1078,46 @@ class Api:
     def skip_loadings(self, item_ids):
         loading_store.skip_items([int(i) for i in item_ids or []])
         return {"ok": True}
+
+    # Add Loading (creates a loading in SFA; dry run until switched off in Settings)
+    def get_add_loading_fields(self, distributor_id):
+        import loading_create
+        d = loading_store.get_distributor(int(distributor_id))
+        if not d:
+            return {"ok": False, "message": "That distributor no longer exists."}
+        st = loading_create.settings()
+        return {"ok": True, "fields": loading_create.fields_for(d), "dry_run": st["dry_run"],
+                "loading_for": st["loading_for"], "company": st["company"], "blocked": d["blocked"],
+                "problem": d["problems"][0] if d["blocked"] else ""}
+
+    def read_add_loading(self, distributor_id, fields=None, show_browser=False):
+        import loading_create
+        return loading_create.read_form(int(distributor_id), fields or {}, headless=False if show_browser else None)
+
+    def create_add_loading(self, distributor_id, quantities, fields=None, show_browser=False):
+        import loading_create
+        return loading_create.create(int(distributor_id), quantities or {}, fields or {},
+                                     headless=False if show_browser else None)
+
+    def start_distributor_sync(self, show_browser=False):
+        """Distributor Loadings › Update distributor list now (from SFA's Users page)."""
+        import distributor_sync
+        return distributor_sync.start_background(trigger="manual", headless=False if show_browser else None)
+
+    def import_distributor_excel(self):
+        """A User Profile export picked by hand (Users page › Excel)."""
+        import distributor_sync
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=False,
+                                          file_types=("Excel files (*.xlsx)", "All files (*.*)"))
+        if not paths:
+            return {"ok": False, "message": "No file selected."}
+        try:
+            return distributor_sync.import_excel(paths[0] if isinstance(paths, (list, tuple)) else paths)
+        except distributor_sync.SyncError as e:
+            return {"ok": False, "message": e.message}
 
     def get_loading_live(self):
         import loading_automation as LA

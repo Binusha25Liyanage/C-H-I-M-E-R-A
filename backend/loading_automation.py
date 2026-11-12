@@ -38,7 +38,7 @@ STEP_LABELS = {"login": "Log in", "open": "Open", "filters": "Filters", "search"
                "read": "Read loading", "check": "Check", "confirm": "Confirm", "verify": "Verify"}
 SHOT_ROOT = os.path.join(os.path.expanduser("~"), "Chimera", "screenshots", "loadings")
 
-LIVE = SA.LiveState()
+LIVE = SA.LiveState("loadings")
 _ACTIVE = {"loop": None, "browser": None}
 
 
@@ -75,7 +75,8 @@ _RESULTS_JS = r"""
       const c = r.children, cell = c[iC];
       const txt = norm(cell.innerText);
       const clickable = cell.querySelector('a, button, [role=button], i, svg, img, span[class*=check], [onclick]');
-      const isPending = !!clickable && !/confirmed/i.test(txt);
+      const st = iS >= 0 ? norm(c[iS].innerText) : '';
+      const isPending = !!clickable && !/confirmed/i.test(txt) && !/^confirmed/i.test(st);   // status column wins
       rows.push({number: iN >= 0 ? norm(c[iN].innerText) : '', rep: iR >= 0 ? norm(c[iR].innerText) : '',
                  date: iD >= 0 ? norm(c[iD].innerText) : '', time: iT >= 0 ? norm(c[iT].innerText) : '',
                  status: iS >= 0 ? norm(c[iS].innerText) : '', confirm_cell: txt || (clickable ? '✓' : ''), pending: isPending});
@@ -399,13 +400,32 @@ async def _with_browser(cfg, opts, body):
             LIVE.log(msg)
             for i in range(len(lanes)):
                 LIVE.step(i, "login", "done")
+            state = await context.storage_state()
             await page.close()
-            await body(context)
+            await body(_Isolated(browser, state))
             return True, ""
         finally:
             _ACTIVE.update(loop=None, browser=None)
             try:
                 await browser.close()
+            except Exception:
+                pass
+
+
+class _Isolated:
+    """Gives every distributor its OWN browser context (cookies + storage copied from the single login).
+    SFA keeps search filters in the browser, so tabs sharing one context could swap each other's results
+    (seen with itineraries) — a loading must never be shown under the wrong distributor."""
+    def __init__(self, browser, state):
+        self.browser, self.state = browser, state
+
+    async def run(self, lane_fn, *args):
+        ctx = await self.browser.new_context(storage_state=self.state, viewport={"width": 1500, "height": 950})
+        try:
+            return await lane_fn(ctx, *args)
+        finally:
+            try:
+                await ctx.close()
             except Exception:
                 pass
 
@@ -466,10 +486,10 @@ def run_prepare(distributor_ids=None, trigger="manual", headless=None):
         runnable = [(i, d) for i, d in enumerate(ds) if not d["problems"]]
         opts = {"run_id": rid, "timeout_ms": st["timeout_ms"], "headless": st["headless"]}
 
-        async def body(context):
+        async def body(iso):
             LIVE.set(phase="preparing")
             sem = asyncio.Semaphore(st["tabs"])
-            await asyncio.gather(*[_prepare_lane(context, cfg, st["url"], d, i, opts, sem) for i, d in runnable])
+            await asyncio.gather(*[iso.run(_prepare_lane, cfg, st["url"], d, i, opts, sem) for i, d in runnable])
 
         if runnable:
             asyncio.run(_with_browser(cfg, opts, body))
@@ -618,6 +638,13 @@ def run_confirm(item_ids, trigger="manual", headless=None):
         return {"ok": False, "message": "Nothing to confirm — those loadings aren't waiting for approval any more."}
     ds = {d["id"]: d for d in LS.list_distributors()}
     items = [it for it in items if it["distributor_id"] in ds]
+    blocked = [it for it in items if ds[it["distributor_id"]]["blocked"]]
+    for it in blocked:      # inactive in SFA (or gone from its list) since the loading was read
+        LS.update_item(it["id"], state="failed", message=ds[it["distributor_id"]]["problems"][0])
+    items = [it for it in items if not ds[it["distributor_id"]]["blocked"]]
+    if not items:
+        return {"ok": False, "message": "Not confirmed — " + (ds[blocked[0]["distributor_id"]]["problems"][0]
+                                                             if blocked else "nothing to confirm.")}
     st = _settings()
     if headless is not None:
         st["headless"] = headless
@@ -635,10 +662,10 @@ def run_confirm(item_ids, trigger="manual", headless=None):
         LIVE.log(f"Confirming {len(items)} approved loading(s).")
         opts = {"run_id": rid, "timeout_ms": st["timeout_ms"], "headless": st["headless"]}
 
-        async def body(context):
+        async def body(iso):
             LIVE.set(phase="confirming")
             sem = asyncio.Semaphore(st["tabs"])
-            await asyncio.gather(*[_confirm_lane(context, cfg, st["url"], it, ds[it["distributor_id"]], i, opts, sem)
+            await asyncio.gather(*[iso.run(_confirm_lane, cfg, st["url"], it, ds[it["distributor_id"]], i, opts, sem)
                                    for i, it in enumerate(items)])
 
         ok, err = asyncio.run(_with_browser(cfg, opts, body))

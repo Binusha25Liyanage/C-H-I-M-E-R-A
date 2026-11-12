@@ -144,6 +144,20 @@ class ScheduleTest(unittest.TestCase):
             scheduler._run_job(SS.get_job(j["id"]), "10:00", "scheduled")
         self.assertEqual(ra.call_args.kwargs["report_date"], (date.today() - timedelta(days=1)).isoformat())
 
+    def test_approval_per_time(self):
+        j = job(name="Reports", times="10:00,15:00,17:30",
+                options={"report_day": "today", "review_times": ["10:00", "09:00"]})   # 09:00 isn't a time of the job
+        self.assertEqual(SS.get_job(j["id"])["options"]["review_times"], ["10:00"])
+        import sfa_automation
+        with mock.patch.object(sfa_automation, "run_automation", return_value={"ok": True, "status": "success"}) as ra:
+            scheduler._run_job(SS.get_job(j["id"]), "10:00", "scheduled")
+            self.assertIs(ra.call_args.kwargs["review"], True)       # asks first
+            scheduler._run_job(SS.get_job(j["id"]), "15:00", "scheduled")
+            self.assertIs(ra.call_args.kwargs["review"], False)      # sends automatically
+            legacy = dict(SS.get_job(j["id"]), options={"report_day": "today", "profile_ids": []})
+            scheduler._run_job(legacy, "15:00", "scheduled")
+            self.assertIsNone(ra.call_args.kwargs["review"])         # older job: Daily Reports setting decides
+
     def test_task_times_cover_all_jobs(self):
         job(name="Morning", frequency="monthly", month_days="1", times="06:00,07:30")
         job(name="Off", times="23:00", enabled=False)

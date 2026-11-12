@@ -114,9 +114,15 @@ def _run_job(job, slot, trigger):
     if job["job_type"] == "sfa_downloads":
         import sfa_automation
         day = date.today() - timedelta(days=1 if job["options"].get("report_day") == "yesterday" else 0)
+        opts = job["options"]
+        # Approval is set per time on the job ("Ask me first"); jobs saved before that use Daily Reports' setting.
+        review = (slot in opts["review_times"]) if "review_times" in opts else None
         r = sfa_automation.run_automation(report_date=day.isoformat(), trigger=trigger, slot=slot,
-                                          profile_ids=job["options"].get("profile_ids") or None)
+                                          profile_ids=opts.get("profile_ids") or None, review=review)
         return r
+    if job["job_type"] == "distributors":
+        import distributor_sync
+        return distributor_sync.run_sync(trigger=trigger)
     if job["job_type"] == "loadings":
         import loading_automation
         return loading_automation.run_prepare(trigger=trigger)
@@ -133,6 +139,14 @@ def run_due(trigger="scheduled", now=None):
     for job, slot in due:
         if not SS.record_fire(job["id"], today, slot, trigger):
             continue        # the other trigger got there first
+        try:
+            import desktop_notify
+            desktop_notify.event("started", "schedule", f"{job['name']} — {slot}",
+                                 f"Scheduled time reached — {job.get('type_label') or 'job'} is starting now.",
+                                 action={"sfa_downloads": "automation", "loadings": "loadings", "distributors": "loadings"}
+                                 .get(job["job_type"], "schedules"), tag=f"sched-{job['id']}-{today}-{slot}")
+        except Exception:
+            pass
         try:
             r = _run_job(job, slot, trigger)
         except Exception as e:  # recorded, and the next job still runs
@@ -162,9 +176,15 @@ class InAppScheduler:
             try:
                 import sfa_automation
                 import loading_automation
-                if sfa_automation.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active"):
+                import itinerary_automation
+                if sfa_automation.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active") \
+                        or itinerary_automation.LIVE.snapshot().get("active"):
                     continue    # still due later in the grace window
                 run_due("scheduled")
+                # Outlet Updates: read the itinerary for the day being prepared (23:59 onwards = tomorrow) —
+                # and if Chimera wasn't running then, now.
+                if not (sfa_automation.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active")):
+                    itinerary_automation.ensure_prepared()
             except Exception:
                 pass  # never let the scheduler thread die; the run itself records its errors
 

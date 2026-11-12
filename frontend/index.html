@@ -26,8 +26,7 @@
         <div class="nav-group">Automation</div>
         <button class="nav-btn" data-view="automation" data-tab="profiles"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg><span>Report Downloads</span></button>
         <button class="nav-btn" data-view="schedules"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Schedules</span></button>
-        <button class="nav-btn" data-view="visit-state"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 12l3 3 7-7"/></svg><span>Visit State Update</span><em class="nav-soon">Soon</em></button>
-        <button class="nav-btn" data-view="sequence"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6h1M4 12h1M4 18h1"/></svg><span>Sequence Update</span><em class="nav-soon">Soon</em></button>
+        <button class="nav-btn" data-view="outlet-updates"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11"/><path d="M4 6l1.5 1.5L7 5M4 12l1.5 1.5L7 11M4 18l1.5 1.5L7 17"/></svg><span>Outlet Updates</span><em class="nav-badge" id="nav-ou-badge" style="display:none"></em></button>
         <button class="nav-btn" data-view="automation" data-tab="history"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg><span>Run History</span></button>
         <div class="nav-group">Distribution</div>
         <button class="nav-btn" data-view="loadings"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h13v11H1z"/><path d="M14 8h4l3 3v4h-7"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg><span>Distributor Loadings</span><em class="nav-badge" id="nav-load-badge" style="display:none"></em></button>
@@ -40,7 +39,7 @@
         <button class="nav-btn" data-view="outlet-master"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/></svg><span>Outlets &amp; Territories</span><em class="nav-soon">Soon</em></button>
         <button class="nav-btn" data-view="import-data"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6M9 15l3-3 3 3"/></svg><span>Manual Import</span></button>
         <div class="nav-group">Monitoring</div>
-        <button class="nav-btn" data-view="activity"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>Activity Monitor</span><em class="nav-soon">Soon</em></button>
+        <button class="nav-btn" data-view="activity"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg><span>Activity Monitor</span></button>
       </nav>
 
       <div class="sidebar-footer">
@@ -305,8 +304,9 @@
             <div class="radio-row">
               <span class="hint" style="margin:0;">After generating:</span>
               <label class="radio"><input type="radio" name="dr-mode" value="save"> Save straight away</label>
-              <label class="radio"><input type="radio" name="dr-mode" value="preview"> Preview before saving</label>
-              <span class="hint" style="margin:0;">Applies to scheduled runs too &mdash; they wait for your approval.</span>
+              <label class="radio"><input type="radio" name="dr-mode" value="preview_first"> Preview the first run of each day, then send automatically</label>
+              <label class="radio"><input type="radio" name="dr-mode" value="preview"> Preview every run</label>
+              <span class="hint" style="margin:0;" id="dr-mode-hint"></span>
             </div>
             <div id="dr-generate-result"></div>
           </div>
@@ -363,53 +363,145 @@
           </div>
         </section>
 
-        <!-- ============ VISIT STATE UPDATE (UI shell — backend not built) ============ -->
-        <section id="view-visit-state" class="view" style="display:none;">
-          <div class="banner-warning">
-            <b>Not yet functional.</b> This screen shows the planned layout for bidirectional Visit State automation.
-            The Playwright automation against SFA hasn't been built yet — nothing here will actually connect to SFA or change any data.
+        <!-- ============ OUTLET UPDATES (itinerary-driven daily sheets) ============ -->
+        <section id="view-outlet-updates" class="view" style="display:none;">
+          <div class="view-heading-row">
+            <div><p class="hint">Each working territory has one rep. Chimera reads every territory's monthly itinerary from SFA and,
+              from <b id="ou-h-time">23:59</b>, prepares the next day's route &mdash; or as soon as it next runs if the PC was off.
+              Reading the itinerary never changes anything in SFA.</p></div>
+            <div class="heading-actions">
+              <button class="btn-outline" id="ou-add-terr">+ Add territory</button>
+              <button class="btn-primary" id="ou-read-now">&#8635; Read itineraries now</button>
+            </div>
+          </div>
+          <div class="ou-steps"><span class="on">1 &middot; Territories &amp; itineraries</span><span class="on">2 &middot; Rep sheets <em>Excel now &middot; WhatsApp &amp; Google Sheets next</em></span>
+            <span class="on">3 &middot; Review &amp; update SFA</span></div>
+          <div class="tabs" id="ou-tabs">
+            <button class="tab active" data-tab="board">Today's Routes</button>
+            <button class="tab" data-tab="territories">Working Territories <em class="tab-count" id="ou-tc-terr"></em></button>
+            <button class="tab" data-tab="sheets">Rep sheets <em class="tab-count" id="ou-tc-sheets"></em></button>
+            <button class="tab" data-tab="settings">Settings</button>
           </div>
 
-          <div class="two-col">
-            <div class="card">
-              <h3>Execution Scope</h3>
-              <div class="form-row">
-                <label>Territory <select disabled><option>All Territories</option></select></label>
-                <label>Route <select disabled><option>All Active Routes</option></select></label>
+          <div class="tab-panel" id="ou-panel-sheets" style="display:none;">
+            <div class="rs-head">
+              <p class="hint" style="margin:0;flex:1;">The route sheets reps fill in &mdash; <b>New Sequence</b> and <b>Top 15</b>. Chimera reads each one, checks it against
+                SFA's route and shows a preview: the new visit order, and Top 15 outlets set to <b>Mandatory</b> (you can change any outlet).
+                Nothing changes in SFA until you approve &mdash; unless you switch approval off in Settings.</p>
+              <div class="heading-actions">
+                <span id="rs-mode"></span>
+                <button class="btn-outline" id="rs-run">&#8635; Read SFA / save now</button>
+                <button class="btn-primary" id="rs-add">+ Add filled sheets</button>
               </div>
-              <div class="dry-run-row">
-                <div>
-                  <b>Safety Override: Dry Run Mode</b>
-                  <p class="hint">Simulates the update process without committing changes to SFA.</p>
+            </div>
+            <div class="stat-cards">
+              <div class="stat-card"><div class="stat-label">WAITING FOR YOUR APPROVAL</div><div class="stat-value" id="rs-st-ready">&mdash;</div><div class="stat-foot">previews ready</div></div>
+              <div class="stat-card"><div class="stat-label">WAITING FOR SFA</div><div class="stat-value" id="rs-st-queued">&mdash;</div><div class="stat-foot">to read or to save</div></div>
+              <div class="stat-card"><div class="stat-label">SAVED IN SFA</div><div class="stat-value" id="rs-st-done">&mdash;</div><div class="stat-foot" id="rs-st-done-foot">sheets</div></div>
+              <div class="stat-card"><div class="stat-label">NEEDS ATTENTION</div><div class="stat-value" id="rs-st-bad">&mdash;</div><div class="stat-foot">refused, failed or partly saved</div></div>
+            </div>
+            <div class="card card-flush">
+              <div class="am-card-head"><h3>Route sheets</h3>
+                <div class="seg" id="rs-filter"><button data-f="all" class="on">All</button><button data-f="ready">Waiting for approval</button>
+                  <button data-f="queued">Waiting for SFA</button><button data-f="done">Saved</button><button data-f="bad">Needs attention</button><button data-f="old">Discarded / replaced</button></div></div>
+              <div id="rs-table"></div>
+            </div>
+            <div class="two-col">
+              <div class="card">
+                <h3>SFA's route list</h3>
+                <p class="hint" id="rs-routes-info">&mdash;</p>
+                <p class="hint">From <b>Sales Organization › Route › View Route</b> (Status = ACTIVE, the green Excel icon). Each sheet is matched to its
+                  route by the <b>Route Code</b> in its header (e.g. ROUI1998). Update it when routes are added or renamed in SFA.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="btn-primary" id="rs-routes-sync">&#8635; Update from SFA</button>
+                  <button class="btn-outline" id="rs-routes-import">Import View Route Excel</button>
+                  <button class="btn-outline" id="rs-routes-view">See routes</button>
                 </div>
-                <label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label>
               </div>
-              <div class="card" style="margin-top:16px;">
-                <h3>Pending Queue</h3>
-                <p class="hint">Queue will populate once territory/route filtering and SFA connectivity are built.</p>
-              </div>
-              <div class="form-row" style="margin-top:16px;">
-                <button class="btn-outline" disabled>Clear</button>
-                <button class="btn-primary" disabled>&#9654; Execute Run</button>
-              </div>
-            </div>
-
-            <div>
-              <div class="stat-cards stat-cards-2">
-                <div class="stat-card"><div class="stat-label">SUCCESS</div><div class="stat-value">&mdash;</div></div>
-                <div class="stat-card"><div class="stat-label">FAILED</div><div class="stat-value">&mdash;</div></div>
-              </div>
-              <div class="card log-console">
-                <h3>Process Log</h3>
-                <p class="hint">Not connected — automation backend not yet built.</p>
+              <div class="card">
+                <h3>Recent SFA runs</h3>
+                <div id="rs-runs"></div>
               </div>
             </div>
           </div>
-        </section>
 
-        <!-- ============ SEQUENCE UPDATE (placeholder) ============ -->
-        <section id="view-sequence" class="view" style="display:none;">
-                    <div class="banner-warning"><b>Not yet built.</b> Planned to reuse the same Execution Scope + Dry Run pattern as Visit State Update.</div>
+          <div class="tab-panel" id="ou-panel-board">
+            <div class="ou-daybar">
+              <div class="ou-dates" id="ou-dates"></div>
+              <div id="ou-prepared" class="ou-prepared"></div>
+            </div>
+            <div class="stat-cards">
+              <div class="stat-card"><div class="stat-label">WORKING TERRITORIES</div><div class="stat-value" id="ou-st-working">&mdash;</div><div class="stat-foot" id="ou-st-working-foot"></div></div>
+              <div class="stat-card"><div class="stat-label">ROUTES THIS DAY</div><div class="stat-value" id="ou-st-routes">&mdash;</div><div class="stat-foot">from the SFA itinerary</div></div>
+              <div class="stat-card"><div class="stat-label">HOLIDAY / NO ROUTE</div><div class="stat-value" id="ou-st-off">&mdash;</div><div class="stat-foot">'H' days and '-' days</div></div>
+              <div class="stat-card"><div class="stat-label">NEEDS ATTENTION</div><div class="stat-value" id="ou-st-attn">&mdash;</div><div class="stat-foot" id="ou-st-attn-foot">missing or unread itineraries</div></div>
+            </div>
+            <div class="ou-board-head">
+              <h3>Routes for <span id="ou-board-day"></span></h3>
+              <div class="seg" id="ou-board-filter"><button data-f="all" class="on">All</button><button data-f="route">Routes</button>
+                <button data-f="attn">Needs attention</button><button data-f="off">Holiday / no route</button></div>
+            </div>
+            <div id="ou-board" class="ou-board"></div>
+            <div class="card card-flush" style="margin-top:20px;">
+              <div class="card-header-row" style="padding:16px 18px 0;"><h3>Recent itinerary reads</h3></div>
+              <div id="ou-runs"></div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="ou-panel-territories" style="display:none;">
+            <div class="card card-flush">
+              <div class="ld-toolbar">
+                <input type="search" id="ou-t-search" placeholder="Search territory, code, area or rep&hellip;">
+                <div class="seg" id="ou-t-filter"><button data-f="all">All</button><button data-f="on" class="on">Working</button><button data-f="off">Off</button></div>
+                <span class="hint" id="ou-t-count"></span>
+                <button class="btn-outline btn-small" id="ou-detect">Detect territories from SFA</button>
+              </div>
+              <div id="ou-t-table"></div>
+            </div>
+            <p class="hint" style="margin-top:10px;">Only switched-on territories are read and get a daily sheet. Turning a new territory on later is all it takes to add it.</p>
+          </div>
+
+          <div class="tab-panel" id="ou-panel-settings" style="display:none;">
+            <div class="two-col">
+              <div class="card">
+                <h3>Preparing the next day</h3>
+                <label class="ou-switch-row"><span><b>Prepare automatically</b><br><span class="hint">Read the next day's itinerary by itself (Schedules › Automations has the same switch).</span></span>
+                  <label class="switch2"><input type="checkbox" id="ou-auto"><span></span></label></label>
+                <div class="form-row"><label>Prepare the next day from <input type="time" id="ou-prepare-time"></label></div>
+                <p class="hint">From this time Chimera works on <b>tomorrow</b>; before it, on today. If the PC is off or Chimera is closed then,
+                  it does it the next time Chimera runs &mdash; once, never twice. Itineraries are read again every night, so edits in SFA are picked up.</p>
+                <div class="form-row"><label style="flex:1;">Territories read at the same time
+                  <span class="range-row"><input type="range" min="1" max="12" id="ou-tabs-range"><b id="ou-tabs-val"></b></span></label></div>
+              </div>
+              <div class="card">
+                <h3>SFA pages</h3>
+                <label class="field">View Territory <input id="ou-terr-url"><span>Sales Organization › Territory › View Territory — used by “Detect territories from SFA”.</span></label>
+                <label class="field">View SR Individual Itinerary <input id="ou-itin-url"></label>
+                <label class="field">View Outlets <input id="ou-outlets-url"><span>Rep sheets: read each route's outlets and save them (Edit Outlet).</span></label>
+                <p class="hint">Only itineraries that are <b>approved</b> in SFA will be used for sheets. How Chimera checks approval is set up
+                  in the next update &mdash; for now itineraries are read for viewing only.</p>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Rep sheets &rarr; SFA</h3>
+              <div class="two-col" style="margin:0;">
+                <div>
+                  <label class="ou-switch-row"><span><b>Ask me before saving in SFA</b><br><span class="hint">Show the preview and wait for your approval. Switched off,
+                    a sheet is saved as soon as SFA has been read for it (the record still shows in the Activity Monitor).</span></span>
+                    <label class="switch2"><input type="checkbox" id="rs-need-approval"><span></span></label></label>
+                  <label class="ou-switch-row"><span><b>Dry run</b><br><span class="hint">Open and check every outlet, but never press UPDATE. Leave this on for the first
+                    sheets (test on Lakmee TERRITORY), then switch it off.</span></span>
+                    <label class="switch2"><input type="checkbox" id="rs-dry-run"><span></span></label></label>
+                </div>
+                <div>
+                  <label class="field">View Route <input id="rs-routes-url"><span>Sales Organization › Route › View Route &mdash; the active route list.</span></label>
+                  <p class="hint">Outlets are read and saved through <b>View Outlets</b> (above). Phone fields are fixed to 10 characters on the way, as SFA
+                    won't save an outlet otherwise: 9 digits get a leading 0, +94&hellip; becomes 0&hellip;, anything else 0000000000.</p>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;"><button class="btn-primary" id="ou-save-settings">Save settings</button><span id="ou-settings-msg"></span></div>
+          </div>
         </section>
 
         <!-- ============ IMPORT DATA ============ -->
@@ -459,6 +551,7 @@
             <div><p class="hint">Chimera opens View Loadings for each distributor (up to 12 at a time), reads the pending loading
               and shows it to you. <b>A loading is confirmed in SFA only after you approve it.</b></p></div>
             <div class="heading-actions">
+              <button class="btn-outline" id="ld-sync">&#8635; Update distributor list</button>
               <button class="btn-outline" id="ld-add">+ Add distributor</button>
               <button class="btn-primary" id="ld-prepare-daily">&#9654; Prepare today's loadings</button>
             </div>
@@ -474,10 +567,40 @@
             <div class="ld-toolbar">
               <input type="search" id="ld-search" placeholder="Search distributor or code&hellip;">
               <div class="seg" id="ld-freq-filter"><button data-f="all" class="on">All</button><button data-f="daily">Daily</button><button data-f="request">On request</button></div>
+              <div class="seg" id="ld-status-filter"><button data-s="active" class="on">Active</button><button data-s="inactive">Inactive</button><button data-s="all">All</button></div>
+              <select id="ld-asm" class="ld-select"><option value="">All ASMs</option></select>
               <span class="hint" id="ld-count"></span>
             </div>
             <div id="ld-bulk" class="ld-bulk" style="display:none;"></div>
             <div id="ld-table"><p class="hint" style="padding:18px;">Loading&hellip;</p></div>
+          </div>
+          <div class="card">
+            <div class="card-header-row"><h3>Distributor list from SFA</h3>
+              <span><button class="btn-outline btn-small" id="ld-sync-import">Import Excel&hellip;</button>
+                <button class="btn-primary btn-small" id="ld-sync-now">&#8635; Update now</button></span></div>
+            <p class="hint">Chimera reads the distributors from SFA's Users page (User Type = DISTRIBUTOR, Active and Inactive) and keeps this list
+              up to date: new distributors are added <b>On request</b> with their Distributor filter set, <b>Vacant</b> ones are tagged, and
+              <b>inactive</b> ones stay listed but can't be prepared or confirmed.</p>
+            <div class="form-row"><label style="flex:1;">Users page URL <input type="text" id="ld-users-url" style="width:100%;"></label>
+              <button class="btn-outline" id="ld-users-url-save">Save</button></div>
+            <div id="ld-sync-info"></div>
+            <div class="form-row" style="margin-top:8px;"><button class="btn-outline" id="ld-sync-job">Update automatically&hellip;</button>
+              <button class="btn-outline" data-goto="schedules">Open Schedules</button></div>
+          </div>
+          <div class="card">
+            <div class="card-header-row"><h3>Add Loading</h3><span id="al-mode-chip"></span></div>
+            <p class="hint">“Add loading” on a distributor opens SFA's ADD LOADING page, fills Loading For, Product Company, Territory, Distributor and
+              Sales Rep, and shows you the products with stock &mdash; <b>Quantity starts at the available stock</b> and you can change it.
+              Nothing is saved until you press <b>Create loading</b>. If SFA refuses (for example the rep hasn't unloaded the previous loading), Chimera shows SFA's message.</p>
+            <div class="grid-2">
+              <label class="field">ADD LOADING page URL <input type="text" id="al-url"></label>
+              <label class="field">Loading For <input type="text" id="al-for" placeholder="Today"></label>
+              <label class="field">Product Company <input type="text" id="al-company" placeholder="leave empty = what SFA picks"><span>Exactly as SFA shows it, or empty.</span></label>
+              <div class="field"><span>Dry run</span>
+                <label class="ou-switch-row" style="margin:0;"><span class="hint" style="margin:0;">Fill the page but <b>stop before SAVE</b> and keep a screenshot. Switch off once your test distributor works.</span>
+                  <label class="switch2"><input type="checkbox" id="al-dry"><span></span></label></label></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;"><button class="btn-primary" id="al-save">Save</button><span id="al-msg"></span></div>
           </div>
           <div class="two-col">
             <div class="card">
@@ -510,8 +633,38 @@
             own schedules and keep Chimera's tables up to date. It will be built once the example Excels and URLs are ready.</p></div>
         </section>
         <section id="view-activity" class="view" style="display:none;">
-          <div class="card"><h3>Activity Monitor</h3><p class="hint">Next update: everything Chimera did over a chosen period &mdash; runs, reports,
-            WhatsApp messages, loadings &mdash; with totals, a chart and details. Until then, see Run History and Recent loading runs.</p></div>
+          <p class="hint view-intro">Everything Chimera did over a period &mdash; SFA downloads, reports, WhatsApp messages, loadings,
+            itineraries, the distributor list and scheduled jobs &mdash; in one timeline. Read only: nothing here changes SFA.</p>
+          <div class="am-bar">
+            <div class="seg" id="am-period"><button data-p="today" class="on">Today</button><button data-p="yesterday">Yesterday</button>
+              <button data-p="7">Last 7 days</button><button data-p="month">This month</button><button data-p="custom">Custom</button></div>
+            <span class="am-custom" id="am-custom" style="display:none;"><input type="date" id="am-from"> to <input type="date" id="am-to">
+              <button class="btn-outline btn-small" id="am-apply">Show</button></span>
+            <input type="search" id="am-search" placeholder="Search (distributor, chat, loading number...)">
+            <span class="am-spacer"></span>
+            <button class="btn-outline" id="am-refresh">&#8635; Refresh</button>
+            <button class="btn-primary" id="am-export">Export to Excel</button>
+          </div>
+          <div class="am-procs" id="am-procs"></div>
+          <div class="stat-cards" id="am-kpis"></div>
+          <div class="card" id="am-chart-card"><div class="am-chart-head"><h3>Per day</h3><div class="am-legend" id="am-legend"></div></div>
+            <div id="am-chart" class="am-chart"></div></div>
+          <div class="card card-flush" id="am-loadings-card" style="display:none;">
+            <div class="am-card-head"><h3>Each loading</h3><div class="seg" id="am-ld-filter"><button data-f="all" class="on">All</button>
+              <button data-f="confirmed">Confirmed</button><button data-f="pending_approval">Waiting</button><button data-f="added">Added</button>
+              <button data-f="problem">Problems</button><button data-f="skipped">Skipped</button></div></div>
+            <div class="am-scroll"><table class="report-table am-table" id="am-ld-table"></table></div>
+          </div>
+          <div class="card card-flush" id="am-ol-card" style="display:none;">
+            <div class="am-card-head"><h3>Each outlet</h3><div class="seg" id="am-ol-filter"><button data-f="all" class="on">All</button>
+              <button data-f="updated">Saved</button><button data-f="mandatory">Made Mandatory</button><button data-f="failed">Failed</button>
+              <button data-f="would_update">Dry run</button><button data-f="notes">Remarks / demand</button></div></div>
+            <div class="am-scroll"><table class="report-table am-table" id="am-ol-table"></table></div>
+          </div>
+          <div class="card card-flush">
+            <div class="am-card-head"><h3>Timeline</h3><span class="hint" id="am-ev-count"></span></div>
+            <div class="am-scroll"><table class="report-table am-table" id="am-ev-table"></table></div>
+          </div>
         </section>
 
         <!-- ============ SCHEDULES ============ -->
@@ -615,6 +768,34 @@
             <button class="tab" data-tab="rules">Report Rules</button>
             <button class="tab" data-tab="groups">Manager Groups</button>
             <button class="tab" data-tab="network">Network &amp; Data</button>
+            <button class="tab" data-tab="notify">Notifications</button>
+          </div>
+
+          <div class="tab-panel" id="st-panel-notify" style="display:none;">
+            <div class="card">
+              <h3>Windows notifications</h3>
+              <p class="hint" style="margin:-4px 0 14px;">Chimera tells you on the laptop — the pop-up at the bottom-right that also stays in the
+                notification centre, under <b>Chimera</b> — when a scheduled time arrives, when a run starts, when something waits for your
+                approval, and when a run finishes or fails. It works while Chimera is minimised or closed (scheduled runs then work on their own).
+                Click a notification to open Chimera on that screen.</p>
+              <label class="ou-switch-row"><span><b>Show Windows notifications</b><br><span class="hint">The master switch.</span></span>
+                <label class="switch2"><input type="checkbox" id="nt-desktop"><span></span></label></label>
+              <div id="nt-kinds">
+                <label class="ou-switch-row"><span><b>A scheduled time arrives / a run starts</b><br><span class="hint">“Daily SKU reports — 12:00: starting now”, “Confirming 4 loadings in SFA…”</span></span>
+                  <label class="switch2"><input type="checkbox" id="nt-started"><span></span></label></label>
+                <label class="ou-switch-row"><span><b>Something waits for your approval</b><br><span class="hint">Reports to approve, loadings to confirm, rep sheets to review — click to open it.</span></span>
+                  <label class="switch2"><input type="checkbox" id="nt-approval"><span></span></label></label>
+                <label class="ou-switch-row"><span><b>A run finished</b><br><span class="hint">“Reports sent to 3 WhatsApp groups”, “12 outlets saved in SFA”.</span></span>
+                  <label class="switch2"><input type="checkbox" id="nt-finished"><span></span></label></label>
+                <label class="ou-switch-row"><span><b>A run failed or couldn't start</b><br><span class="hint">With what went wrong — click to see the details.</span></span>
+                  <label class="switch2"><input type="checkbox" id="nt-failed"><span></span></label></label>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <button class="btn-primary" id="nt-test">Send a test notification</button><span id="nt-msg"></span></div>
+              <p class="hint" style="margin-top:12px;">Nothing showing? In Windows, open <b>Settings › System › Notifications</b>: notifications must be on,
+                <b>Chimera</b> must be allowed, and <b>Do not disturb</b> off.</p>
+            </div>
+            <div class="card"><h3>Recent notifications</h3><div id="nt-history"><p class="hint">None yet in this session.</p></div></div>
           </div>
 
           <div class="tab-panel" id="st-panel-sfa">
@@ -806,6 +987,9 @@
   <script src="js/automation.js"></script>
   <script src="js/schedules.js"></script>
   <script src="js/loadings.js"></script>
+  <script src="js/outlet_updates.js"></script>
+  <script src="js/rep_sheets.js"></script>
+  <script src="js/activity.js"></script>
   <script src="js/shell.js"></script>
 </body>
 </html>

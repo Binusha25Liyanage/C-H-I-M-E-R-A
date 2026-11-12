@@ -147,10 +147,11 @@ class StepError(Exception):
 # Live state (read by the UI every second)
 # ===========================================================================
 class LiveState:
-    def __init__(self):
+    def __init__(self, source=None):
         self._lock = threading.Lock()
         self._s = {"active": False, "run_id": None, "lanes": [], "log": [], "phase": "idle"}
         self._cancel = threading.Event()
+        self.source = source            # reports | loadings | itinerary | outlets — for Windows notifications
 
     def reset(self, **kw):
         with self._lock:
@@ -160,7 +161,20 @@ class LiveState:
 
     def set(self, **kw):
         with self._lock:
+            started = bool(kw.get("run_id")) and not self._s.get("run_id")
             self._s.update(kw)
+            ended = kw.get("active") is False and isinstance(kw.get("result"), dict)
+            snap = {k: self._s.get(k) for k in ("kind", "trigger", "slot", "started_at", "dry_run", "lanes", "sheets",
+                                                "report_date")} if (started or ended) and self.source else None
+        if snap:                         # a run really started (it has a record) / ended: tell Windows
+            try:
+                import desktop_notify
+                if started:
+                    desktop_notify.run_started(self.source, snap)
+                else:
+                    desktop_notify.run_finished(self.source, snap, kw["result"])
+            except Exception:
+                pass
 
     def lane(self, idx, **kw):
         with self._lock:
@@ -197,7 +211,7 @@ class LiveState:
         return self._cancel.is_set()
 
 
-LIVE = LiveState()
+LIVE = LiveState("reports")
 
 # The browser of the run in progress, so "Stop now" can close it at once
 # instead of waiting for the current step to finish.
@@ -1052,6 +1066,10 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                             f"{_ss.get_settings().get('output_style', 'classic')} (the default in Settings › Report Rules)"))
                 import report_pipeline
                 failed = [l["name"] for l in lanes if l["status"] not in ("done", "empty")]
+                if slot and review is not None:
+                    LIVE.log(f"Schedule: the {slot} run is set to "
+                             + ("'Ask me first' — the reports wait for your approval." if review
+                                else "send automatically — no approval needed."))
                 report_run = report_pipeline.run_reports(report_date, kinds=kinds, trigger=trigger, style=style,
                                                          review=review)
                 for r in report_run["reports"]:
@@ -1063,6 +1081,8 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                              + " (their download failed this run).", level="warn")
                 import whatsapp_sender
                 has_rules = bool([r for r in whatsapp_sender.list_rules() if r["enabled"]])
+                if report_run.get("review_note"):
+                    LIVE.log(report_run["review_note"])
                 if report_run.get("status") == "pending_review":
                     LIVE.log("Reports are waiting for your approval — the preview opens now (also under the bell "
                              "and Daily Reports). Approve to save them and send them to WhatsApp.", level="warn")

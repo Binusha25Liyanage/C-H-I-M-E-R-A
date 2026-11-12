@@ -359,7 +359,7 @@ function logHtml(log) {
 async function openRunNowModal() {
   const en = AU.ov.profiles;
   let defStyle = "classic", defReview = false;
-  try { const rs = await API().get_report_settings(); defStyle = rs.output_style || "classic"; defReview = rs.delivery_mode === "preview"; } catch (e) {}
+  try { const rs = await API().get_report_settings(); defStyle = rs.output_style || "classic"; defReview = rs.delivery_mode === "preview" || (rs.delivery_mode === "preview_first" && !rs.approved_today); } catch (e) {}
   openModal({ title: "Run SFA downloads now", body: `
       <div class="grid-2">
         <label class="field">Report date <input type="date" id="rn-date" value="${localToday()}"></label>

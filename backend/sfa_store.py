@@ -164,8 +164,8 @@ def save_settings(values):
                 except OSError as e:
                     return False, f"Chimera can't save reports in that folder: {e}"
         elif k == "delivery_mode":
-            if v not in ("save", "preview"):
-                return False, "Choose 'Save straight away' or 'Preview before saving'."
+            if v not in ("save", "preview", "preview_first"):
+                return False, "Choose 'Save straight away', 'Preview every run' or 'Preview the first run of each day'."
         else:
             try:
                 n = float(v)

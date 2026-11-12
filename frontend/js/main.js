@@ -13,8 +13,7 @@ const VIEW_META = {
   "reports": ["Reports", "Combined SKU + Invoice"],
   "automation": ["Automation", "Report Downloads"],
   "schedules": ["Automation", "Schedules"],
-  "visit-state": ["Automation", "Visit State Update"],
-  "sequence": ["Automation", "Sequence Update"],
+  "outlet-updates": ["Automation", "Outlet Updates"],
   "import-data": ["Data", "Manual Import"],
   "loadings": ["Distribution", "Distributor Loadings"],
   "rep-attendance": ["Attendance", "Rep Attendance"],
@@ -64,6 +63,8 @@ function switchView(view, tab) {
   if (view === "automation" && window.loadAutomation) window.loadAutomation();
   if (view === "schedules" && window.loadSchedules) window.loadSchedules();
   if (view === "loadings" && window.loadLoadings) window.loadLoadings();
+  if (view === "outlet-updates" && window.loadOutletUpdates) window.loadOutletUpdates();
+  if (view === "activity" && window.loadActivity) window.loadActivity();
   if (view === "automation" && tab && window.selectAutomationTab) window.selectAutomationTab(tab);
   setShellTitle(view, tab);
 }
@@ -631,8 +632,40 @@ window.addEventListener("pywebviewready", () => {
 document.getElementById("st-tabs").addEventListener("click", (e) => {
   const t = e.target.dataset.tab; if (!t) return;
   document.querySelectorAll("#st-tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
-  ["sfa", "rules", "groups", "network"].forEach(x => { document.getElementById("st-panel-" + x).style.display = x === t ? "block" : "none"; });
+  ["sfa", "rules", "groups", "network", "notify"].forEach(x => { document.getElementById("st-panel-" + x).style.display = x === t ? "block" : "none"; });
   if (t === "network") loadDataUsage();
+  if (t === "notify") loadNotifySettings();
+});
+
+// ---------------------------------------------------------------- Windows notifications
+const NT_KEYS = { "nt-desktop": "notify_desktop", "nt-started": "notify_started", "nt-approval": "notify_approval",
+                  "nt-finished": "notify_finished", "nt-failed": "notify_failed" };
+async function loadNotifySettings() {
+  if (typeof window.pywebview.api.get_desktop_notify !== "function") {
+    document.getElementById("nt-msg").innerHTML = `<span class="error">Needs the latest backend files (api.py, desktop_notify.py) — replace them and restart Chimera.</span>`;
+    return;
+  }
+  const r = await window.pywebview.api.get_desktop_notify();
+  Object.entries(NT_KEYS).forEach(([id, k]) => { document.getElementById(id).checked = r.settings[k] === "1"; });
+  document.getElementById("nt-kinds").style.opacity = r.settings.notify_desktop === "1" ? "" : ".45";
+  if (!r.windows) document.getElementById("nt-msg").innerHTML = `<span class="hint">Notifications are shown on Windows only.</span>`;
+  else if (r.last_error) document.getElementById("nt-msg").innerHTML = `<span class="error">${esc(r.last_error)}</span>`;
+  const icon = { started: "▶", approval: "⏳", finished: "✓", failed: "!" };
+  document.getElementById("nt-history").innerHTML = r.history.length ? `<table class="report-table"><tbody>${r.history.map(h => `
+      <tr><td style="white-space:nowrap;">${esc(h.t)}</td><td>${icon[h.kind] || ""}</td><td><b>${esc(h.title)}</b><div class="hint" style="font-size:12px;">${esc(h.body)}</div></td></tr>`).join("")}</tbody></table>`
+    : `<p class="hint">None yet in this session.</p>`;
+}
+Object.keys(NT_KEYS).forEach(id => document.getElementById(id).addEventListener("change", async () => {
+  const vals = {}; Object.entries(NT_KEYS).forEach(([i, k]) => { vals[k] = document.getElementById(i).checked ? "1" : "0"; });
+  const r = await window.pywebview.api.save_desktop_notify(vals);
+  document.getElementById("nt-msg").innerHTML = `<span class="${r.ok ? "hint" : "error"}">${esc(r.ok ? "Saved." : r.message)}</span>`;
+  document.getElementById("nt-kinds").style.opacity = vals.notify_desktop === "1" ? "" : ".45";
+}));
+document.getElementById("nt-test").addEventListener("click", async (e) => {
+  e.target.disabled = true; document.getElementById("nt-msg").innerHTML = `<span class="spinner"></span> Sending…`;
+  const r = await window.pywebview.api.test_desktop_notify();
+  e.target.disabled = false;
+  document.getElementById("nt-msg").innerHTML = `<span class="${r.ok ? "hint" : "error"}">${esc(r.message)}</span>`;
 });
 
 // ---------------------------------------------------------------- Network & Data

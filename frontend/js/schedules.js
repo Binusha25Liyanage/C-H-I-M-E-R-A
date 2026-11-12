@@ -87,8 +87,8 @@ const SC_SWITCHES = [
   ["wa_auto_send", "Send to WhatsApp automatically", "Reports go to the chats in your delivery rules once saved or approved."],
   ["auto_loadings", "Distributor loadings", "Daily distributors' pending loadings are read on schedule. Confirming always waits for you."],
   ["auto_master_sync", "Master data sync", "Itinerary, Territories and Outlet Master from SFA.", true],
-  ["auto_visit_state", "Visit state update", "Mandatory / Optional route changes in SFA.", true],
-  ["auto_sequence", "Sequence update", "Outlet visit order in SFA.", true],
+  ["auto_distributor_sync", "Distributor list update", "Scheduled updates of the Loadings distributor list from SFA's Users page."],
+  ["auto_outlet_updates", "Outlet updates — daily itinerary", "From 23:59 the next day's route of each working territory is read from SFA (catches up if the PC was off)."],
 ];
 function renderScSwitches() {
   const sw = SC.ov.switches, paused = SC.ov.controls.paused === "1";
@@ -113,7 +113,9 @@ function renderScJobs() {
       const ok = lf && /^(success|done)/.test(lf.outcome || "");
       return `<tr>
         <td><label class="switch2"><input type="checkbox" data-toggle="${j.id}" ${j.enabled ? "checked" : ""}><span></span></label></td>
-        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.skip_holidays ? "" : " · runs on holidays"}</div></td>
+        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${j.job_type === "sfa_downloads" ? (Array.isArray(j.options.review_times)
+          ? (j.options.review_times.length ? ` · asks first at ${esc(j.options.review_times.join(", "))}` : " · sends automatically at every time")
+          : " · approval: Daily Reports setting") : ""}</div></td>
         <td>${esc(j.summary)}</td>
         <td>${j.enabled ? esc(j.next_label || "—") : '<span class="hint">off</span>'}</td>
         <td style="font-size:12px;">${lf ? `${esc(lf.day)} ${esc(lf.slot)}<div class="${ok ? "hint" : "error"}">${esc((lf.outcome || "started").slice(0, 70))}</div>` : '<span class="hint">never</span>'}</td>
@@ -149,9 +151,11 @@ function openJobEditor(job) {
     month_days_list: ["1"], once_date: SC.ov.today, enabled: true, skip_holidays: true, options: { report_day: "today", profile_ids: [] } };
   const d = SC.draft;
   d.options = d.options || {}; d.options.profile_ids = d.options.profile_ids || [];
+  if (!Array.isArray(d.options.review_times)) d.options.review_times = [];
   openModal({ title: job ? `Edit job — ${job.name}` : "New scheduled job", size: "lg", body: `
+    <div id="je-error"></div>
     <div class="grid-2">
-      <label class="field">Job name <input type="text" id="je-name" value="${esc(d.name)}" placeholder="e.g. Morning downloads"></label>
+      <label class="field">Job name <input type="text" id="je-name" value="${esc(d.name)}" placeholder="optional — e.g. Morning downloads"></label>
       <label class="field">What to run <select id="je-type">${Object.entries(types).map(([k, t]) =>
         `<option value="${k}" ${k === d.job_type ? "selected" : ""} ${t.available ? "" : "disabled"}>${esc(t.label)}${t.available ? "" : " — coming soon"}</option>`).join("")}</select></label>
     </div>
@@ -161,17 +165,18 @@ function openJobEditor(job) {
     <div id="je-freq-body" style="margin-top:12px;"></div>
     <div class="section-title">At these times (24-hour)</div>
     <div id="je-times" class="time-chips"></div>
+    <p class="hint" id="je-ask-note" style="margin:8px 0 0;">Click a time's button to choose: <b>Ask me first</b> &mdash; the reports wait for your approval
+      (the preview opens; Save &amp; send) &mdash; or <b>Sends automatically</b> &mdash; downloaded, built and sent to WhatsApp with no approval.</p>
     <div class="form-row" style="margin-top:10px;"><label>Add a time <input type="time" id="je-time-input"></label><button class="btn-outline" id="je-time-add">Add time</button></div>
     <div id="je-opts"></div>
     <div class="toggle-row" style="margin-top:14px;"><div><b>Skip holidays</b><p class="hint">Don't run on dates in the holiday calendar.</p></div>
       <label class="switch2"><input type="checkbox" id="je-hol" ${d.skip_holidays ? "checked" : ""}><span></span></label></div>
     <div class="toggle-row"><div><b>Job is on</b></div>
-      <label class="switch2"><input type="checkbox" id="je-on" ${d.enabled ? "checked" : ""}><span></span></label></div>
-    <div id="je-error"></div>`,
+      <label class="switch2"><input type="checkbox" id="je-on" ${d.enabled ? "checked" : ""}><span></span></label></div>`,
     footer: `<button class="btn-outline" id="je-cancel">Cancel</button><button class="btn-primary" id="je-save">Save job</button>` });
   const typeHint = () => { document.getElementById("je-type-hint").textContent = (types[d.job_type] || {}).hint || ""; };
   typeHint(); renderFreqBody(); renderJeTimes(); renderJeOpts();
-  document.getElementById("je-type").onchange = (e) => { d.job_type = e.target.value; typeHint(); renderJeOpts(); };
+  document.getElementById("je-type").onchange = (e) => { d.job_type = e.target.value; typeHint(); renderJeOpts(); renderJeTimes(); };
   document.getElementById("je-freq").onclick = (e) => {
     const f = e.target.dataset.f; if (!f) return; d.frequency = f;
     document.querySelectorAll("#je-freq button").forEach(b => b.classList.toggle("on", b.dataset.f === f)); renderFreqBody(); };
@@ -179,7 +184,14 @@ function openJobEditor(job) {
     const v = document.getElementById("je-time-input").value; if (!v) return;
     if (!d.times_list.includes(v)) d.times_list.push(v); d.times_list.sort(); renderJeTimes(); };
   document.getElementById("je-times").onclick = (e) => {
-    const t = e.target.dataset.rm; if (!t) return; d.times_list = d.times_list.filter(x => x !== t); renderJeTimes(); };
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.ask) {
+      const rv = new Set(d.options.review_times || []);
+      rv.has(b.dataset.ask) ? rv.delete(b.dataset.ask) : rv.add(b.dataset.ask);
+      d.options.review_times = [...rv].sort(); renderJeTimes(); return;
+    }
+    const t = b.dataset.rm; if (!t) return; d.times_list = d.times_list.filter(x => x !== t);
+    d.options.review_times = (d.options.review_times || []).filter(x => x !== t); renderJeTimes(); };
   document.getElementById("je-cancel").onclick = () => closeModal();
   document.getElementById("je-save").onclick = saveJobDraft;
 }
@@ -207,8 +219,14 @@ function renderFreqBody() {
   }
 }
 function renderJeTimes() {
-  document.getElementById("je-times").innerHTML = SC.draft.times_list.map(t => `<span class="time-chip">${esc(t)}<button data-rm="${esc(t)}" title="Remove">×</button></span>`).join("")
+  const d = SC.draft, ask = d.job_type === "sfa_downloads";
+  const rv = (d.options && d.options.review_times) || [];
+  document.getElementById("je-times").innerHTML = d.times_list.map(t => `<span class="time-chip ${ask && rv.includes(t) ? "ask" : ""}">${esc(t)}
+      ${ask ? `<button type="button" class="tc-ask" data-ask="${esc(t)}" title="Click to change">${rv.includes(t) ? "&#9995; Ask me first" : "&#10148; Sends automatically"}</button>` : ""}
+      <button data-rm="${esc(t)}" title="Remove">×</button></span>`).join("")
     || '<span class="empty-note">No times yet — add at least one.</span>';
+  const note = document.getElementById("je-ask-note");
+  if (note) note.style.display = ask ? "" : "none";
 }
 function renderJeOpts() {
   const d = SC.draft, el = document.getElementById("je-opts");
@@ -230,18 +248,40 @@ function renderJeOpts() {
     if (e.target.value === "all") { d.options.profile_ids = []; document.querySelectorAll(".je-p").forEach(c => { c.checked = false; }); } };
   document.getElementById("je-profiles").onchange = () => { d.options.profile_ids = [...document.querySelectorAll(".je-p:checked")].map(c => Number(c.value)); };
 }
+function jeError(msg) {   // shown at the TOP of the pop-up so it can't be missed below the fold
+  document.getElementById("je-error").innerHTML = msg ? `<div class="problem-box">${esc(msg)}</div>` : "";
+  if (msg) { const body = document.getElementById("modal-body"); if (body) body.scrollTop = 0; }
+}
 async function saveJobDraft() {
-  const d = SC.draft;
+  const d = SC.draft, btn = document.getElementById("je-save");
+  jeError("");
   if (document.getElementById("je-pmode") && document.getElementById("je-pmode").value === "pick" && !d.options.profile_ids.length) {
-    document.getElementById("je-error").innerHTML = `<div class="problem-box">Choose at least one report, or pick “All enabled report profiles”.</div>`; return;
+    jeError("Choose at least one report, or pick “All enabled report profiles”."); return;
   }
-  const payload = { id: d.id, name: document.getElementById("je-name").value, job_type: d.job_type, frequency: d.frequency,
+  // a time typed into "Add a time" but not added yet still counts
+  const pending = document.getElementById("je-time-input").value;
+  if (pending && !d.times_list.includes(pending)) { d.times_list.push(pending); d.times_list.sort(); renderJeTimes(); }
+  if (!d.times_list.length) { jeError("Add at least one time (type it in “Add a time”, then press Add time)."); return; }
+  // no name typed: name it after what it runs and when
+  const nameBox = document.getElementById("je-name");
+  if (!nameBox.value.trim()) {
+    const t = (SC.ov.job_types[d.job_type] || {}).label || "Scheduled job";
+    nameBox.value = `${t} — ${d.times_list.join(", ")}`;
+  }
+  const payload = { id: d.id, name: nameBox.value, job_type: d.job_type, frequency: d.frequency,
     times: d.times_list, weekdays: d.weekdays, month_days: d.month_days_list, once_date: d.once_date,
     enabled: document.getElementById("je-on").checked, skip_holidays: document.getElementById("je-hol").checked, options: d.options };
-  const r = await API().save_schedule_job(payload);
-  if (!r.ok) { document.getElementById("je-error").innerHTML = `<div class="problem-box">${esc(r.message)}</div>`; return; }
+  btn.disabled = true; btn.textContent = "Saving…";
+  let r;
+  try { r = await API().save_schedule_job(payload); }
+  catch (err) { r = { ok: false, message: "Couldn't save: " + String(err) }; }
+  btn.disabled = false; btn.textContent = "Save job";
+  if (!r.ok) { jeError(r.message); return; }
   closeModal(true);
   await loadSchedules(); refreshClock();
+  const box = document.getElementById("sc-jobs");
+  if (box) { box.insertAdjacentHTML("beforebegin", `<div class="ok-box" id="sc-saved-msg">&#10003; ${esc(r.message)}</div>`);
+             setTimeout(() => { const m = document.getElementById("sc-saved-msg"); if (m) m.remove(); }, 6000); }
   if (r.task_sync && !r.task_sync.ok) document.getElementById("sc-task-result").innerHTML = `<ul class="result-list">${r.task_sync.messages.map(m => `<li>${esc(m)}</li>`).join("")}</ul>`;
 }
 

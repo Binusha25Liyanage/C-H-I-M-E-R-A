@@ -100,6 +100,26 @@ def style_title_bar(window, rgb=TITLE_BAR_RGB):
 APP_ID = "Binusha.Chimera.SFA"   # Windows taskbar identity (so it isn't grouped as "Python")
 
 
+def bring_to_front():
+    """If Chimera's window is already open, restores it and brings it to the front. Returns True if it was."""
+    if os.name != "nt":
+        return False
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        hwnd = user32.FindWindowW(None, APP_TITLE)
+        if not hwnd:
+            return False
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, 9)          # SW_RESTORE
+        user32.keybd_event(0x12, 0, 0, 0)       # a tap of Alt lets this process hand the focus over
+        user32.SetForegroundWindow(hwnd)
+        user32.keybd_event(0x12, 0, 2, 0)
+        return True
+    except Exception:
+        return False
+
+
 def set_app_identity():
     """Before any window exists: tell Windows this is Chimera, not python.exe, so the
     taskbar uses Chimera's own icon and groups its windows separately."""
@@ -158,6 +178,15 @@ def main():
         import run_scheduled
         sys.exit(run_scheduled.main(["--now"] if "--run-now" in sys.argv else []))
 
+    # A Chimera notification was clicked ("--open chimera:open?action=…"): open that screen. If Chimera is
+    # already open, bring its window to the front and leave the request for it; otherwise start normally.
+    if "--open" in sys.argv:
+        import desktop_notify
+        i = sys.argv.index("--open")
+        desktop_notify.request_open(sys.argv[i + 1] if i + 1 < len(sys.argv) else "")
+        if bring_to_front():
+            sys.exit(0)
+
     # Keep a log so problems (including pywebview's own errors) leave a trace.
     log_dir = os.path.join(os.path.expanduser("~"), "Chimera", "logs")
     os.makedirs(log_dir, exist_ok=True)
@@ -166,6 +195,12 @@ def main():
     logging.info("Chimera starting")
 
     set_app_identity()          # must happen before the window exists
+    try:                        # name + logo for Windows notifications, and the chimera: link they open
+        import desktop_notify
+        import threading
+        threading.Thread(target=desktop_notify.setup, daemon=True).start()
+    except Exception as e:
+        logging.info("Notifications not set up: %s", e)
     api = Api()
     bad = api_public_non_methods(api)
     if bad:  # would break pywebview's API discovery — see Api.__init__
