@@ -53,6 +53,9 @@ class Api:
         sequence_store.init_schema()
         import reminders
         reminders.init_schema()
+        import rep_attendance
+        rep_attendance.init_schema()
+        rep_attendance.mark_interrupted()
         sequence_store.mark_interrupted()
         whatsapp_sender.init_schema()
         # IMPORTANT: anything that is not an API method must start with "_".
@@ -654,6 +657,9 @@ class Api:
         import sequence_automation
         if sequence_automation.force_stop():
             done.append("Stopped the rep-sheet run (outlets not saved yet are saved next time).")
+        import rep_attendance_automation
+        if rep_attendance_automation.force_stop():
+            done.append("Stopped the rep attendance run.")
         if whatsapp_sender.force_stop():
             done.append("Closed the WhatsApp sending window.")
         holder = automation_store.lock_holder()
@@ -948,6 +954,99 @@ class Api:
         return {"ok": True, "path": path, "folder": os.path.dirname(path)}
 
     # ------------------------------------------------------------
+    # Rep Attendance
+    # ------------------------------------------------------------
+    def get_rep_attendance(self, day=None):
+        import rep_attendance as R
+        import rep_attendance_automation as RA
+        from datetime import date as _d
+        day = (day or _d.today().isoformat())[:10]
+        info = R.get_day(day)
+        st = RA.settings()
+        runs = R.list_runs(10, day)
+        latest = next((r for r in runs if r["images"]), None)
+        live = RA.LIVE.snapshot()
+        return {"ok": True, **info, "runs": runs, "latest": latest, "days": R.days_list(45),
+                "settings": {"att_url": st["url"], "att_style": st["style"], "att_send_style": st["send_style"],
+                             "att_chats": st["chats"], "att_send_pdf": "1" if st["send_pdf"] else "0"},
+                "live_active": bool(live.get("active")), "today": _d.today().isoformat(),
+                "pending": [r for r in R.list_runs(20) if r["state"] == "pending_review"]}
+
+    def start_rep_attendance(self, day=None, send=False, show_browser=False):
+        import rep_attendance_automation as RA
+        return RA.start_background(day=day or None, trigger="manual", send=bool(send),
+                                   headless=False if show_browser else None)
+
+    def import_rep_attendance(self):
+        import rep_attendance_automation as RA
+        window = self._window()
+        if window is None:
+            return {"ok": False, "message": "Window not ready."}
+        paths = window.create_file_dialog(webview.OPEN_DIALOG, allow_multiple=True,
+                                          file_types=("Excel files (*.xlsx)", "All files (*.*)"))
+        if not paths:
+            return {"ok": False, "message": "No file selected."}
+        res = [RA.import_file(p) for p in (paths if isinstance(paths, (list, tuple)) else [paths])]
+        ok = [r for r in res if r["ok"]]
+        return {"ok": bool(ok), "results": res, "day": ok[-1]["day"] if ok else None,
+                "message": " ".join(r["message"] for r in res)}
+
+    def edit_rep_attendance(self, day, territory, values):
+        import rep_attendance as R
+        v = values or {}
+        if v.get("undo"):
+            ok, msg = R.undo_edit(day, territory)
+        else:
+            ok, msg = R.edit_row(day, territory, rep=v.get("rep"), in_time=v.get("in_time"), out_time=v.get("out_time"))
+        return {"ok": ok, "message": msg}
+
+    def rebuild_rep_attendance(self, day):
+        import rep_attendance_automation as RA
+        return RA.rebuild(day)
+
+    def send_rep_attendance(self, run_id):
+        """Send a run's images now (also approves a run waiting for approval)."""
+        import rep_attendance_automation as RA
+        return RA.send(int(run_id), wait=False)
+
+    def discard_rep_attendance(self, run_id):
+        import rep_attendance as R
+        R.set_run(int(run_id), state="not_sent", message="Not sent — you chose not to.")
+        return {"ok": True}
+
+    def get_rep_attendance_history(self, date_from, date_to, search=""):
+        import rep_attendance as R
+        return R.history(date_from[:10], date_to[:10], search)
+
+    def export_rep_attendance(self, date_from, date_to, search=""):
+        import rep_attendance as R
+        try:
+            path = R.export_history(date_from[:10], date_to[:10], search)
+        except Exception as e:
+            return {"ok": False, "message": f"Couldn't export: {e}"}
+        return {"ok": True, "path": path, "folder": os.path.dirname(path)}
+
+    def save_rep_attendance_settings(self, values):
+        vals = {k: v for k, v in (values or {}).items()
+                if k in ("att_url", "att_style", "att_send_style", "att_chats", "att_send_pdf")}
+        ok, msg = automation_store.save_automation_settings(vals)
+        return {"ok": ok, "message": msg}
+
+    def get_rep_attendance_live(self):
+        import rep_attendance_automation as RA
+        s = RA.LIVE.snapshot()
+        s["step_labels"] = RA.STEP_LABELS
+        return s
+
+    def get_rep_attendance_log(self, run_id=None):
+        import rep_attendance as R
+        import rep_attendance_automation as RA
+        s = RA.LIVE.snapshot()
+        if run_id is None or s.get("run_id") == run_id:
+            return RA.log_text(s)
+        return R.get_run_log(int(run_id))
+
+    # ------------------------------------------------------------
     # Running now (every process, live)
     # ------------------------------------------------------------
     def get_running_now(self):
@@ -1233,9 +1332,10 @@ class Api:
 
     def get_image_b64(self, path):
         """Only serves images inside Chimera's own export folder."""
-        root = os.path.realpath(os.path.join(os.path.expanduser("~"), "Chimera"))
+        roots = [os.path.realpath(os.path.join(os.path.expanduser("~"), "Chimera")),
+                 os.path.realpath(report_pipeline.output_root())]          # a save location chosen in Settings
         real = os.path.realpath(path or "")
-        if not real.startswith(root + os.sep) or not real.lower().endswith(".png") or not os.path.exists(real):
+        if not any(real.startswith(r + os.sep) for r in roots) or not real.lower().endswith(".png") or not os.path.exists(real):
             return None
         with open(real, "rb") as f:
             return base64.b64encode(f.read()).decode("ascii")

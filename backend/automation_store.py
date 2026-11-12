@@ -80,6 +80,12 @@ DEFAULT_AUTOMATION = {
     "ou_routes_url": "https://lakmee.salespro.lk/it/level-seven",         # SFA View Route (active route list)
     "seq_need_approval": "1",            # rep sheets: show the preview and wait for approval before saving in SFA
     "seq_dry_run": "1",                  # rep sheets: open every outlet but don't press UPDATE (switch off after testing)
+    "att_url": "https://lakmee.salespro.lk/it/repattendancereport2",   # SFA REP ATTENDANCE REPORT
+    "att_style": "both",                 # rep attendance images: classic | professional | both (built)
+    "att_send_style": "classic",         #   the look sent to WhatsApp when both are built
+    "att_chats": "[]",                   #   WhatsApp chats / groups that get the images (JSON list)
+    "att_send_pdf": "0",                 #   also send the PDF (as a document)
+    "auto_rep_attendance": "1",          #   Schedules › Automations switch for the job type
     "notify_desktop": "1",               # Windows notifications (master switch)
     "notify_started": "1",               #   a scheduled time arrived / a run started
     "notify_approval": "1",              #   something waits for your approval
@@ -409,12 +415,25 @@ def save_automation_settings(values):
                    "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence",
                    "auto_loadings", "auto_outlet_updates", "auto_distributor_sync", "add_loading_dry_run",
                    "seq_need_approval", "seq_dry_run", "notify_desktop", "notify_started", "notify_approval",
-                   "notify_finished", "notify_failed"):
+                   "notify_finished", "notify_failed", "att_send_pdf", "auto_rep_attendance"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
+        elif k == "att_style":
+            if v not in ("classic", "professional", "both"):
+                return False, "Rep attendance look must be classic, professional or both."
+        elif k == "att_send_style":
+            if v not in ("classic", "professional"):
+                return False, "The look to send must be classic or professional."
+        elif k == "att_chats":
+            import json as _json
+            try:
+                lst = v if isinstance(v, list) else _json.loads(v or "[]")
+            except ValueError:
+                return False, "WhatsApp chats must be a list."
+            v = _json.dumps(list(dict.fromkeys(str(x).strip() for x in lst if str(x).strip())))
         elif k in ("add_loading_for", "add_loading_company"):
             v = v[:120]
         elif k in ("ou_itinerary_url", "ou_outlets_url", "ou_territory_url", "users_url", "add_loading_url",
-                   "ou_routes_url"):
+                   "ou_routes_url", "att_url"):
             if not re.match(r"^https?://", v):
                 return False, "SFA page addresses must start with http:// or https://"
         elif k == "ou_prepare_time":

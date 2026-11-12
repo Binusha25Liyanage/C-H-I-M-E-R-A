@@ -25,13 +25,15 @@ PROCESSES = [
     ("loadings", "Distributor loadings", "loading_automation"),
     ("itinerary", "Itineraries", "itinerary_automation"),
     ("outlets", "Outlet updates (rep sheets)", "sequence_automation"),
+    ("attendance", "Rep attendance", "rep_attendance_automation"),
 ]
 KIND_WORDS = {
     "loadings": {"prepare": "Reading loadings for approval", "confirm": "Confirming loadings in SFA",
                  "sync": "Updating the distributor list", "add": "Adding a loading"},
     "itinerary": {"itinerary": "Reading itineraries", "detect": "Finding territories"},
     "outlets": {"routes": "Reading SFA's route list", "sequence": "Rep sheets — reading / saving in SFA"},
-    "whatsapp": {"send": "Sending reports", "reminder": "Sending reminders", "test": "Sending a test message",
+    "attendance": {"attendance": "Rep attendance — download, images, WhatsApp"},
+    "whatsapp": {"send": "Sending reports", "reminder": "Sending reminders", "attendance": "Sending rep attendance", "test": "Sending a test message",
                  "link": "Linking WhatsApp", "chats": "Loading your chats"},
 }
 

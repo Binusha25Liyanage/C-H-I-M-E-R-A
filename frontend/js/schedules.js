@@ -113,7 +113,7 @@ function renderScJobs() {
       const ok = lf && /^(success|done)/.test(lf.outcome || "");
       return `<tr>
         <td><label class="switch2"><input type="checkbox" data-toggle="${j.id}" ${j.enabled ? "checked" : ""}><span></span></label></td>
-        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${j.job_type === "sfa_downloads" ? (Array.isArray(j.options.review_times)
+        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${["sfa_downloads", "rep_attendance"].includes(j.job_type) ? (Array.isArray(j.options.review_times)
           ? (j.options.review_times.length ? ` · asks first at ${esc(j.options.review_times.join(", "))}` : " · sends automatically at every time")
           : " · approval: Daily Reports setting") : ""}</div></td>
         <td>${esc(j.summary)}</td>
@@ -219,7 +219,7 @@ function renderFreqBody() {
   }
 }
 function renderJeTimes() {
-  const d = SC.draft, ask = d.job_type === "sfa_downloads";
+  const d = SC.draft, ask = ["sfa_downloads", "rep_attendance"].includes(d.job_type);
   const rv = (d.options && d.options.review_times) || [];
   document.getElementById("je-times").innerHTML = d.times_list.map(t => `<span class="time-chip ${ask && rv.includes(t) ? "ask" : ""}">${esc(t)}
       ${ask ? `<button type="button" class="tc-ask" data-ask="${esc(t)}" title="Click to change">${rv.includes(t) ? "&#9995; Ask me first" : "&#10148; Sends automatically"}</button>` : ""}

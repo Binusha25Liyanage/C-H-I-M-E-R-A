@@ -25,7 +25,8 @@ import db
 
 PROCESSES = {
     "downloads": "SFA downloads", "reports": "Reports built", "whatsapp": "WhatsApp", "loadings": "Distributor loadings",
-    "distributors": "Distributor list", "itinerary": "Itineraries", "outlets": "Outlet updates", "schedules": "Schedules",
+    "distributors": "Distributor list", "itinerary": "Itineraries", "outlets": "Outlet updates", "attendance": "Rep attendance",
+    "schedules": "Schedules",
 }
 STATE_LABEL = {
     "pending_approval": "Read — waiting for approval", "nothing_pending": "Nothing pending", "failed": "Read failed",
@@ -163,6 +164,21 @@ def events(d_from=None, d_to=None):
                  "apply": "Rep sheets — SFA run"}.get(kind, kind)
         out.append({"time": st, "process": "outlets", "status": _status(status), "trigger": trig, "title": title,
                     "detail": msg or "", "ref": {"source": "seq_run", "id": rid}})
+    st_words = {"built": "images ready", "pending_review": "waiting for your approval", "sent": "sent to WhatsApp",
+                "partly_sent": "partly sent", "send_failed": "WhatsApp failed", "not_sent": "not sent"}
+    for rid, day, st, trig, slot, status, state, counts, msg in _q(
+            "SELECT id, day, started_at, trigger, slot, status, state, counts, message FROM att_runs "
+            "WHERE started_at BETWEEN ? AND ? ORDER BY started_at", (lo, hi)):
+        c = _j(counts, {})
+        bad = status in ("failed", "interrupted") or state in ("send_failed",)
+        out.append({"time": st, "process": "attendance", "trigger": trig + (f" {slot}" if slot else ""),
+                    "status": "fail" if bad else "warn" if state in ("pending_review", "partly_sent") or status == "cancelled"
+                    else "running" if status == "running" else "ok",
+                    "title": f"Rep attendance {day}" + (f" — {st_words.get(state, state)}" if state else f" — {status}"),
+                    "detail": (f"{c.get('logged_in', 0)} logged in · {c.get('not_logged_out', 0)} not logged out · "
+                               f"{c.get('logged_out', 0)} logged out" + (f" · {c['not_logged_in']} not logged in"
+                                                                         if c.get("working") else "") + ". " if c else "")
+                              + (msg or ""), "ref": {"source": "attendance", "id": rid}})
     jobs = {r[0]: r[1] for r in _q("SELECT id, name FROM schedule_jobs")}
     for jid, day, slot, at, trig, outcome in _q(
             "SELECT job_id, day, slot, fired_at, trigger, outcome FROM schedule_fires WHERE fired_at BETWEEN ? AND ? "
@@ -333,6 +349,9 @@ def detail(source, rid):
         if text:
             lines += ["", "Message:", text]
         return "\n".join(lines)
+    if source == "attendance":
+        r = _q("SELECT log, message FROM att_runs WHERE id=?", (rid,))
+        return (r[0][0] or r[0][1] or "") if r else ""
     if source == "seq_run":
         r = _q("SELECT log, message FROM seq_runs WHERE id=?", (rid,))
         return (r[0][0] or r[0][1] or "") if r else ""

@@ -67,6 +67,7 @@ function switchView(view, tab) {
   if (view === "outlet-updates" && window.loadOutletUpdates) window.loadOutletUpdates();
   if (view === "activity" && window.loadActivity) window.loadActivity();
   if (window.onRunningView) window.onRunningView(view === "running");
+  if (view === "rep-attendance" && window.loadRepAttendance) window.loadRepAttendance();
   if (view === "automation" && tab && window.selectAutomationTab) window.selectAutomationTab(tab);
   setShellTitle(view, tab);
 }

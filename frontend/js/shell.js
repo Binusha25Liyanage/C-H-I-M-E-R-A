@@ -162,6 +162,7 @@ function openAction(action) {
   else if (action === "rep-sheets") { switchView("outlet-updates"); if (window.selectOuTab) selectOuTab("sheets"); }
   else if (action === "settings") { switchView("settings"); const b = document.querySelector('#st-tabs .tab[data-tab="notify"]'); if (b) b.click(); }
   else if (action === "schedules") switchView("schedules");
+  else if (action === "rep-attendance") switchView("rep-attendance");
   else if (document.getElementById("view-" + action)) switchView(action);
   else switchView("overview");
 }

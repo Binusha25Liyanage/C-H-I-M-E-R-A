@@ -42,6 +42,10 @@ JOB_TYPES = {
     "loadings": {"label": "Distributor loadings (prepare)", "available": True,
                  "hint": "Reads the pending loading of every Daily distributor and asks for your approval — "
                          "it never confirms a loading on its own."},
+    "rep_attendance": {"label": "Rep attendance", "available": True,
+                       "hint": "Downloads SFA's Rep Attendance Report for today, builds the two images (not logged out "
+                               "yet / logged out) and sends them to the WhatsApp chats set on the Rep Attendance screen — "
+                               "or waits for your approval at the times marked \u201cAsk me first\u201d."},
     "distributors": {"label": "Distributor list update", "available": True,
                      "hint": "Reads the distributor list (Active and Inactive) from SFA's Users page and updates "
                              "Distributor Loadings — new distributors are added, inactive ones blocked."},
@@ -50,7 +54,7 @@ REPORT_DAYS = ("today", "yesterday")
 # Each job type has an on/off switch in automation_settings (Schedules > Automations).
 TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "master_sync": "auto_master_sync",
                "visit_state": "auto_visit_state", "sequence": "auto_sequence", "loadings": "auto_loadings",
-               "distributors": "auto_distributor_sync"}
+               "distributors": "auto_distributor_sync", "rep_attendance": "auto_rep_attendance"}
 
 
 def type_on(job, settings):
@@ -235,6 +239,10 @@ def _clean_job(j):
         times = out["times"].split(",")
         review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})
         opts = {"report_day": rd, "profile_ids": ids, "review_times": review}
+    elif jt == "rep_attendance":
+        times = out["times"].split(",")
+        review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})
+        opts = {"review_times": review}
     out["options"] = json.dumps(opts)
     return out
 

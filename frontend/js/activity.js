@@ -3,7 +3,7 @@
 
 const AM = { from: null, to: null, period: "today", process: "all", q: "", data: null, ldFilter: "all", olFilter: "all", timer: null };
 const AM_COLORS = { downloads: "#3b6fd4", reports: "#B5121B", whatsapp: "#1f9d55", loadings: "#d98b00",
-                    distributors: "#7b4fc9", itinerary: "#138a9e", outlets: "#c2185b", schedules: "#6E6F71" };
+                    distributors: "#7b4fc9", itinerary: "#138a9e", outlets: "#c2185b", attendance: "#5d4037", schedules: "#6E6F71" };
 const AM_STATUS = { ok: ["chip-ok", "Success"], fail: ["chip-missing", "Failed"], warn: ["chip-warn", "Attention"],
                     running: ["chip-warn", "Running"], info: ["chip-grey", "Info"] };
 const amChip = (s) => { const c = AM_STATUS[s] || AM_STATUS.info; return `<span class="chip ${c[0]}">${c[1]}</span>`; };

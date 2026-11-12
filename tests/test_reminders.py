@@ -168,7 +168,7 @@ class RemindersTest(unittest.TestCase):
         import running_now
         self.add()
         ov = running_now.overview()
-        self.assertEqual({p["id"] for p in ov["running"]}, {"reports", "whatsapp", "loadings", "itinerary", "outlets"})
+        self.assertEqual({p["id"] for p in ov["running"]}, {"reports", "whatsapp", "loadings", "itinerary", "outlets", "attendance"})
         self.assertEqual(ov["active_count"], 0)
         self.assertIn("coming_up", ov)
         self.assertFalse(running_now.stop("nonsense")["ok"])

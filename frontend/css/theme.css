@@ -783,3 +783,18 @@ select.rs-vs.mand { border-color: var(--color-success-text); color: var(--color-
 #view-running .am-table td { vertical-align: top; }
 tr.rn-skip td { color: #999; }
 .nav-badge.live { background: #e0a000; }
+
+/* ---------- Rep Attendance ---------- */
+#view-rep-attendance .tabs { margin: 4px 0 14px; }
+.att-images { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.att-images figure { margin: 0; background: #f7f7f8; border: 1px solid #eceef1; border-radius: 8px; padding: 10px; }
+.att-images figcaption { font-weight: 600; font-size: 12.5px; margin-bottom: 8px; color: #444; }
+.att-images img { width: 100%; display: block; background: #fff; border: 1px solid #e3e5e8; cursor: zoom-in; min-height: 60px; }
+.att-tables { align-items: flex-start; }
+.att-tables .card-flush { margin-bottom: 16px; }
+.att-table td { vertical-align: middle; }
+.att-table tr.att-edited td { background: #fffaf0; }
+.att-nli { background: #fbf1f1; border-color: #f0d4d4; padding-right: 10px; }
+.att-pend { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.att-pend > span { margin-left: auto; display: inline-flex; gap: 6px; }
+.att-flash { color: #1f6b3a; font-weight: 600; }

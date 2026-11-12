@@ -120,6 +120,10 @@ def _run_job(job, slot, trigger):
         r = sfa_automation.run_automation(report_date=day.isoformat(), trigger=trigger, slot=slot,
                                           profile_ids=opts.get("profile_ids") or None, review=review)
         return r
+    if job["job_type"] == "rep_attendance":
+        import rep_attendance_automation
+        review = slot in (job["options"].get("review_times") or [])
+        return rep_attendance_automation.run(trigger=trigger, slot=slot, review=review, send=True)
     if job["job_type"] == "distributors":
         import distributor_sync
         return distributor_sync.run_sync(trigger=trigger)

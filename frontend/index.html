@@ -31,7 +31,7 @@
         <div class="nav-group">Distribution</div>
         <button class="nav-btn" data-view="loadings"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4h13v11H1z"/><path d="M14 8h4l3 3v4h-7"/><circle cx="5.5" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></svg><span>Distributor Loadings</span><em class="nav-badge" id="nav-load-badge" style="display:none"></em></button>
         <div class="nav-group">Attendance</div>
-        <button class="nav-btn" data-view="rep-attendance"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M9 15l2 2 4-4"/></svg><span>Rep Attendance</span><em class="nav-soon">Soon</em></button>
+        <button class="nav-btn" data-view="rep-attendance"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M9 15l2 2 4-4"/></svg><span>Rep Attendance</span><em class="nav-badge" id="nav-att-badge" style="display:none;"></em></button>
         <div class="nav-group">Delivery</div>
         <button class="nav-btn" data-view="automation" data-tab="whatsapp"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"/></svg><span>WhatsApp</span></button>
         <div class="nav-group">Data</div>
@@ -636,8 +636,88 @@
         </section>
 
         <section id="view-rep-attendance" class="view" style="display:none;">
-          <div class="card"><h3>Rep Attendance</h3><p class="hint">Planned: download the attendance report from SFA, build it in your layout and send it
-            to a WhatsApp group on its own daily schedule. It will be built once the example input and outputs are ready.</p></div>
+          <div class="rs-head">
+            <p class="hint" style="margin:0;flex:1;">Who logged in to SFA and who logged out, from SFA's <b>Rep Attendance Report</b> &mdash; as two images
+              (<b>not logged out yet</b> / <b>logged out</b>) in your <b>Classic</b> look or Chimera's <b>Professional</b> look, sent to WhatsApp
+              at the times you set in Schedules. Reading the report never changes anything in SFA.</p>
+            <div class="heading-actions">
+              <label class="inline-date">Day <input type="date" id="att-day"></label>
+              <button class="btn-outline" id="att-upload">Upload Excel</button>
+              <button class="btn-primary" id="att-download">&#8635; Download from SFA</button>
+            </div>
+          </div>
+          <div id="att-pending"></div>
+          <div class="tabs" id="att-tabs">
+            <button class="tab active" data-tab="day">Day</button>
+            <button class="tab" data-tab="history">History</button>
+            <button class="tab" data-tab="settings">Settings</button>
+          </div>
+          <div class="tab-panel" id="att-panel-day">
+            <div class="stat-cards" id="att-kpis"></div>
+            <div id="att-source" class="hint" style="margin:-4px 0 12px;"></div>
+            <div class="card" id="att-images-card">
+              <div class="am-card-head" style="padding:0 0 10px;border:0;"><h3>Images</h3>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                  <div class="seg" id="att-style-seg"><button data-s="classic" class="on">Classic</button><button data-s="professional">Professional</button></div>
+                  <button class="btn-outline btn-small" id="att-rebuild" title="Build the images again from the rows below (after corrections)">Rebuild images</button>
+                  <button class="btn-outline btn-small" id="att-open-folder">Open folder</button>
+                  <button class="btn-primary btn-small" id="att-send">Send to WhatsApp</button>
+                </div></div>
+              <div id="att-images" class="att-images"></div>
+            </div>
+            <div class="two-col att-tables">
+              <div class="card card-flush"><div class="am-card-head"><h3>Not logged out yet</h3><span class="hint" id="att-n-nlo"></span></div><div id="att-t-nlo"></div></div>
+              <div class="card card-flush"><div class="am-card-head"><h3>Logged out</h3><span class="hint" id="att-n-lo"></span></div><div id="att-t-lo"></div></div>
+            </div>
+            <div class="card"><h3>Not logged in</h3><div id="att-nli"></div></div>
+            <div class="card card-flush"><div class="am-card-head"><h3>Runs for this day</h3></div><div id="att-runs"></div></div>
+          </div>
+          <div class="tab-panel" id="att-panel-history" style="display:none;">
+            <div class="am-bar">
+              <div class="seg" id="att-h-period"><button data-p="7" class="on">Last 7 days</button><button data-p="month">This month</button>
+                <button data-p="last_month">Last month</button><button data-p="custom">Custom</button></div>
+              <span class="am-custom" id="att-h-custom" style="display:none;"><input type="date" id="att-h-from"> to <input type="date" id="att-h-to">
+                <button class="btn-outline btn-small" id="att-h-apply">Show</button></span>
+              <input type="search" id="att-h-q" placeholder="Search territory, rep, ASM…">
+              <span class="am-spacer"></span>
+              <button class="btn-primary" id="att-h-export">Export to Excel</button>
+            </div>
+            <div class="card card-flush"><div class="am-card-head"><h3>By territory</h3><span class="hint" id="att-h-days"></span></div>
+              <div class="am-scroll"><table class="report-table am-table" id="att-h-sum"></table></div></div>
+            <div class="card card-flush"><div class="am-card-head"><h3>Every day</h3></div>
+              <div class="am-scroll"><table class="report-table am-table" id="att-h-rows"></table></div></div>
+          </div>
+          <div class="tab-panel" id="att-panel-settings" style="display:none;">
+            <div class="two-col">
+              <div class="card">
+                <h3>Where and how</h3>
+                <label class="field">Rep Attendance Report <input id="att-url"><span>SFA › Reports › Rep Attendance Report. Chimera sets Date From and Date To to the day and leaves the other filters empty.</span></label>
+                <div class="section-title">Look</div>
+                <div class="radio-row" id="att-style-r">
+                  <label><input type="radio" name="att-style" value="classic"> Classic (your Lakmee Muster look)</label>
+                  <label><input type="radio" name="att-style" value="professional"> Professional (Chimera)</label>
+                  <label><input type="radio" name="att-style" value="both"> Both</label></div>
+                <label class="field" id="att-send-style-f">When both are built, send <select id="att-send-style"><option value="classic">Classic</option><option value="professional">Professional</option></select></label>
+                <label class="ou-switch-row"><span><b>Also send the PDF</b><br><span class="hint">Both images in one PDF, as a document.</span></span>
+                  <label class="switch2"><input type="checkbox" id="att-pdf"><span></span></label></label>
+                <p class="hint"><b>Not logged in</b> on the Professional image lists your working territories with no login &mdash; switch them on in
+                  Outlet Updates › Working Territories.</p>
+              </div>
+              <div class="card">
+                <h3>WhatsApp chats</h3>
+                <p class="hint">The images go to each of these chats or groups.</p>
+                <div class="rm-chips" id="att-chips"></div>
+                <div class="rm-addchat"><div class="wa-pick"><input id="att-chat" autocomplete="off" placeholder="Search or pick a chat…">
+                    <button type="button" class="wa-pick-arrow" tabindex="-1" title="Show chats">&#9662;</button>
+                    <div class="wa-list" id="att-chat-list" style="display:none;"></div></div>
+                  <button class="btn-outline" id="att-chat-add" type="button">+ Add</button></div>
+                <div class="section-title">When</div>
+                <p class="hint">Set the times in <b>Schedules</b>: add a job, type <b>Rep attendance</b>, and mark any time <b>Ask me first</b> to approve before
+                  it's sent. <button class="link-btn" id="att-to-sched">Open Schedules &rarr;</button></p>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;"><button class="btn-primary" id="att-save">Save settings</button><span id="att-save-msg"></span></div>
+          </div>
         </section>
         <section id="view-data-sync" class="view" style="display:none;">
           <div class="card"><h3>Data Sync</h3><p class="hint">Planned: download SFA Excels (Itinerary, Territories, Outlet Master and more) on their
@@ -1019,6 +1099,7 @@
   <script src="js/activity.js"></script>
   <script src="js/running.js"></script>
   <script src="js/reminders.js"></script>
+  <script src="js/rep_attendance.js"></script>
   <script src="js/shell.js"></script>
 </body>
 </html>

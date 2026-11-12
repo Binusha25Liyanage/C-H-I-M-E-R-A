@@ -36,7 +36,7 @@ APP_ID = "Binusha.Chimera.SFA"          # = app.py's APP_ID (taskbar identity)
 APP_NAME = "Chimera"
 KINDS = ("started", "approval", "finished", "failed")
 SOURCES = {"reports": "Daily reports", "loadings": "Distributor loadings", "itinerary": "Itineraries",
-           "outlets": "Outlet updates", "distributors": "Distributor list", "whatsapp": "WhatsApp",
+           "outlets": "Outlet updates", "attendance": "Rep attendance", "distributors": "Distributor list", "whatsapp": "WhatsApp",
            "schedule": "Schedules", "chimera": "Chimera"}
 ICON_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "assets", "chimera-logo-round.png")
 DATA_DIR = os.path.join(os.path.expanduser("~"), "Chimera", "data")
@@ -238,6 +238,7 @@ RUN_WORDS = {
     "itinerary:detect": ("Finding territories", "outlet-updates"),
     "outlets:sequence": ("Rep sheets — SFA", "rep-sheets"),
     "outlets:routes": ("Reading SFA's route list", "rep-sheets"),
+    "attendance": ("Rep attendance", "rep-attendance"),
 }
 TRIGGER_WORDS = {"scheduled": "scheduled", "schedule": "scheduled", "auto": "automatic", "manual": "", "cli": "",
                  "upload": "", "file": ""}
