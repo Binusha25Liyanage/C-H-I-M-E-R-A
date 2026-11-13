@@ -378,11 +378,11 @@ async function loadWhatsApp() {
   document.getElementById("wa-show").checked = w.settings.wa_show_browser === "1";
   document.getElementById("wa-style").value = w.settings.wa_style;
   document.getElementById("wa-send-latest").disabled = !w.last_saved_run || !w.rules.some(r => r.enabled);
-  const kindLabel = { sku: "SKU", pivot: "Pivot", hourly: "Hourly" };
+  const kindLabel = { sku: "SKU", pivot: "Pivot", hourly: "Hourly", att_nlo: "Attendance: not logged out", att_lo: "Attendance: logged out", att_mgr: "Field Force Attendance" };
   document.getElementById("wa-rules").innerHTML = w.rules.length ? w.rules.map(r => `
     <div class="rule-card ${r.enabled ? "" : "off"}"><div>
       <div class="who">${esc(r.chat_name)} ${r.enabled ? "" : '<span class="chip chip-grey">off</span>'}</div>
-      <div class="what">${r.kinds.map(k => kindLabel[k]).join(" · ")} as ${{ images: "photos", pdf: "PDF files", both: "photos + PDF" }[r.send_as || "images"]}${(r.send_as || "images") !== "pdf" ? ` (${r.orientation || "portrait"})` : ""} — ${r.groups.includes("*") ? "all managers" : esc(r.groups.join(", "))}${r.caption ? ` · “${esc(r.caption)}”` : ""}</div>
+      <div class="what">${r.kinds.map(k => kindLabel[k]).join(" · ")} as ${{ images: "photos", pdf: "PDF files", both: "photos + PDF" }[r.send_as || "images"]}${r.kinds.some(k => !k.startsWith("att_")) ? `${(r.send_as || "images") !== "pdf" ? ` (${r.orientation || "portrait"})` : ""} — ${r.groups.includes("*") ? "all managers" : esc(r.groups.join(", "))}${r.caption ? ` · “${esc(r.caption)}”` : ""}` : ""}</div>
       ${r.pre_message ? `<div class="what wa-pre" title="${esc(r.pre_message)}">&#128172; Message first: “${esc(r.pre_message.length > 90 ? r.pre_message.slice(0, 88) + "…" : r.pre_message)}”</div>` : ""}</div>
       <div class="row-actions"><button class="icon-action" data-wa-edit="${r.id}">Edit</button><button class="icon-action" data-wa-test="${esc(r.chat_name)}">Test</button><button class="icon-action danger" data-wa-del="${r.id}">✕</button></div></div>`).join("")
     : `<p class="hint">No rules yet. Example: send the SKU and Pivot pages for <b>Asela</b> to Asela's team group, and the Hourly report to the management group.</p>`;
@@ -439,6 +439,10 @@ document.getElementById("wa-rules").addEventListener("click", (e) => {
 });
 document.getElementById("wa-add-rule").addEventListener("click", () => openRuleModal(null));
 
+const WR_KINDS = [
+  ["Daily reports", "sent after each SFA report run", [["sku", "SKU Report"], ["pivot", "Pivot Report"], ["hourly", "Hourly BC &amp; SV"]]],
+  ["Rep attendance", "sent when a Rep attendance run sends", [["att_nlo", "Not logged out yet"], ["att_lo", "Logged out"], ["att_mgr", "Field Force Attendance"]]],
+];
 function openRuleModal(rule) {
   const w = SH.wa; const r = rule || { chat_name: "", kinds: ["sku", "pivot", "hourly"], groups: ["*"], caption: "{report} — {date}", enabled: true, send_as: "images", orientation: "portrait", pre_message: "" };
   const sendAs = r.send_as || "images", orient = r.orientation || "portrait";
@@ -450,22 +454,24 @@ function openRuleModal(rule) {
         <button type="button" class="wa-pick-arrow" tabindex="-1" title="Show chats">&#9662;</button>
         <div class="wa-list" id="wr-chat-list" style="display:none;"></div></div></label>
     <div class="section-title">Reports to send</div>
-    <div class="form-row">${[["sku", "SKU Report"], ["pivot", "Pivot Report"], ["hourly", "Hourly BC & SV"]].map(([k, l]) => `<label class="check"><input type="checkbox" class="wr-kind" value="${k}" ${r.kinds.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div>
+    ${WR_KINDS.map(([title, hint, ks]) => `<div class="wr-kind-group"><div class="wr-kind-title">${title}<span>${hint}</span></div>
+      <div class="wr-grid">${ks.map(([k, l]) => `<label class="wr-check"><input type="checkbox" class="wr-kind" value="${k}" ${r.kinds.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div></div>`).join("")}
     <div class="section-title">Send as</div>
-    <div class="radio-row" style="margin-bottom:6px;">
+    <div class="radio-row wr-radios" style="margin-bottom:6px;">
       <label class="radio"><input type="radio" name="wr-as" value="images" ${sendAs === "images" ? "checked" : ""}> Photos (Photos &amp; videos)</label>
       <label class="radio"><input type="radio" name="wr-as" value="pdf" ${sendAs === "pdf" ? "checked" : ""}> PDF files (Document)</label>
       <label class="radio"><input type="radio" name="wr-as" value="both" ${sendAs === "both" ? "checked" : ""}> Both</label></div>
     <p class="hint" style="margin:0 0 4px;">Photos can be limited to some managers below; a PDF is the whole report (every manager).
-      Photos are sent report by report: SKU, then Pivot, then Hourly — each as its own message.</p>
-    <div class="section-title">Photo orientation for this chat</div>
-    <div class="radio-row" style="margin-bottom:6px;">
+      Photos are sent report by report: SKU, then Pivot, then Hourly — each as its own message. Rep attendance goes when its own
+      run sends (its schedule, or Send on the Rep Attendance screen); its PDF holds both images.</p>
+    <div class="section-title">Photo orientation for this chat <span class="wr-applies">daily reports</span></div>
+    <div class="radio-row wr-radios" style="margin-bottom:6px;">
       <label class="radio"><input type="radio" name="wr-or" value="portrait" ${orient === "portrait" ? "checked" : ""}> Portrait (wide pages turned upright — easy on phones)</label>
       <label class="radio"><input type="radio" name="wr-or" value="landscape" ${orient === "landscape" ? "checked" : ""}> Landscape (pages as printed)</label></div>
-    <div class="section-title">Managers</div>
-    <div class="radio-row" style="margin-bottom:10px;"><label class="radio"><input type="radio" name="wr-g" value="all" ${all ? "checked" : ""}> All managers</label>
+    <div class="section-title">Managers <span class="wr-applies">daily reports</span></div>
+    <div class="radio-row wr-radios" style="margin-bottom:10px;"><label class="radio"><input type="radio" name="wr-g" value="all" ${all ? "checked" : ""}> All managers</label>
       <label class="radio"><input type="radio" name="wr-g" value="some" ${all ? "" : "checked"}> Only these:</label></div>
-    <div class="form-row" id="wr-groups" style="${all ? "opacity:.45;pointer-events:none;" : ""}">${w.groups.map(g => `<label class="check"><input type="checkbox" class="wr-group" value="${esc(g)}" ${r.groups.includes(g) ? "checked" : ""}> ${esc(g)}</label>`).join("") || '<span class="hint">No manager groups set up.</span>'}</div>
+    <div class="wr-grid" id="wr-groups" style="${all ? "opacity:.45;pointer-events:none;" : ""}">${w.groups.map(g => `<label class="wr-check"><input type="checkbox" class="wr-group" value="${esc(g)}" ${r.groups.includes(g) ? "checked" : ""}> ${esc(g)}</label>`).join("") || '<span class="hint" style="grid-column:1/-1;">No manager groups set up.</span>'}</div>
     <label class="field">Message before the reports (optional)
       <textarea id="wr-pre" rows="3" maxlength="2000" placeholder="e.g. Good morning team, here are the reports for {date}.">${esc(r.pre_message || "")}</textarea>
       <span>Sent to this chat as its own message right before the reports, every time they go out. Leave empty for none.

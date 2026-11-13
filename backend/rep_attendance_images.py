@@ -211,3 +211,122 @@ def build(day, info, style, folder, include_empty=False):
     sub = os.path.join(folder, style)
     paths = D.pdf_to_images(pdf, names, sub, rotate_wide=False, scale=2.6 if style == "professional" else 2.4)
     return {"pdf": pdf, "images": [{"group": g, "style": style, "path": p} for (g, _), p in zip(groups, paths)]}
+
+
+# ---------------------------------------------------------------------------
+# Field Force Attendance — every working territory, grouped by its ASM (optional extra image)
+# ---------------------------------------------------------------------------
+NO_ASM = "No ASM"
+STATUS = {"field": ("IN THE FIELD", "#8A5A00", "#FFF4DC"), "out": ("LOGGED OUT", "#1E6B3A", "#E3F3E8"),
+          "none": ("NOT LOGGED IN", "#B5121B", "#FBE3E4")}
+
+
+def manager_groups(info):
+    """[(asm, [row])] — reps who logged in (ASM from SFA's TEAM column) plus the working territories that
+    didn't (ASM / rep / type from the last day Chimera saw them: info['last_seen']). 'No ASM' last."""
+    seen = info.get("last_seen") or {}
+    rows = [dict(r, status="out" if r["out_time"] else "field") for r in info["rows"]]
+    for t in info.get("not_logged_in") or []:
+        ls = seen.get(t) or {}
+        rows.append({"territory": t, "rep": "", "rep_type": ls.get("rep_type", ""), "asm": ls.get("asm", ""),
+                     "in_time": "", "out_time": "", "status": "none"})
+    out = {}
+    for r in rows:
+        out.setdefault((r.get("asm") or "").strip() or NO_ASM, []).append(r)
+    for rs in out.values():
+        rs.sort(key=lambda r: (r["status"] == "none", r["in_time"] or "99", r["territory"].lower()))
+    return sorted(out.items(), key=lambda kv: (kv[0] == NO_ASM, kv[0].lower()))
+
+
+def _by_manager_page(day, info):
+    width = 190 * mm
+    avail = width - 2 * D.MARGIN
+    d = date.fromisoformat(day)
+    groups = manager_groups(info)
+    allr = [r for _, rs in groups for r in rs]
+    li = sum(1 for r in allr if r["status"] != "none")
+    lo = sum(1 for r in allr if r["status"] == "out")
+    nli = len(allr) - li
+    cell = D._ps("fm_c", fontName="Helvetica", fontSize=9, leading=11, textColor=D.INK)
+    cellc = D._ps("fm_cc", fontName="Helvetica", fontSize=9, leading=11, textColor=D.INK, alignment=1)
+    cellb = D._ps("fm_cb", fontName="Helvetica-Bold", fontSize=9.5, leading=11.5, textColor=D.INK)
+    small = D._ps("fm_s", fontName="Helvetica", fontSize=7.5, leading=9, textColor=D.ASH)
+    sec = D._ps("fm_sec", fontName="Helvetica-Bold", fontSize=9, leading=11, textColor=D.INK)
+    bar_l = D._ps("fm_bl", fontName="Helvetica-Bold", fontSize=10.5, leading=13, textColor=colors.white)
+    bar_r = D._ps("fm_br", fontName="Helvetica", fontSize=8, leading=10, textColor=colors.HexColor("#F3D9DA"), alignment=2)
+    red = lambda n: f"<font color='#B5121B'>{n}</font>" if n else "0"
+    flow = D._pro_header("Rep attendance", "Field Force Attendance",
+                         "Every working territory, grouped by its ASM" if info.get("working_count") else
+                         "Reps who logged in, grouped by their ASM", f"{d:%a} {d.day} {d:%b %Y}", "att", avail)
+    kpis = [("Logged in", f"{li}" + (f" <font size=8 color='#6E6F71'>of {len(allr)}</font>" if nli else "")),
+            ("In the field", str(li - lo)), ("Logged out", str(lo))]
+    if info.get("working_count"):
+        kpis.append(("Not logged in", red(nli)))
+    kpis.append(("Managers", str(sum(1 for m, _ in groups if m != NO_ASM))))
+    flow += [Spacer(1, 6), D._pro_kpis(kpis, avail), Spacer(1, 10), Paragraph("BY MANAGER", sec), Spacer(1, 4)]
+    summ = [[Paragraph(h, D._PR_HDR) for h in ["Manager", "Territories", "Logged in", "In the field", "Logged out",
+                                                "Not logged in", "First login"]]]
+    for m, rs in groups:
+        ins = sorted(r["in_time"] for r in rs if r["status"] != "none" and r["in_time"])
+        n_none = sum(1 for r in rs if r["status"] == "none")
+        summ.append([Paragraph(D._esc(m), cellb), str(len(rs)), str(len(ins)), str(sum(1 for r in rs if r["status"] == "field")),
+                     str(sum(1 for r in rs if r["status"] == "out")), Paragraph(f"<b>{red(n_none)}</b>" if n_none else "0", cellc),
+                     ins[0][:5] if ins else "–"])
+    st = D._pro_table_style() + [("ALIGN", (0, 1), (0, -1), "LEFT")]
+    for i in range(2, len(summ), 2):
+        st.append(("BACKGROUND", (0, i), (-1, i), D.ZEBRA))
+    t = Table(summ, colWidths=[avail - 6 * 22 * mm] + [22 * mm] * 6, repeatRows=1)
+    t.setStyle(TableStyle(st))
+    t.hAlign = "LEFT"
+    flow += [t, Spacer(1, 12)]
+    cols = [9 * mm, 40 * mm, 0, 20 * mm, 20 * mm, 20 * mm, 27 * mm]
+    cols[2] = avail - sum(cols)
+    for m, rs in groups:
+        n_in = sum(1 for r in rs if r["status"] != "none")
+        bar = Table([[Paragraph(D._esc(m), bar_l),
+                      Paragraph(f"{n_in} of {len(rs)} logged in &middot; {sum(1 for r in rs if r['status'] == 'out')} logged out", bar_r)]],
+                    colWidths=[avail * 0.55, avail * 0.45])
+        bar.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), D.CHERRY), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                                 ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                                 ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8)]))
+        data = [[Paragraph(h, D._PR_HDR) for h in ["#", "Territory", "Sales rep", "Type", "Logged in", "Logged out", "Status"]]]
+        st = D._pro_table_style()
+        for i, r in enumerate(rs, 1):
+            lbl, fg, bg = STATUS[r["status"]]
+            data.append([str(i), Paragraph(D._esc(r["territory"]), cellb),
+                         Paragraph(D._esc(short_rep(r["rep"], r["territory"]) or "–"), cell), Paragraph(D._esc(r["rep_type"] or ""), small),
+                         r["in_time"] or "–", r["out_time"] or "–",
+                         Paragraph(f"<b>{lbl}</b>", D._ps("fm_" + r["status"], fontName="Helvetica-Bold", fontSize=6.8, leading=8.5,
+                                                           textColor=colors.HexColor(fg), alignment=1))])
+            st.append(("BACKGROUND", (6, i), (6, i), colors.HexColor(bg)))
+            if i % 2 == 0:
+                st.append(("BACKGROUND", (0, i), (5, i), D.ZEBRA))
+            if r["status"] == "none":
+                st.append(("TEXTCOLOR", (1, i), (5, i), D.ASH))
+        st += [("ALIGN", (1, 1), (3, -1), "LEFT"), ("TEXTCOLOR", (0, 1), (0, -1), D.ASH), ("FONTSIZE", (0, 1), (0, -1), 7.5)]
+        tt = Table(data, colWidths=cols, repeatRows=1)
+        tt.setStyle(TableStyle(st))
+        tt.hAlign = bar.hAlign = "LEFT"
+        flow += [bar, tt, Spacer(1, 10)]
+    flow += [D.HRule(0.5, D.GRID, 2),
+             Paragraph(f"CHIMERA &nbsp;&middot;&nbsp; Field Force Attendance &nbsp;&middot;&nbsp; Generated "
+                       f"{datetime.now():%Y-%m-%d %H:%M} &nbsp;&middot;&nbsp; Internal use only", D._PR_FOOT)]
+    return {"width": width, "flow": flow, "name": f"Field_Force_Attendance_{day}"}
+
+
+def build_by_manager(day, info, folder):
+    """The Field Force Attendance image (+ its own PDF). -> {"pdf", "images": [{group: 'by_manager', style: 'manager', path}]}"""
+    if not info["rows"] and not info.get("not_logged_in"):
+        return {"pdf": "", "images": []}
+    os.makedirs(folder, exist_ok=True)
+    as_of = info.get("as_of") or ""
+    keep = D._as_of_line
+    try:
+        D._as_of_line = lambda _d, _k: (f"As of {as_of}" if as_of else "From SFA") + " | Rep attendance from SFA"
+        page = _by_manager_page(day, info)
+    finally:
+        D._as_of_line = keep
+    pdf = os.path.join(folder, f"Field_Force_Attendance_{day}.pdf")
+    D._render_pages(pdf, [page])
+    paths = D.pdf_to_images(pdf, [page["name"]], os.path.join(folder, "manager"), rotate_wide=False, scale=2.6)
+    return {"pdf": pdf, "images": [{"group": "by_manager", "style": "manager", "path": p} for p in paths]}

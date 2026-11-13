@@ -84,7 +84,9 @@ DEFAULT_AUTOMATION = {
     "att_style": "both",                 # rep attendance images: classic | professional | both (built)
     "att_send_style": "classic",         #   the look sent to WhatsApp when both are built
     "att_chats": "[]",                   #   WhatsApp chats / groups that get the images (JSON list)
-    "att_send_pdf": "0",                 #   also send the PDF (as a document)
+    "att_send_pdf": "0",
+    "att_exclude": "[]",
+    "att_by_manager": "0",               #   also build Field Force Attendance (every working territory by ASM)                 #   territories always left off the images (test territories) (JSON list)                 #   also send the PDF (as a document)
     "auto_rep_attendance": "1",          #   Schedules › Automations switch for the job type
     "notify_desktop": "1",               # Windows notifications (master switch)
     "notify_started": "1",               #   a scheduled time arrived / a run started
@@ -415,7 +417,7 @@ def save_automation_settings(values):
                    "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence",
                    "auto_loadings", "auto_outlet_updates", "auto_distributor_sync", "add_loading_dry_run",
                    "seq_need_approval", "seq_dry_run", "notify_desktop", "notify_started", "notify_approval",
-                   "notify_finished", "notify_failed", "att_send_pdf", "auto_rep_attendance"):
+                   "notify_finished", "notify_failed", "att_send_pdf", "auto_rep_attendance", "att_by_manager"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
         elif k == "att_style":
             if v not in ("classic", "professional", "both"):
@@ -423,12 +425,12 @@ def save_automation_settings(values):
         elif k == "att_send_style":
             if v not in ("classic", "professional"):
                 return False, "The look to send must be classic or professional."
-        elif k == "att_chats":
+        elif k in ("att_chats", "att_exclude"):
             import json as _json
             try:
                 lst = v if isinstance(v, list) else _json.loads(v or "[]")
             except ValueError:
-                return False, "WhatsApp chats must be a list."
+                return False, "That must be a list."
             v = _json.dumps(list(dict.fromkeys(str(x).strip() for x in lst if str(x).strip())))
         elif k in ("add_loading_for", "add_loading_company"):
             v = v[:120]

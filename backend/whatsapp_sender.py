@@ -103,6 +103,22 @@ def list_rules():
              "send_as": r[6] or "images", "orientation": r[7] or "portrait", "pre_message": r[8] or ""} for r in rows]
 
 
+ATT_KINDS = ("att_nlo", "att_lo", "att_mgr")   # rep attendance images: not logged out yet / logged out / Field Force (by ASM)
+RULE_KINDS = tuple(report_pipeline.REPORT_KINDS) + ATT_KINDS
+ATT_GROUP = {"att_nlo": "not_logged_out", "att_lo": "logged_out", "att_mgr": "by_manager"}
+
+
+def daily_rules(enabled_only=True):
+    """Rules that send at least one daily report (SKU / Pivot / Hourly) — the ones a report run delivers to."""
+    return [r for r in list_rules() if (r["enabled"] or not enabled_only)
+            and any(k in report_pipeline.REPORT_KINDS for k in r["kinds"])]
+
+
+def attendance_rules(enabled_only=True):
+    """Rules that send rep attendance images."""
+    return [r for r in list_rules() if (r["enabled"] or not enabled_only) and any(k in ATT_KINDS for k in r["kinds"])]
+
+
 def rename_group_in_rules(old, new):
     """A manager group was renamed: delivery rules that named it follow the new name."""
     conn = db.get_connection()
@@ -122,7 +138,7 @@ def save_rule(data):
     chat = str(data.get("chat_name", "")).strip()
     if not chat:
         return False, "Choose or type the chat / group name."
-    kinds = [k for k in (data.get("kinds") or []) if k in report_pipeline.REPORT_KINDS]
+    kinds = [k for k in RULE_KINDS if k in (data.get("kinds") or [])]
     if not kinds:
         return False, "Tick at least one report to send."
     groups = data.get("groups") or ["*"]
@@ -219,7 +235,8 @@ def plan_delivery(run, rules=None):
     style = s["wa_style"] if s["wa_style"] in styles_built else (sorted(styles_built)[0] if styles_built else None)
     items = report_pipeline.image_items(run, style)
     plan = []
-    for rule in (rules if rules is not None else [r for r in list_rules() if r["enabled"]]):
+    rules = daily_rules() if rules is None else [r for r in rules if any(k in KIND_ORDER for k in r["kinds"])]
+    for rule in rules:
         send_as = rule.get("send_as", "images")
         landscape = rule.get("orientation", "portrait") == "landscape"
         batches = []
@@ -1007,9 +1024,9 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
         return {"ok": False, "message": "That report run no longer exists."}
     if run["status"] == "pending_review":
         return {"ok": False, "message": "Save (approve) the preview before sending it."}
-    rules = [r for r in list_rules() if r["enabled"] and (not rule_ids or r["id"] in rule_ids)]
+    rules = [r for r in daily_rules() if not rule_ids or r["id"] in rule_ids]
     if not rules:
-        return {"ok": False, "message": "No WhatsApp delivery rules are set up."}
+        return {"ok": False, "message": "No WhatsApp delivery rules send the daily reports (SKU / Pivot / Hourly)."}
     plan = [p for p in plan_delivery(run, rules)]
     styles_built = sorted({o["style"] for rep in run["summary"].get("reports", []) for o in rep.get("outputs", [])})
     _wa = AS.get_automation_settings()["wa_style"]

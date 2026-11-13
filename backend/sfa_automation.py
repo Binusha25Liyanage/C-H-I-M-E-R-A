@@ -1080,7 +1080,7 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                     LIVE.log("Reports used the earlier SFA data for: " + ", ".join(failed)
                              + " (their download failed this run).", level="warn")
                 import whatsapp_sender
-                has_rules = bool([r for r in whatsapp_sender.list_rules() if r["enabled"]])
+                has_rules = bool(whatsapp_sender.daily_rules())
                 if report_run.get("review_note"):
                     LIVE.log(report_run["review_note"])
                 if report_run.get("status") == "pending_review":

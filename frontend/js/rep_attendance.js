@@ -2,8 +2,10 @@
 // sending to WhatsApp, history and settings. Relies on esc/API/chip/openModal/closeModal/confirmModal (automation.js),
 // copyText (main.js), waChatPicker/SH/openStopNow/switchView (shell.js / main.js).
 
-const AT = { day: null, data: null, style: "classic", poll: null, wasActive: false, hPeriod: "7", chats: [] };
+const AT = { day: null, data: null, style: "classic", poll: null, wasActive: false, hPeriod: "7", chats: [], ex: [] };
 const atApi = () => window.pywebview.api;
+const AT_TK = ["kicker", "nlo_title", "nlo_sub", "lo_title", "lo_sub", "mgr_title", "mgr_sub"];
+const AT_LOOK = { classic: "Classic", professional: "Professional", nologo: "Professional (no logo)" };
 const AT_STATE = { built: ["chip-grey", "Images ready"], pending_review: ["chip-warn", "Waiting for your approval"],
                    sent: ["chip-ok", "Sent to WhatsApp"], partly_sent: ["chip-warn", "Partly sent"], send_failed: ["chip-missing", "WhatsApp failed"],
                    not_sent: ["chip-grey", "Not sent"] };
@@ -23,7 +25,8 @@ async function loadRepAttendance(day) {
   try { AT.data = await atApi().get_rep_attendance(AT.day); } catch (e) { return; }
   const d = AT.data;
   AT.chats = [...d.settings.att_chats];
-  if (d.settings.att_style !== "both") AT.style = d.settings.att_style;
+  AT.ex = [...(d.settings.att_exclude || [])];
+  AT.style = d.settings.att_style !== "both" ? d.settings.att_style : d.settings.att_send_style;
   atRenderPending(); atRenderDay(); atRenderSettings();
   const b = document.getElementById("nav-att-badge");
   if (b) { b.textContent = d.pending.length; b.style.display = d.pending.length ? "" : "none"; }
@@ -54,13 +57,13 @@ function atRenderDay() {
       · read ${esc(m.read_at.replace("T", " ").slice(0, 16))}${m.generated_at ? ` · SFA generated it ${esc(m.generated_at)}` : ""}${c.edited ? ` · <b>${c.edited} corrected by you</b>` : ""}` : "";
   // images
   const latest = d.latest;
-  const styles = latest ? [...new Set(latest.images.map(i => i.style))] : [];
+  const styles = latest ? [...new Set(latest.images.map(i => i.style).filter(s => s !== "manager"))] : [];
   if (styles.length && !styles.includes(AT.style)) AT.style = styles[0];
   document.querySelectorAll("#att-style-seg button").forEach(b => { b.classList.toggle("on", b.dataset.s === AT.style); b.style.display = styles.includes(b.dataset.s) ? "" : "none"; });
   document.getElementById("att-style-seg").style.display = styles.length > 1 ? "" : "none";
-  const imgs = latest ? latest.images.filter(i => i.style === AT.style) : [];
+  const imgs = latest ? latest.images.filter(i => i.style === AT.style || i.style === "manager") : [];
   const box = document.getElementById("att-images");
-  box.innerHTML = imgs.length ? imgs.map(i => `<figure><figcaption>${i.group === "logged_out" ? "Logged out" : "Not logged out yet"}</figcaption>
+  box.innerHTML = imgs.length ? imgs.map(i => `<figure><figcaption>${{ logged_out: "Logged out", by_manager: esc(d.settings.titles_used.mgr_title) }[i.group] || "Not logged out yet"}</figcaption>
       <img data-att-img="${esc(i.path)}" alt=""></figure>`).join("")
     : `<p class="hint">${d.rows.length ? "No images yet — click <b>Rebuild images</b>." : "Images appear here once the day is read."}</p>`;
   imgs.forEach(async i => { const b64 = await atApi().get_image_b64(i.path); const el = box.querySelector(`img[data-att-img="${CSS.escape(i.path)}"]`);
@@ -77,7 +80,8 @@ function atRenderDay() {
       <td><b>${esc(r.territory)}</b><div class="am-note">${esc(r.rep_type || "")}${r.asm ? " · " + esc(r.asm) : ""}</div></td>
       <td>${esc(atShortRep(r.rep))}</td><td class="mono">${esc(r.in_time)}</td>${out ? `<td class="mono">${esc(r.out_time)}</td>` : ""}
       <td style="text-align:right;white-space:nowrap;">${r.edited ? `<span class="chip chip-warn" title="SFA said: ${esc(r.orig_in)} / ${esc(r.orig_out || "-")}">corrected</span> ` : ""}
-        <button class="link-btn" data-att-edit="${esc(r.territory)}">Edit</button></td></tr>`).join("")}</tbody></table></div>`
+        <button class="link-btn" data-att-edit="${esc(r.territory)}">Edit</button>
+        <button class="att-leave" data-att-leave="${esc(r.territory)}" title="Leave out — never put ${esc(r.territory)} on the images (e.g. a test territory)">&#8856;</button></td></tr>`).join("")}</tbody></table></div>`
     : `<p class="hint" style="padding:12px 16px;">Nobody.</p>`;
   document.getElementById("att-t-nlo").innerHTML = table(nlo, false);
   document.getElementById("att-t-lo").innerHTML = table(lo, true);
@@ -86,6 +90,11 @@ function atRenderDay() {
   document.getElementById("att-nli").innerHTML = !c.working ? `<p class="hint">Switch on your working territories in <b>Outlet Updates › Working Territories</b> to see who hasn't logged in.</p>`
     : d.not_logged_in.length ? `<div class="rm-chips">${d.not_logged_in.map(t => `<span class="rm-chip att-nli">${esc(t)}</span>`).join("")}</div>`
     : d.rows.length ? `<p class="hint" style="color:#1f7a43;">Every working territory has logged in.</p>` : `<p class="hint">—</p>`;
+  const left = d.left_out || [];
+  document.getElementById("att-left-card").style.display = left.length ? "" : "none";
+  document.getElementById("att-left").innerHTML = left.map(r => `<div class="att-left-row"><b>${esc(r.territory)}</b>
+      <span class="hint">${esc(atShortRep(r.rep))} · logged in ${esc(r.in_time)}${r.out_time ? " · out " + esc(r.out_time) : ""}</span>
+      <button class="btn-outline btn-small" data-att-putback="${esc(r.territory)}">Put back</button></div>`).join("");
   document.getElementById("att-runs").innerHTML = d.runs.length ? `<table class="report-table am-table"><tbody>${d.runs.map(r => {
       const s = AT_STATE[r.state];
       return `<tr><td style="white-space:nowrap;">${esc(r.started_at.slice(11, 16))}</td><td>${esc(r.trigger)}${r.slot ? " " + esc(r.slot) : ""}</td>
@@ -127,15 +136,51 @@ function atHint(html) {
 function atAlert(msg, ok) { openModal({ title: "Rep attendance", body: `<div class="${ok ? "ok-box" : "problem-box"}">${esc(msg)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); }
 
 async function atSend(runId) {
-  const chats = AT.data.settings.att_chats;
-  if (!chats.length) { atAlert("No WhatsApp chats yet — add them in Rep Attendance › Settings."); return; }
-  const run = AT.data.runs.find(r => r.id === runId) || AT.data.pending.find(r => r.id === runId) || AT.data.latest;
-  confirmModal("Send rep attendance", `Send the <b>${esc(run.style)}</b> images for <b>${esc(atLong(run.day))}</b> to ${chats.map(esc).join(", ")}?`, "Send", async () => {
-    const r = await atApi().send_rep_attendance(runId);
-    if (!r.ok) { atAlert(r.message); return; }
-    atAlert("Sending… (WhatsApp shows the progress; the result appears under Runs for this day).", true);
+  const rv = await atApi().review_rep_attendance(runId);
+  if (!rv.ok) { atAlert(rv.message); return; }
+  const tg = rv.targets.filter(t => (t.images && t.groups.length) || t.pdf);
+  if (!tg.length) { atAlert("No WhatsApp chats for rep attendance yet — tick Rep attendance in a WhatsApp delivery rule, or add chats in Rep Attendance › Settings."); return; }
+  const run = rv.run;
+  const sec = (g, title) => { const rs = rv.rows.filter(r => r.group === g); return rs.length ? `<tr class="att-rv-sep"><td colspan="5">${title} (${rs.length})</td></tr>`
+      + rs.map(r => `<tr class="${r.keep ? "" : "off"}"><td><input type="checkbox" class="att-rv-keep" value="${esc(r.territory)}" ${r.keep ? "checked" : ""}></td>
+        <td><b>${esc(r.territory)}</b></td><td>${esc(atShortRep(r.rep))}</td><td class="mono">${esc(r.in_time)}</td><td class="mono">${esc(r.out_time || "–")}</td></tr>`).join("") : ""; };
+  openModal({ title: `Send rep attendance — ${atLong(run.day)}`, size: "lg", body: `
+      <p class="hint" style="margin-top:0;">Look: <b>${esc(AT_LOOK[run.style] || run.style)}</b>. Untick anyone you don't want on the images — they're built again without them before sending
+        (Chimera's data isn't changed).</p>
+      <div class="section-title">Goes to</div>
+      ${tg.map(t => `<div class="att-rv-chat"><b>${esc(t.chat)}</b> <span class="hint">— ${[...t.group_labels, ...(t.pdf ? ["PDF"] : [])].map(esc).join(" + ")}
+        · from ${esc([...new Set(t.from)].join(" + "))}</span>${t.pre_message ? `<div class="wa-bubble">${esc(t.pre_message)}</div>` : ""}</div>`).join("")}
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;">Rows on the images
+        <span><button class="link-btn" id="att-rv-all">Tick all</button></span></div>
+      <div class="att-rv-rows"><table><thead><tr><th></th><th>Territory</th><th>Sales rep</th><th>Logged in</th><th>Logged out</th></tr></thead><tbody>
+        ${sec("not_logged_out", "Not logged out yet")}${sec("logged_out", "Logged out")}</tbody></table></div>
+      ${rv.always_left_out.length ? `<p class="hint">Always left out: ${rv.always_left_out.map(esc).join(", ")} (Rep Attendance › Settings).</p>` : ""}
+      <div id="att-rv-msg"></div>`,
+    footer: `<button class="btn-outline" onclick="closeModal()">Cancel</button><button class="btn-primary" id="att-rv-send">Send</button>` });
+  const skip = () => [...document.querySelectorAll(".att-rv-keep")].filter(c => !c.checked).map(c => c.value);
+  const sync = () => { const n = skip().length;
+    document.querySelectorAll(".att-rv-keep").forEach(c => c.closest("tr").classList.toggle("off", !c.checked));
+    document.getElementById("att-rv-send").textContent = n ? `Leave out ${n} & send` : "Send"; };
+  document.querySelectorAll(".att-rv-keep").forEach(c => c.onchange = sync); sync();
+  document.getElementById("att-rv-all").onclick = () => { document.querySelectorAll(".att-rv-keep").forEach(c => { c.checked = true; }); sync(); };
+  document.getElementById("att-rv-send").onclick = async (e) => {
+    e.target.disabled = true; e.target.innerHTML = `<span class="spinner"></span> Sending…`;
+    const r = await atApi().send_rep_attendance(runId, skip());
+    if (!r.ok) { e.target.disabled = false; sync(); document.getElementById("att-rv-msg").innerHTML = `<div class="problem-box">${esc(r.message)}</div>`; return; }
+    closeModal();
+    atHint("Sending… WhatsApp shows the progress; the result appears under Runs for this day.");
     setTimeout(() => loadRepAttendance(), 4000); setTimeout(() => loadRepAttendance(), 15000);
-  });
+  };
+}
+
+function atLeaveOut(territory, on) {
+  const go = async () => { const r = await atApi().set_rep_attendance_left_out(territory, on);
+    if (!r.ok) { atAlert(r.message); return; }
+    if (AT.data && AT.data.latest) await atApi().rebuild_rep_attendance(AT.day);   // the images follow straight away
+    await loadRepAttendance(); atHint(`${esc(territory)} ${on ? "left out" : "put back"} — images rebuilt.`); };
+  if (!on) return go();
+  confirmModal("Leave out", `Never put <b>${esc(territory)}</b> on the rep attendance images or in the counts (every day, scheduled runs too)?
+    It stays in Chimera's data and History. You can put it back from this screen or Settings.`, "Leave out", go);
 }
 
 // ---------------------------------------------------------------- live run
@@ -180,10 +225,20 @@ function atRenderSettings() {
   document.querySelectorAll('input[name="att-style"]').forEach(r => { r.checked = r.value === s.att_style; });
   document.getElementById("att-send-style").value = s.att_send_style;
   document.getElementById("att-send-style-f").style.display = s.att_style === "both" ? "" : "none";
+  AT_TK.forEach(k => { const el = document.getElementById("att-t-" + k); el.value = (s.att_titles || {})[k] || ""; el.placeholder = s.titles_default[k]; });
   document.getElementById("att-pdf").checked = s.att_send_pdf === "1";
+  document.getElementById("att-mgr").checked = s.att_by_manager === "1";
+  const rt = (AT.data.targets || []).filter(t => t.from.includes("delivery rule"));
+  document.getElementById("att-rule-targets").innerHTML = rt.length ? `<div class="rm-chips">${rt.map(t => `<span class="rm-chip" title="${esc(t.groups.map(g => ({ logged_out: "Logged out", by_manager: s.titles_used.mgr_title }[g] || "Not logged out yet")).join(" + ") + (t.pdf ? " + PDF" : ""))}">${esc(t.chat)}</span>`).join("")}</div>
+      <button class="link-btn" id="att-to-wa">Edit in WhatsApp › Delivery rules &rarr;</button>`
+    : `<p class="hint">None. <button class="link-btn" id="att-to-wa">Add one in WhatsApp › Delivery rules &rarr;</button></p>`;
+  document.getElementById("att-to-wa").onclick = () => openAction("whatsapp");
+
   atRenderChips();
 }
 function atRenderChips() {
+  document.getElementById("att-ex-chips").innerHTML = AT.ex.length ? AT.ex.map(c => `<span class="rm-chip att-nli">${esc(c)} <button type="button" data-att-rx="${esc(c)}">&#10005;</button></span>`).join("")
+    : `<span class="hint">None — every territory goes on the images.</span>`;
   document.getElementById("att-chips").innerHTML = AT.chats.length ? AT.chats.map(c => `<span class="rm-chip">${esc(c)} <button type="button" data-att-rc="${esc(c)}">&#10005;</button></span>`).join("")
     : `<span class="hint">No chats yet.</span>`;
 }
@@ -225,6 +280,9 @@ function atRenderChips() {
     if (b.dataset.attView) loadRepAttendance(b.dataset.attView);
     if (b.dataset.attLog) copyText(await atApi().get_rep_attendance_log(Number(b.dataset.attLog)), b);
     if (b.dataset.attRc) { AT.chats = AT.chats.filter(c => c !== b.dataset.attRc); atRenderChips(); }
+    if (b.dataset.attLeave) atLeaveOut(b.dataset.attLeave, true);
+    if (b.dataset.attPutback) atLeaveOut(b.dataset.attPutback, false);
+    if (b.dataset.attRx) { AT.ex = AT.ex.filter(c => c !== b.dataset.attRx); atRenderChips(); }
   });
   // history
   document.getElementById("att-h-period").addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (!b) return;
@@ -240,6 +298,30 @@ function atRenderChips() {
     document.getElementById("att-send-style-f").style.display = r.value === "both" && r.checked ? "" : document.querySelector('input[name="att-style"]:checked').value === "both" ? "" : "none"; }));
   const addChat = () => { const i = document.getElementById("att-chat"), val = i.value.trim(); if (val && !AT.chats.includes(val)) AT.chats.push(val); i.value = ""; atRenderChips(); };
   document.getElementById("att-chat-add").onclick = addChat;
+  document.getElementById("att-t-reset").onclick = () => AT_TK.forEach(k => { document.getElementById("att-t-" + k).value = ""; });
+  const addEx = (v) => { const i = document.getElementById("att-ex"), val = (typeof v === "string" ? v : i.value).trim();
+    if (val && !AT.ex.some(x => x.toLowerCase() === val.toLowerCase())) AT.ex.push(val); i.value = ""; atRenderChips(); exList(false); };
+  // territory picker: every territory Chimera knows (Outlet Updates + attendance), working ones first
+  const exBox = document.getElementById("att-ex-list"), exIn = document.getElementById("att-ex");
+  const exList = (show) => {
+    if (!show) { exBox.style.display = "none"; return; }
+    const q = exIn.value.trim().toLowerCase(), have = new Set(AT.ex.map(x => x.toLowerCase()));
+    const all = (AT.data && AT.data.all_territories) || [];
+    const hits = all.filter(t => !have.has(t.territory.toLowerCase()) && (!q || t.territory.toLowerCase().includes(q)));
+    const nW = all.filter(t => t.working).length;
+    exBox.innerHTML = `<div class="att-pick-head">${all.length} territories · ${nW} working</div>` + (hits.length ? hits.map(t =>
+      `<div class="att-pick-row" data-v="${esc(t.territory)}"><span>${esc(t.territory)}</span>${t.working ? '<span class="chip chip-ok">working</span>' : '<span class="chip chip-grey">not working</span>'}</div>`).join("")
+      : `<div class="att-pick-empty">${q ? `No territory matches — <b>+ Add</b> adds “${esc(exIn.value.trim())}” as typed.` : "All territories are already on the list."}</div>`);
+    exBox.style.display = "";
+  };
+  exIn.addEventListener("focus", () => exList(true));
+  exIn.addEventListener("input", () => exList(true));
+  document.getElementById("att-ex-arrow").onclick = () => { exList(exBox.style.display === "none"); exIn.focus(); };
+  exBox.addEventListener("mousedown", (e) => { const r = e.target.closest(".att-pick-row"); if (r) { e.preventDefault(); addEx(r.dataset.v); } });
+  exIn.addEventListener("blur", () => setTimeout(() => exList(false), 150));
+  document.getElementById("att-ex-add").onclick = addEx;
+  exIn.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const first = exBox.querySelector(".att-pick-row");
+    addEx(first && exBox.style.display !== "none" && exIn.value.trim() ? first.dataset.v : undefined); } if (e.key === "Escape") exList(false); });
   document.getElementById("att-chat").addEventListener("keydown", (e) => { if (e.key === "Enter" && document.getElementById("att-chat-list").style.display === "none") { e.preventDefault(); addChat(); } });
   // shell.js (which has the chat picker) loads after this file
   window.addEventListener("DOMContentLoaded", () => { if (typeof waChatPicker === "function") waChatPicker(document.getElementById("att-chat"), document.getElementById("att-chat-list")); });
@@ -248,7 +330,8 @@ function atRenderChips() {
     const pending = document.getElementById("att-chat").value.trim(); if (pending && !AT.chats.includes(pending)) AT.chats.push(pending);
     const r = await atApi().save_rep_attendance_settings({ att_url: document.getElementById("att-url").value.trim(),
       att_style: (document.querySelector('input[name="att-style"]:checked') || {}).value || "both", att_send_style: document.getElementById("att-send-style").value,
-      att_chats: AT.chats, att_send_pdf: document.getElementById("att-pdf").checked ? "1" : "0" });
+      att_chats: AT.chats, att_exclude: (() => { const v = document.getElementById("att-ex").value.trim(); if (v && !AT.ex.includes(v)) AT.ex.push(v); return AT.ex; })(), att_send_pdf: document.getElementById("att-pdf").checked ? "1" : "0", att_by_manager: document.getElementById("att-mgr").checked ? "1" : "0",
+      att_titles: Object.fromEntries(AT_TK.map(k => [k, document.getElementById("att-t-" + k).value.trim()])) });
     document.getElementById("att-save-msg").innerHTML = `<span class="${r.ok ? "hint" : "error"}">${esc(r.ok ? "Saved." : r.message)}</span>`;
     if (r.ok) loadRepAttendance();
   };

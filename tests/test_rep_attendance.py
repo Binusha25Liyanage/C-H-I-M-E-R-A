@@ -161,6 +161,89 @@ class RepAttendanceTest(unittest.TestCase):
         self.assertEqual({i["style"] for i in run["images"]}, {"classic"})
         self.assertFalse(RA.rebuild("2026-01-01")["ok"])
 
+    def test_always_left_out(self):
+        for t in ("Alpha Town", "Beta Bay", "Lakmee TERRITORY"):
+            outlet_store.add_territory(t)
+        reps = list(F.REPS) + [("Lakmee TERRITORY", "Lakmee Rep Test", "PRE", "10:11:05", "")]
+        R.save_day(R.read_excel(fresh_file("l.xlsx", reps=reps)), "sfa")
+        self.assertEqual(R.get_day(DAY)["counts"]["logged_in"], 5)
+        ok, _ = R.set_always_left_out("lakmee territory", True)      # any case
+        self.assertTrue(ok)
+        d = R.get_day(DAY)
+        self.assertEqual(d["counts"]["logged_in"], 4)
+        self.assertEqual([r["territory"] for r in d["left_out"]], ["Lakmee TERRITORY"])
+        self.assertEqual(d["counts"]["working"], 2)                  # a left-out territory isn't "working" either
+        self.assertNotIn("Lakmee TERRITORY", [s["territory"] for s in R.history(DAY, DAY)["summary"]])
+        self.assertTrue(next(r for r in R.history(DAY, DAY)["rows"] if r["territory"] == "Lakmee TERRITORY")["left_out"])
+        d2 = R.get_day(DAY, skip=["Beta Bay"])                       # unticked on the review screen
+        self.assertEqual(d2["counts"]["logged_in"], 3)
+        R.set_always_left_out("Lakmee TERRITORY", False)
+        self.assertEqual(R.get_day(DAY)["counts"]["logged_in"], 5)
+
+    def test_review_targets_and_rebuild_without_rows(self):
+        import rep_attendance_automation as RA
+        import whatsapp_sender as W
+        W.init_schema()
+        conn = db.get_connection(); conn.execute("DELETE FROM wa_rules"); conn.commit(); conn.close()
+        AS.save_automation_settings({"att_style": "classic", "att_chats": '["Sales Managers"]', "att_send_pdf": "0",
+                                     "att_exclude": "[]"})
+        self.assertTrue(W.save_rule({"chat_name": "Field Team", "kinds": ["att_lo"], "send_as": "both",
+                                     "pre_message": "Attendance for {date}"})[0])
+        self.assertTrue(W.save_rule({"chat_name": "Sales Managers", "kinds": ["sku", "att_nlo"]})[0])
+        tg = {t["chat"]: t for t in RA.targets()}
+        self.assertEqual(tg["Field Team"]["groups"], ["logged_out"])
+        self.assertTrue(tg["Field Team"]["pdf"])
+        self.assertEqual(tg["Sales Managers"]["groups"], ["not_logged_out", "logged_out"])   # in both: once, everything
+        self.assertEqual(len(tg), 2)
+        # daily report delivery ignores the attendance-only rule
+        self.assertEqual([r["chat_name"] for r in W.daily_rules()], ["Sales Managers"])
+        res = RA.import_file(fresh_file("m.xlsx"))
+        rv = RA.review(res["run_id"])
+        self.assertEqual(len(rv["rows"]), 4)
+        self.assertTrue(all(r["keep"] for r in rv["rows"]))
+        self.assertEqual(next(t for t in rv["targets"] if t["chat"] == "Field Team")["pre_message"], f"Attendance for {DAY}")
+        RA._build(res["run_id"], DAY, RA.settings(), skip=["Beta Bay", "Delta Port"])   # what send(skip=...) does first
+        run = R.get_run(res["run_id"])
+        self.assertEqual(run["left_out"], ["Beta Bay", "Delta Port"])
+        self.assertEqual(run["counts"]["logged_out"], 0)
+        self.assertEqual([i["group"] for i in run["images"]], ["not_logged_out"])
+        self.assertFalse(next(r for r in RA.review(res["run_id"])["rows"] if r["territory"] == "Beta Bay")["keep"])
+        self.assertFalse(W.save_rule({"chat_name": "X", "kinds": ["nonsense"]})[0])
+
+    def test_field_force_by_manager(self):
+        import rep_attendance_automation as RA
+        import rep_attendance_images as RI
+        import whatsapp_sender as W
+        W.init_schema()
+        conn = db.get_connection(); conn.execute("DELETE FROM wa_rules"); conn.commit(); conn.close()
+        for t in ("Alpha Town", "Beta Bay", "Gamma Hills", "Zeta Point", "New Place"):
+            outlet_store.add_territory(t)
+        # yesterday Zeta Point logged in under ASM Two; today it doesn't
+        R.save_day(R.read_excel(fresh_file("n1.xlsx", day="2026-11-11",
+                                           reps=[("Zeta Point", "Zed", "VAN", "08:00:00", "", "ASM Two")])), "sfa")
+        today = [("Alpha Town", "CSR Alpha Town - Kamal", "VAN", "07:40:00", "", "ASM One"),
+                 ("Beta Bay", "Nimal", "PRE", "08:05:00", "17:00:00", "ASM Two"),
+                 ("Gamma Hills", "Sunil", "VAN", "08:47:00", "", "")]
+        R.save_day(R.read_excel(fresh_file("n2.xlsx", reps=today)), "sfa")
+        info = R.get_day(DAY)
+        info["last_seen"] = R.last_seen(info["not_logged_in"], DAY)
+        g = dict(RI.manager_groups(info))
+        self.assertEqual(list(dict(RI.manager_groups(info)).keys()), ["ASM One", "ASM Two", RI.NO_ASM])
+        self.assertEqual([(r["territory"], r["status"]) for r in g["ASM Two"]], [("Beta Bay", "out"), ("Zeta Point", "none")])
+        self.assertEqual(sorted(r["territory"] for r in g[RI.NO_ASM]), ["Gamma Hills", "New Place"])   # never seen: No ASM
+        AS.save_automation_settings({"att_style": "professional", "att_by_manager": "1", "att_chats": "[]", "att_exclude": "[]"})
+        self.assertTrue(W.save_rule({"chat_name": "ASM Group", "kinds": ["att_mgr"]})[0])
+        res = RA.rebuild(DAY)
+        run = R.get_run(res["run_id"])
+        mgr = [i for i in run["images"] if i["group"] == "by_manager"]
+        self.assertEqual(len(mgr), 1)
+        self.assertTrue(os.path.getsize(mgr[0]["path"]) > 5000)
+        self.assertEqual(RA.targets()[0]["groups"], ["by_manager"])
+        self.assertIn("by_manager", [i["group"] for i in RA.review(res["run_id"])["images"]])
+        AS.save_automation_settings({"att_by_manager": "0"})
+        run = R.get_run(RA.rebuild(DAY)["run_id"])
+        self.assertFalse([i for i in run["images"] if i["group"] == "by_manager"])
+
     def test_settings_and_schedule_type(self):
         ok, _msg = AS.save_automation_settings({"att_chats": "not json"})
         self.assertFalse(ok)

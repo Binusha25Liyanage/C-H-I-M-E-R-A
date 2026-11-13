@@ -35,9 +35,11 @@ def export_bytes(day, reps=REPS, date_to=None, generated="2026-01-01 10:00:00"):
         grp += [g] + [None] * (n - 1)
     ws.append(grp)
     ws.append(HEAD)
-    for i, (terr, rep, typ, tin, tout) in enumerate(reps):
+    for i, r in enumerate(reps):
+        terr, rep, typ, tin, tout = r[:5]
+        asm = r[5] if len(r) > 5 else "ASM Test Person"
         ws.append(["Test Region", "Test Area", "Test SA", terr, f"Test Distributor {i + 1}", f"SR{i + 1:03d}", rep, "0770000000", typ, "R1",
-                   day, tin, "6.9,79.8", day if tout else "", tout, "", "", "", "ASM Test Person", "",
+                   day, tin, "6.9,79.8", day if tout else "", tout, "", "", "", asm, "",
                    "08:00:00", ""])
     buf = io.BytesIO()
     wb.save(buf)

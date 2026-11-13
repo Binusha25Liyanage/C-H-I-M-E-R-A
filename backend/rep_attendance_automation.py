@@ -46,6 +46,7 @@ def settings():
         chats = []
     return {"url": s.get("att_url") or R.DEFAULT_URL, "style": s.get("att_style") or "both",
             "send_style": s.get("att_send_style") or "classic", "chats": chats, "send_pdf": s.get("att_send_pdf") == "1",
+            "by_manager": s.get("att_by_manager") == "1",
             "timeout_ms": int(s.get("page_timeout_seconds") or 60) * 1000, "headless": s.get("headless", "1") == "1",
             "wa_headless": s.get("wa_show_browser") != "1"}
 
@@ -139,8 +140,8 @@ async def _with_browser(cfg, st, body):
 # ---------------------------------------------------------------------------
 # Build + send
 # ---------------------------------------------------------------------------
-def _build(rid, day, st, as_of=None):
-    info = R.get_day(day)
+def _build(rid, day, st, as_of=None, skip=()):
+    info = R.get_day(day, skip)
     info["as_of"] = as_of or datetime.now().strftime("%H:%M")
     styles = ["classic", "professional"] if st["style"] == "both" else [st["style"]]
     folder = output_folder(day)
@@ -150,45 +151,119 @@ def _build(rid, day, st, as_of=None):
         images += out["images"]
         if out["pdf"]:
             pdfs.append(out["pdf"])
+    if st.get("by_manager"):            # Field Force Attendance — the extra image, grouped by ASM
+        info["last_seen"] = R.last_seen(info["not_logged_in"], day)
+        images += RI.build_by_manager(day, info, folder)["images"]
     send_style = st["send_style"] if st["style"] == "both" else st["style"]
     R.set_run(rid, style=send_style, images=images, pdf=next((p for p in pdfs if send_style in os.path.basename(p)), ""),
-              counts=info["counts"])
+              counts=info["counts"], left_out=sorted(skip or ()))
     return info, images
 
 
-def send(rid, wait=True):
-    """Sends a run's images (the chosen look) to the chats. Returns {ok, message} (or {busy})."""
+GROUP_LABEL = {"not_logged_out": "Not logged out yet", "logged_out": "Logged out", "by_manager": "Field Force Attendance"}
+ALL_GROUPS = ("not_logged_out", "logged_out", "by_manager")
+
+
+def targets(st=None):
+    """Who gets the images: the chats on the Rep Attendance screen (both images, + PDF if set) and every
+    WhatsApp delivery rule that ticks a rep attendance image (its images, its 'Send as', its message first).
+    A chat in both gets everything once."""
+    import whatsapp_sender as W
+    st = st or settings()
+    out = {}
+
+    def entry(chat):
+        return out.setdefault(chat, {"chat": chat, "groups": [], "images": False, "pdf": False, "pre_message": "",
+                                     "from": []})
+    for chat in st["chats"]:
+        e = entry(chat)
+        e["groups"] = list(dict.fromkeys(e["groups"] + ["not_logged_out", "logged_out"]
+                                         + (["by_manager"] if st.get("by_manager") else [])))
+        e["images"] = True
+        e["pdf"] = e["pdf"] or st["send_pdf"]
+        e["from"].append("Rep Attendance settings")
+    for rule in W.attendance_rules():
+        e = entry(rule["chat_name"])
+        groups = [W.ATT_GROUP[k] for k in W.ATT_KINDS if k in rule["kinds"]]
+        send_as = rule.get("send_as", "images")
+        if send_as in ("images", "both"):
+            e["groups"] = [g for g in ALL_GROUPS if g in e["groups"] or g in groups]
+            e["images"] = True
+        if send_as in ("pdf", "both"):
+            e["pdf"] = True
+        e["pre_message"] = e["pre_message"] or rule.get("pre_message", "")
+        e["from"].append("delivery rule")
+    return list(out.values())
+
+
+def review(rid):
+    """What a send would do, for the review screen: each chat with its images, and every row (tick to keep)."""
+    run = R.get_run(rid)
+    if not run:
+        return {"ok": False, "message": "That run no longer exists."}
+    info = R.get_day(run["day"], run["left_out"])
+    rows = [{"territory": r["territory"], "rep": r["rep"], "in_time": r["in_time"], "out_time": r["out_time"],
+             "group": r["group"], "keep": not r["left_out"]} for r in info["rows"] + info["left_out"]
+            if r["left_out"] != "always"]
+    rows.sort(key=lambda r: (r["group"] != "not_logged_out", r["in_time"], r["territory"]))
+    import whatsapp_sender as W
+    tg = [{**t, "group_labels": [GROUP_LABEL[g] for g in t["groups"]] if t["images"] else [],
+           "pre_message": W.fill_message(t["pre_message"], run["day"])} for t in targets()]
+    return {"ok": True, "run": run, "targets": tg, "rows": rows,
+            "always_left_out": [r["territory"] for r in info["left_out"] if r["left_out"] == "always"],
+            "images": [i for i in run["images"] if i["style"] in (run["style"], "manager")]}
+
+
+def send(rid, wait=True, skip=None):
+    """Sends a run's images (the chosen look) to the chats. skip = territories you unticked on the review
+    screen: the images are built again without them first. Returns {ok, message} (or {busy})."""
     import whatsapp_sender as W
     run = R.get_run(rid)
     if not run:
         return {"ok": False, "message": "That run no longer exists."}
     st = settings()
-    if not st["chats"]:
+    tg = [t for t in targets(st) if (t["images"] and t["groups"]) or t["pdf"]]
+    if not tg:
         R.set_run(rid, state="not_sent", message=(run["message"] + " " if run["message"] else "") +
-                  "No WhatsApp chats set on the Rep Attendance screen — not sent.")
-        return {"ok": False, "message": "No WhatsApp chats set for rep attendance (Rep Attendance › Settings)."}
-    imgs = [i for i in run["images"] if i["style"] == run["style"] and os.path.exists(i["path"])]
-    if not imgs:
+                  "No WhatsApp chats for rep attendance — not sent.")
+        return {"ok": False, "message": "No WhatsApp chats for rep attendance — tick Rep attendance in a WhatsApp delivery "
+                                        "rule, or add chats in Rep Attendance › Settings."}
+    if skip is not None:     # sent from the review screen: the images again, as reviewed (unticked rows, the
+        _build(rid, run["day"], st, skip=skip)          # always-leave-out list and corrections as they are now)
+        run = R.get_run(rid)
+    imgs = [i for i in run["images"] if i["style"] in (run["style"], "manager") and os.path.exists(i["path"])]
+    if not imgs and not run["pdf"]:
         return {"ok": False, "message": "This run's images are missing — build them again."}
     d = date.fromisoformat(run["day"])
     c = run["counts"]
     caps = {"not_logged_out": f"Rep attendance {d:%d %b %Y} — not logged out yet ({c.get('not_logged_out', 0)})"
                               + (f" · not logged in: {c['not_logged_in']}" if c.get("working") else ""),
-            "logged_out": f"Rep attendance {d:%d %b %Y} — logged out ({c.get('logged_out', 0)})"}
-    pdf = run["pdf"] if st["send_pdf"] and run["pdf"] and os.path.exists(run["pdf"]) else ""
+            "logged_out": f"Rep attendance {d:%d %b %Y} — logged out ({c.get('logged_out', 0)})",
+            "by_manager": f"Field force attendance {d:%d %b %Y} — by ASM"}
+    pdf = run["pdf"] if run["pdf"] and os.path.exists(run["pdf"]) else ""
     state = {"sent": 0, "failed": []}
+    st["chats"] = [t["chat"] for t in tg]
 
     async def fn(page):
-        for chat in st["chats"]:
+        for t in tg:
+            chat = t["chat"]
+            mine = [im for im in imgs if t["images"] and im["group"] in t["groups"]]
+            doc = pdf if t["pdf"] else ""
+            if not mine and not doc:            # e.g. only 'Logged out' ticked and nobody has logged out yet
+                state["sent"] += 1
+                W.WA.log(f"{chat}: nothing to send — nobody in the image(s) this chat gets.")
+                continue
             try:
                 await W._open_chat(page, chat)
-                for im in imgs:
+                if t["pre_message"]:
+                    await W._send_text(page, W.fill_message(t["pre_message"], run["day"]), "The message before the images")
+                for im in mine:
                     await W._send_files(page, [im["path"]], caps.get(im["group"], ""), "photos")
-                if pdf:
-                    await W._send_files(page, [pdf], "", "document")
+                if doc:
+                    await W._send_files(page, [doc], "", "document")
                 state["sent"] += 1
-                W._log_delivery(None, chat, len(imgs) + (1 if pdf else 0), "sent", f"Rep attendance {run['day']}")
-                W.WA.log(f"{chat}: rep attendance sent ({len(imgs)} image(s)).")
+                W._log_delivery(None, chat, len(mine) + (1 if doc else 0), "sent", f"Rep attendance {run['day']}")
+                W.WA.log(f"{chat}: rep attendance sent ({len(mine)} image(s){' + PDF' if doc else ''}).")
             except Exception as e:
                 msg = str(e).splitlines()[0][:200]
                 state["failed"].append(f"{chat}: {msg}")

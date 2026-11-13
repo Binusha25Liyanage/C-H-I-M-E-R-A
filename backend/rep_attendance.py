@@ -136,6 +136,8 @@ def init_schema():
             log         TEXT NOT NULL DEFAULT '',
             sent_at     TEXT
         )""")
+    if "left_out" not in {r[1] for r in conn.execute("PRAGMA table_info(att_runs)")}:   # rows unticked for this send
+        conn.execute("ALTER TABLE att_runs ADD COLUMN left_out TEXT NOT NULL DEFAULT '[]'")
     conn.commit()
     conn.close()
 
@@ -245,25 +247,89 @@ def save_day(parsed, source, file_path=""):
     return {"day": day, "reps": len(seen), "kept_corrections": kept}
 
 
-def get_day(day):
+def always_left_out():
+    """Territories you never want on the images (test territories etc.) — Rep Attendance › Settings."""
+    try:
+        import automation_store as AS
+        return [str(x) for x in json.loads(AS.get_automation_settings().get("att_exclude") or "[]") if str(x).strip()]
+    except Exception:
+        return []
+
+
+def get_day(day, skip=()):
+    """The day as it goes on the images. Rows on the always-leave-out list (and `skip`, the rows you unticked
+    when reviewing a send) are moved to 'left_out' and don't count anywhere."""
     conn = db.get_connection()
     rows = [dict(zip(_ROW_COLS, r)) for r in conn.execute(
         f"SELECT {', '.join(_ROW_COLS)} FROM att_rows WHERE day=? ORDER BY CASE WHEN in_time='' THEN 1 ELSE 0 END, "
         "in_time, territory", (day,))]
     meta = conn.execute("SELECT source, file_name, generated_at, read_at FROM att_days WHERE day=?", (day,)).fetchone()
     conn.close()
+    always = {squash(t) for t in always_left_out()}
+    skipped = {squash(t) for t in skip or ()}
+    kept, left = [], []
     for r in rows:
         r["edited"] = bool(r["edited"])
         r["group"] = "logged_out" if r["out_time"] else "not_logged_out"
-    working = working_territories()
+        k = squash(r["territory"])
+        r["left_out"] = "always" if k in always else "this_send" if k in skipped else ""
+        (left if r["left_out"] else kept).append(r)
+    working = [t for t in working_territories() if squash(t) not in always]
     have = {squash(r["territory"]) for r in rows}
     missing = [t for t in working if squash(t) not in have]
-    lo = [r for r in rows if r["group"] == "logged_out"]
-    return {"day": day, "rows": rows,
+    lo = [r for r in kept if r["group"] == "logged_out"]
+    return {"day": day, "rows": kept, "left_out": left,
             "meta": dict(zip(["source", "file_name", "generated_at", "read_at"], meta)) if meta else None,
             "not_logged_in": missing, "working_count": len(working),
-            "counts": {"logged_in": len(rows), "not_logged_out": len(rows) - len(lo), "logged_out": len(lo),
-                       "not_logged_in": len(missing), "working": len(working), "edited": sum(r["edited"] for r in rows)}}
+            "counts": {"logged_in": len(kept), "not_logged_out": len(kept) - len(lo), "logged_out": len(lo),
+                       "not_logged_in": len(missing), "working": len(working), "edited": sum(r["edited"] for r in kept),
+                       "left_out": len(left)}}
+
+
+def last_seen(territories, day):
+    """{territory: {asm, rep, rep_type}} from the most recent earlier day each territory logged in — for
+    the territories that didn't log in today (SFA's export only lists those who did)."""
+    if not territories:
+        return {}
+    want = {squash(t): t for t in territories}
+    conn = db.get_connection()
+    rows = conn.execute("SELECT territory, asm, rep, rep_type FROM att_rows WHERE day<=? ORDER BY day DESC", (day,)).fetchall()
+    conn.close()
+    out = {}
+    for terr, asm, rep, typ in rows:
+        k = squash(terr)
+        if k in want and want[k] not in out and (asm or "").strip():
+            out[want[k]] = {"asm": asm.strip(), "rep": rep, "rep_type": typ}
+    return out
+
+
+def all_territories():
+    """Every territory Chimera knows — Outlet Updates' list (working ones flagged) plus any seen in rep
+    attendance — for the leave-out picker. [{territory, working}] working first, then A-Z."""
+    out = {}
+    try:
+        import outlet_store
+        for t in outlet_store.list_territories():
+            out[squash(t["territory"])] = {"territory": t["territory"], "working": bool(t["enabled"])}
+    except Exception:
+        pass
+    conn = db.get_connection()
+    for (terr,) in conn.execute("SELECT DISTINCT territory FROM att_rows"):
+        out.setdefault(squash(terr), {"territory": terr, "working": False})
+    conn.close()
+    return sorted(out.values(), key=lambda t: (not t["working"], t["territory"].lower()))
+
+
+def set_always_left_out(territory, on):
+    """Adds / removes a territory on the always-leave-out list."""
+    import automation_store as AS
+    cur = always_left_out()
+    keys = {squash(t) for t in cur}
+    if on and squash(territory) not in keys:
+        cur.append(str(territory).strip())
+    if not on:
+        cur = [t for t in cur if squash(t) != squash(territory)]
+    return AS.save_automation_settings({"att_exclude": cur})
 
 
 def working_territories():
@@ -333,11 +399,14 @@ def history(d_from, d_to, q=""):
         (d_from, d_to))]
     days = [r[0] for r in conn.execute("SELECT day FROM att_days WHERE day BETWEEN ? AND ? ORDER BY day", (d_from, d_to))]
     conn.close()
+    always = {squash(t) for t in always_left_out()}
+    for r in rows:
+        r["left_out"] = squash(r["territory"]) in always
     ql = (q or "").strip().lower()
     if ql:
         rows = [r for r in rows if ql in f"{r['territory']} {r['rep']} {r['rep_code']} {r['asm']} {r['region']}".lower()]
     summary = {}
-    for r in rows:
+    for r in [r for r in rows if not r["left_out"]]:
         s = summary.setdefault(r["territory"], {"territory": r["territory"], "rep": r["rep"], "asm": r["asm"], "days": 0,
                                                 "not_out": 0, "_mins": []})
         s["days"] += 1
@@ -380,10 +449,11 @@ def export_history(d_from, d_to, q="", folder=None):
     ws = wb.active
     ws.title = "Daily"
     sheet(ws, ["Date", "Territory", "Sales rep", "Rep code", "Rep type", "Logged in", "Logged out", "Region", "Area", "ASM",
-               "Distributor", "Phone", "Corrected"],
+               "Distributor", "Phone", "Corrected", "Left out"],
           [[r["day"], r["territory"], r["rep"], r["rep_code"], r["rep_type"], r["in_time"], r["out_time"] or "-",
-            r["region"], r["area"], r["asm"], r["distributor"], r["phone"], "yes" if r["edited"] else ""] for r in h["rows"]],
-          [11, 20, 30, 10, 12, 10, 10, 26, 16, 24, 30, 14, 9])
+            r["region"], r["area"], r["asm"], r["distributor"], r["phone"], "yes" if r["edited"] else "",
+            "always (test territory)" if r["left_out"] else ""] for r in h["rows"]],
+          [11, 20, 30, 10, 12, 10, 10, 26, 16, 24, 30, 14, 9, 20])
     ws2 = wb.create_sheet("By territory")
     sheet(ws2, ["Territory", "Sales rep", "ASM", "Days logged in", f"Days without login (of {len(h['days'])})",
                 "Average login", "Earliest login", "Days not logged out"],
@@ -397,7 +467,7 @@ def export_history(d_from, d_to, q="", folder=None):
 # Runs (download / build / send)
 # ---------------------------------------------------------------------------
 _RUN_COLS = ["id", "day", "started_at", "finished_at", "trigger", "slot", "status", "state", "style", "images", "pdf",
-             "counts", "message", "sent_at"]
+             "counts", "message", "sent_at", "left_out"]
 
 
 def start_run(day, trigger, slot=""):
@@ -410,7 +480,7 @@ def start_run(day, trigger, slot=""):
 
 
 def set_run(rid, **kw):
-    for k in ("images", "counts"):
+    for k in ("images", "counts", "left_out"):
         if k in kw and not isinstance(kw[k], str):
             kw[k] = json.dumps(kw[k])
     conn = db.get_connection()
@@ -423,6 +493,7 @@ def _run_row(r):
     x = dict(zip(_RUN_COLS, r))
     x["images"] = json.loads(x["images"] or "[]")
     x["counts"] = json.loads(x["counts"] or "{}")
+    x["left_out"] = json.loads(x["left_out"] or "[]")
     return x
 
 

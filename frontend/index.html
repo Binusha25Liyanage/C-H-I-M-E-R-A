@@ -640,7 +640,7 @@
             <p class="hint" style="margin:0;flex:1;">Who logged in to SFA and who logged out, from SFA's <b>Rep Attendance Report</b> &mdash; as two images
               (<b>not logged out yet</b> / <b>logged out</b>) in your <b>Classic</b> look or Chimera's <b>Professional</b> look, sent to WhatsApp
               at the times you set in Schedules. Reading the report never changes anything in SFA.</p>
-            <div class="heading-actions">
+            <div class="heading-actions att-actions">
               <label class="inline-date">Day <input type="date" id="att-day"></label>
               <button class="btn-outline" id="att-upload">Upload Excel</button>
               <button class="btn-primary" id="att-download">&#8635; Download from SFA</button>
@@ -658,7 +658,7 @@
             <div class="card" id="att-images-card">
               <div class="am-card-head" style="padding:0 0 10px;border:0;"><h3>Images</h3>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                  <div class="seg" id="att-style-seg"><button data-s="classic" class="on">Classic</button><button data-s="professional">Professional</button></div>
+                  <div class="seg" id="att-style-seg"><button data-s="classic" class="on">Classic</button><button data-s="professional">Professional</button><button data-s="nologo">No logo</button></div>
                   <button class="btn-outline btn-small" id="att-rebuild" title="Build the images again from the rows below (after corrections)">Rebuild images</button>
                   <button class="btn-outline btn-small" id="att-open-folder">Open folder</button>
                   <button class="btn-primary btn-small" id="att-send">Send to WhatsApp</button>
@@ -670,6 +670,9 @@
               <div class="card card-flush"><div class="am-card-head"><h3>Logged out</h3><span class="hint" id="att-n-lo"></span></div><div id="att-t-lo"></div></div>
             </div>
             <div class="card"><h3>Not logged in</h3><div id="att-nli"></div></div>
+            <div class="card" id="att-left-card" style="display:none;"><h3>Left out of the images</h3>
+              <p class="hint" style="margin-top:0;">Test territories and anything you never want sent. They stay in Chimera's data and History, but not on the images or in the counts.</p>
+              <div id="att-left"></div></div>
             <div class="card card-flush"><div class="am-card-head"><h3>Runs for this day</h3></div><div id="att-runs"></div></div>
           </div>
           <div class="tab-panel" id="att-panel-history" style="display:none;">
@@ -696,25 +699,62 @@
                 <div class="radio-row" id="att-style-r">
                   <label><input type="radio" name="att-style" value="classic"> Classic (your Lakmee Muster look)</label>
                   <label><input type="radio" name="att-style" value="professional"> Professional (Chimera)</label>
-                  <label><input type="radio" name="att-style" value="both"> Both</label></div>
-                <label class="field" id="att-send-style-f">When both are built, send <select id="att-send-style"><option value="classic">Classic</option><option value="professional">Professional</option></select></label>
+                  <label><input type="radio" name="att-style" value="nologo"> Professional (no logo)</label>
+                  <label><input type="radio" name="att-style" value="both"> All three</label></div>
+                <label class="field" id="att-send-style-f">When all three are built, send <select id="att-send-style"><option value="classic">Classic</option>
+                  <option value="professional">Professional</option><option value="nologo">Professional (no logo)</option></select></label>
                 <label class="ou-switch-row"><span><b>Also send the PDF</b><br><span class="hint">Both images in one PDF, as a document.</span></span>
                   <label class="switch2"><input type="checkbox" id="att-pdf"><span></span></label></label>
+                <label class="ou-switch-row"><span><b>Field Force Attendance</b><br><span class="hint">An extra image: every working territory
+                  grouped by its ASM (logged in / in the field / logged out / not logged in). For a territory that didn't log in, the ASM
+                  is the last one Chimera saw. Goes to the chats here, and to delivery rules that tick it.</span></span>
+                  <label class="switch2"><input type="checkbox" id="att-mgr"><span></span></label></label>
                 <p class="hint"><b>Not logged in</b> on the Professional image lists your working territories with no login &mdash; switch them on in
                   Outlet Updates › Working Territories.</p>
               </div>
               <div class="card">
                 <h3>WhatsApp chats</h3>
-                <p class="hint">The images go to each of these chats or groups.</p>
+                <p class="hint">Both images go to each of these chats or groups. To send only one image, or to add a message first,
+                  tick <b>Rep attendance</b> in a <b>WhatsApp › Delivery rule</b> instead. A chat in both gets the images once.</p>
                 <div class="rm-chips" id="att-chips"></div>
                 <div class="rm-addchat"><div class="wa-pick"><input id="att-chat" autocomplete="off" placeholder="Search or pick a chat…">
                     <button type="button" class="wa-pick-arrow" tabindex="-1" title="Show chats">&#9662;</button>
                     <div class="wa-list" id="att-chat-list" style="display:none;"></div></div>
                   <button class="btn-outline" id="att-chat-add" type="button">+ Add</button></div>
+                <div class="section-title">Also sent by delivery rules</div>
+                <div id="att-rule-targets"></div>
                 <div class="section-title">When</div>
                 <p class="hint">Set the times in <b>Schedules</b>: add a job, type <b>Rep attendance</b>, and mark any time <b>Ask me first</b> to approve before
                   it's sent. <button class="link-btn" id="att-to-sched">Open Schedules &rarr;</button></p>
               </div>
+            </div>
+            <div class="card">
+              <div class="am-card-head" style="padding:0 0 6px;border:0;"><h3>Titles on the Professional images</h3>
+                <button class="btn-outline btn-small" id="att-t-reset" type="button">Reset to defaults</button></div>
+              <p class="hint" style="margin-top:0;">For the Professional and no-logo looks (Classic keeps its "LOGGED IN DATE" title). Leave a box empty to use the default shown in it.</p>
+              <label class="field">Small top label <input id="att-t-kicker" maxlength="90"></label>
+              <div class="att-titles">
+                <div><div class="section-title">Not logged out yet</div>
+                  <label class="field">Title <input id="att-t-nlo_title" maxlength="90"></label>
+                  <label class="field">Subtitle <input id="att-t-nlo_sub" maxlength="90"></label></div>
+                <div><div class="section-title">Logged out</div>
+                  <label class="field">Title <input id="att-t-lo_title" maxlength="90"></label>
+                  <label class="field">Subtitle <input id="att-t-lo_sub" maxlength="90"></label></div>
+                <div><div class="section-title">Field Force Attendance</div>
+                  <label class="field">Title <input id="att-t-mgr_title" maxlength="90"></label>
+                  <label class="field">Subtitle <input id="att-t-mgr_sub" maxlength="90"></label></div>
+              </div>
+              <p class="hint" style="margin-bottom:0;">New titles show on the next images &mdash; click <b>Rebuild images</b> on the Day tab to update today's.</p>
+            </div>
+            <div class="card">
+              <h3>Always leave out (test territories)</h3>
+              <p class="hint" style="margin-top:0;">These territories are never put on the images or counted &mdash; on every day, including scheduled runs.
+                Type the territory as SFA shows it, or use <b>Leave out</b> on a row of the Day tab.</p>
+              <div class="rm-chips" id="att-ex-chips"></div>
+              <div class="rm-addchat"><div class="att-pick"><input id="att-ex" autocomplete="off" placeholder="Search or pick a territory…">
+                  <button type="button" class="att-pick-arrow" id="att-ex-arrow" tabindex="-1" title="Show all territories">&#9662;</button>
+                  <div class="att-pick-list" id="att-ex-list" style="display:none;"></div></div>
+                <button class="btn-outline" id="att-ex-add" type="button">+ Add</button></div>
             </div>
             <div style="display:flex;gap:10px;align-items:center;"><button class="btn-primary" id="att-save">Save settings</button><span id="att-save-msg"></span></div>
           </div>

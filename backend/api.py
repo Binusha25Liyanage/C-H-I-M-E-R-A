@@ -959,6 +959,7 @@ class Api:
     def get_rep_attendance(self, day=None):
         import rep_attendance as R
         import rep_attendance_automation as RA
+        import rep_attendance_images as RI
         from datetime import date as _d
         day = (day or _d.today().isoformat())[:10]
         info = R.get_day(day)
@@ -967,8 +968,12 @@ class Api:
         latest = next((r for r in runs if r["images"]), None)
         live = RA.LIVE.snapshot()
         return {"ok": True, **info, "runs": runs, "latest": latest, "days": R.days_list(45),
+                "all_territories": R.all_territories(),
                 "settings": {"att_url": st["url"], "att_style": st["style"], "att_send_style": st["send_style"],
-                             "att_chats": st["chats"], "att_send_pdf": "1" if st["send_pdf"] else "0"},
+                             "att_chats": st["chats"], "att_send_pdf": "1" if st["send_pdf"] else "0",
+                             "att_exclude": R.always_left_out(), "att_by_manager": "1" if st["by_manager"] else "0",
+                             "att_titles": st["titles"], "titles_default": RI.DEFAULT_TITLES, "titles_used": RI.titles(st["titles"])},
+                "targets": RA.targets(st),
                 "live_active": bool(live.get("active")), "today": _d.today().isoformat(),
                 "pending": [r for r in R.list_runs(20) if r["state"] == "pending_review"]}
 
@@ -1004,10 +1009,22 @@ class Api:
         import rep_attendance_automation as RA
         return RA.rebuild(day)
 
-    def send_rep_attendance(self, run_id):
-        """Send a run's images now (also approves a run waiting for approval)."""
+    def review_rep_attendance(self, run_id):
+        """What sending this run would do: chats, their images, and the rows (untick to leave out)."""
         import rep_attendance_automation as RA
-        return RA.send(int(run_id), wait=False)
+        return RA.review(int(run_id))
+
+    def send_rep_attendance(self, run_id, skip=None):
+        """Send a run's images now (also approves a run waiting for approval). skip = territories unticked on
+        the review screen — the images are built again without them before sending."""
+        import rep_attendance_automation as RA
+        return RA.send(int(run_id), wait=False, skip=list(skip) if skip is not None else None)
+
+    def set_rep_attendance_left_out(self, territory, on=True):
+        """Always leave a territory off the images (test territories), or put it back."""
+        import rep_attendance as R
+        ok, msg = R.set_always_left_out(territory, bool(on))
+        return {"ok": ok, "message": msg}
 
     def discard_rep_attendance(self, run_id):
         import rep_attendance as R
@@ -1028,7 +1045,7 @@ class Api:
 
     def save_rep_attendance_settings(self, values):
         vals = {k: v for k, v in (values or {}).items()
-                if k in ("att_url", "att_style", "att_send_style", "att_chats", "att_send_pdf")}
+                if k in ("att_url", "att_style", "att_send_style", "att_chats", "att_send_pdf", "att_exclude", "att_by_manager", "att_titles")}
         ok, msg = automation_store.save_automation_settings(vals)
         return {"ok": ok, "message": msg}
 
@@ -1328,7 +1345,7 @@ class Api:
         if not run:
             return {"ok": False, "message": "That run no longer exists."}
         return {"ok": True, "run": run, "items": report_pipeline.image_items(run),
-                "has_rules": bool([r for r in whatsapp_sender.list_rules() if r["enabled"]])}
+                "has_rules": bool(whatsapp_sender.daily_rules())}
 
     def get_image_b64(self, path):
         """Only serves images inside Chimera's own export folder."""
@@ -1368,7 +1385,13 @@ class Api:
     def get_whatsapp_overview(self):
         st = whatsapp_sender.linked_status()
         settings = automation_store.get_automation_settings()
+        try:
+            import rep_attendance_automation as _RA
+            att_mgr_title = _RA.group_label("by_manager")
+        except Exception:
+            att_mgr_title = "Field Force Attendance"
         return {"rules": whatsapp_sender.list_rules(), "deliveries": whatsapp_sender.list_deliveries(20),
+                "att_mgr_title": att_mgr_title,
                 "profile_exists": st["profile_exists"], "chats": st["chats"],
                 "groups": sorted(sfa_store.get_groups().keys()),
                 "settings": {k: settings[k] for k in ("wa_auto_send", "wa_show_browser", "wa_style")},
