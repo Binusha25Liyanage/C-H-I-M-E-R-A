@@ -50,7 +50,7 @@ function atRenderDay() {
     ? card("LOGGED IN", c.logged_in, esc(atLong(d.day)))
       + card("NOT LOGGED OUT YET", c.not_logged_out, "still in the field")
       + card("LOGGED OUT", c.logged_out, "finished the day")
-      + card("NOT LOGGED IN", c.working ? c.not_logged_in : "&ndash;", c.working ? `of ${c.working} working territories` : "set working territories in Outlet Updates", c.not_logged_in ? "am-bad" : "")
+      + card("NOT LOGGED IN", c.working ? c.not_logged_in : "&ndash;", c.working ? `of ${c.working} working territories` : "no working territories yet — see Settings", c.not_logged_in ? "am-bad" : "")
     : `<div class="rn-quiet" style="grid-column:1/-1;">No rep attendance for ${esc(atLong(d.day))} yet — <b>Download from SFA</b> or <b>Upload Excel</b>.</div>`;
   const m = d.meta;
   document.getElementById("att-source").innerHTML = m ? `From ${m.source === "sfa" ? "SFA" : "an uploaded file"}${m.file_name ? ` (${esc(m.file_name)})` : ""}
@@ -87,7 +87,7 @@ function atRenderDay() {
   document.getElementById("att-t-lo").innerHTML = table(lo, true);
   document.getElementById("att-n-nlo").textContent = nlo.length ? `${nlo.length} rep(s)` : "";
   document.getElementById("att-n-lo").textContent = lo.length ? `${lo.length} rep(s)` : "";
-  document.getElementById("att-nli").innerHTML = !c.working ? `<p class="hint">Switch on your working territories in <b>Outlet Updates › Working Territories</b> to see who hasn't logged in.</p>`
+  document.getElementById("att-nli").innerHTML = !c.working ? `<p class="hint">Chimera doesn't know your working territories yet — see <b>Settings › Working territories</b>.</p>`
     : d.not_logged_in.length ? `<div class="rm-chips">${d.not_logged_in.map(t => `<span class="rm-chip att-nli">${esc(t)}</span>`).join("")}</div>`
     : d.rows.length ? `<p class="hint" style="color:#1f7a43;">Every working territory has logged in.</p>` : `<p class="hint">—</p>`;
   const left = d.left_out || [];
@@ -228,6 +228,9 @@ function atRenderSettings() {
   AT_TK.forEach(k => { const el = document.getElementById("att-t-" + k); el.value = (s.att_titles || {})[k] || ""; el.placeholder = s.titles_default[k]; });
   document.getElementById("att-pdf").checked = s.att_send_pdf === "1";
   document.getElementById("att-mgr").checked = s.att_by_manager === "1";
+  document.querySelectorAll('input[name="att-wk"]').forEach(r => { r.checked = r.value === s.att_working; });
+  document.getElementById("att-wk-days").value = s.att_working_days;
+  atRenderWorking();
   const rt = (AT.data.targets || []).filter(t => t.from.includes("delivery rule"));
   document.getElementById("att-rule-targets").innerHTML = rt.length ? `<div class="rm-chips">${rt.map(t => `<span class="rm-chip" title="${esc(t.groups.map(g => ({ logged_out: "Logged out", by_manager: s.titles_used.mgr_title }[g] || "Not logged out yet")).join(" + ") + (t.pdf ? " + PDF" : ""))}">${esc(t.chat)}</span>`).join("")}</div>
       <button class="link-btn" id="att-to-wa">Edit in WhatsApp › Delivery rules &rarr;</button>`
@@ -236,6 +239,20 @@ function atRenderSettings() {
 
   atRenderChips();
 }
+function atRenderWorking() {
+  const w = AT.data.working, miss = AT.data.missing_days || [];
+  const el = document.getElementById("att-wk-status");
+  if (!w) { el.innerHTML = ""; return; }
+  const src = { auto: `logins in the last ${w.days} days`, manual: "the Outlet Updates switches", both: `logins in the last ${w.days} days + the Outlet Updates switches` }[w.mode];
+  el.innerHTML = `<b>${w.count}</b> working territories today, from ${src}.`
+    + (w.mode !== "manual" ? ` Chimera has <b>${w.have_days} of ${w.days}</b> days.` : "")
+    + (w.mode === "auto" && !w.have_days ? ` <span class="error">No attendance read yet — using the Outlet Updates switches (${w.manual_count}) until then.</span>` : "");
+  const btn = document.getElementById("att-wk-fill");
+  btn.style.display = w.mode !== "manual" ? "" : "none";
+  btn.disabled = !miss.length;
+  btn.innerHTML = miss.length ? `&#8635; Read the ${miss.length} missing day(s) from SFA` : "&#10003; Every day of the window is read";
+}
+
 function atRenderChips() {
   document.getElementById("att-ex-chips").innerHTML = AT.ex.length ? AT.ex.map(c => `<span class="rm-chip att-nli">${esc(c)} <button type="button" data-att-rx="${esc(c)}">&#10005;</button></span>`).join("")
     : `<span class="hint">None — every territory goes on the images.</span>`;
@@ -298,6 +315,49 @@ function atRenderChips() {
     document.getElementById("att-send-style-f").style.display = r.value === "both" && r.checked ? "" : document.querySelector('input[name="att-style"]:checked').value === "both" ? "" : "none"; }));
   const addChat = () => { const i = document.getElementById("att-chat"), val = i.value.trim(); if (val && !AT.chats.includes(val)) AT.chats.push(val); i.value = ""; atRenderChips(); };
   document.getElementById("att-chat-add").onclick = addChat;
+  // Read earlier days from SFA: fills the working-territories window (read only, no images, nothing sent)
+  document.getElementById("att-wk-fill").onclick = async (e) => {
+    const btn = e.currentTarget, msg = document.getElementById("att-wk-msg");
+    const r = await atApi().start_rep_attendance_backfill(false);
+    if (!r.ok) { msg.innerHTML = `<span class="error">${esc(r.message)}</span>`; return; }
+    btn.disabled = true; msg.innerHTML = `<span class="spinner"></span> ${esc(r.message)}`;
+    const wait = setInterval(async () => {
+      let s; try { s = await atApi().get_rep_attendance_live(); } catch (x) { return; }
+      if (s.active) { const last = (s.log || []).filter(l => /^\[\d+\/\d+\]|: \d+ rep|nobody/.test(l.msg)).slice(-1)[0];
+        if (last) msg.innerHTML = `<span class="spinner"></span> ${esc(last.msg.slice(0, 90))}`; return; }
+      clearInterval(wait);
+      msg.innerHTML = s.result ? `<span class="${s.result.ok ? "" : "error"}">${esc(s.result.message)}</span>` : "";
+      try { const d = await atApi().get_rep_attendance(AT.day); AT.data.working = d.working; AT.data.missing_days = d.missing_days;
+        AT.data.all_territories = d.all_territories; } catch (x) { /* keep */ }
+      atRenderWorking();
+    }, 1500);
+  };
+  // Load my chats: reads your WhatsApp chat list (as on the WhatsApp screen) so the picker can offer them
+  document.getElementById("att-chat-sync").onclick = async (e) => {
+    const btn = e.currentTarget, msg = document.getElementById("att-chat-sync-msg");
+    const r = await atApi().whatsapp_load_chats();
+    if (!r.ok) { msg.innerHTML = `<span class="error">${esc(r.message)}</span>`; return; }
+    btn.disabled = true; msg.innerHTML = `<span class="spinner"></span> Opening WhatsApp and reading your chats…`;
+    const wait = setInterval(async () => {
+      let s; try { s = await atApi().get_whatsapp_live(); } catch (x) { return; }
+      if (s.active) { const last = (s.log || []).slice(-1)[0]; if (last) msg.innerHTML = `<span class="spinner"></span> ${esc(last.msg.slice(0, 80))}`; return; }
+      clearInterval(wait); btn.disabled = false;
+      try { const c = await atApi().get_whatsapp_chat_list(); if (c && c.chats && c.chats.length) SH.waChats = c.chats; } catch (x) { /* keep the old list */ }
+      const n = (SH.waChats || []).length;
+      msg.innerHTML = s.result && !s.result.ok ? `<span class="error">${esc(s.result.message)}</span>`
+        : `${n} chats loaded — click the box above to pick.`;
+    }, 1200);
+  };
+  // Get territories from SFA: the same as Outlet Updates › Detect territories (reads SFA, changes nothing)
+  document.getElementById("att-terr-sync").onclick = async (e) => {
+    const btn = e.currentTarget, msg = document.getElementById("att-terr-sync-msg");
+    btn.disabled = true; msg.innerHTML = `<span class="spinner"></span> Logging in to SFA and reading every territory (nothing is changed)…`;
+    let r; try { r = await atApi().detect_outlet_territories(); } catch (x) { r = { ok: false, message: String(x) }; }
+    btn.disabled = false;
+    msg.innerHTML = r.ok ? `${esc(r.message)} Click the box above to pick.`
+      : `<span class="error">${esc(r.message)}</span>`;
+    if (r.ok) { try { const d = await atApi().get_rep_attendance(AT.day); AT.data.all_territories = d.all_territories; } catch (x) { /* keep */ } }  // your unsaved edits stay
+  };
   document.getElementById("att-t-reset").onclick = () => AT_TK.forEach(k => { document.getElementById("att-t-" + k).value = ""; });
   const addEx = (v) => { const i = document.getElementById("att-ex"), val = (typeof v === "string" ? v : i.value).trim();
     if (val && !AT.ex.some(x => x.toLowerCase() === val.toLowerCase())) AT.ex.push(val); i.value = ""; atRenderChips(); exList(false); };
@@ -331,7 +391,9 @@ function atRenderChips() {
     const r = await atApi().save_rep_attendance_settings({ att_url: document.getElementById("att-url").value.trim(),
       att_style: (document.querySelector('input[name="att-style"]:checked') || {}).value || "both", att_send_style: document.getElementById("att-send-style").value,
       att_chats: AT.chats, att_exclude: (() => { const v = document.getElementById("att-ex").value.trim(); if (v && !AT.ex.includes(v)) AT.ex.push(v); return AT.ex; })(), att_send_pdf: document.getElementById("att-pdf").checked ? "1" : "0", att_by_manager: document.getElementById("att-mgr").checked ? "1" : "0",
-      att_titles: Object.fromEntries(AT_TK.map(k => [k, document.getElementById("att-t-" + k).value.trim()])) });
+      att_titles: Object.fromEntries(AT_TK.map(k => [k, document.getElementById("att-t-" + k).value.trim()])),
+      att_working: (document.querySelector('input[name="att-wk"]:checked') || {}).value || "auto",
+      att_working_days: String(document.getElementById("att-wk-days").value || "14") });
     document.getElementById("att-save-msg").innerHTML = `<span class="${r.ok ? "hint" : "error"}">${esc(r.ok ? "Saved." : r.message)}</span>`;
     if (r.ok) loadRepAttendance();
   };

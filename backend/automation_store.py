@@ -86,7 +86,11 @@ DEFAULT_AUTOMATION = {
     "att_chats": "[]",                   #   WhatsApp chats / groups that get the images (JSON list)
     "att_send_pdf": "0",
     "att_exclude": "[]",
-    "att_by_manager": "0",               #   also build Field Force Attendance (every working territory by ASM)                 #   territories always left off the images (test territories) (JSON list)                 #   also send the PDF (as a document)
+    "att_by_manager": "0",
+    "startup_full_day": "",              # the day the splash screen last ran its full startup sync
+    "att_working": "auto",               #   working territories: auto (logins in the last N days) | manual | both
+    "att_working_days": "14",
+    "att_titles": "{}",                  #   your titles on the Professional images (JSON; blank = default)               #   also build Field Force Attendance (every working territory by ASM)                 #   territories always left off the images (test territories) (JSON list)                 #   also send the PDF (as a document)
     "auto_rep_attendance": "1",          #   Schedules › Automations switch for the job type
     "notify_desktop": "1",               # Windows notifications (master switch)
     "notify_started": "1",               #   a scheduled time arrived / a run started
@@ -388,7 +392,7 @@ def save_automation_settings(values):
     for k, v in (values or {}).items():
         if k not in DEFAULT_AUTOMATION:
             continue
-        v = str(v).strip() if not isinstance(v, list) else v
+        v = str(v).strip() if not isinstance(v, (list, dict)) else v
         if k == "run_times":
             items = v if isinstance(v, list) else [x for x in v.split(",") if x.strip()]
             times = set()
@@ -420,11 +424,26 @@ def save_automation_settings(values):
                    "notify_finished", "notify_failed", "att_send_pdf", "auto_rep_attendance", "att_by_manager"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
         elif k == "att_style":
-            if v not in ("classic", "professional", "both"):
-                return False, "Rep attendance look must be classic, professional or both."
+            if v not in ("classic", "professional", "nologo", "both"):
+                return False, "Rep attendance look must be classic, professional, professional without logo, or all."
         elif k == "att_send_style":
-            if v not in ("classic", "professional"):
-                return False, "The look to send must be classic or professional."
+            if v not in ("classic", "professional", "nologo"):
+                return False, "The look to send must be classic, professional or professional without logo."
+        elif k == "att_working":
+            if v not in ("auto", "manual", "both"):
+                return False, "Working territories must come from logins, Outlet Updates, or both."
+        elif k == "att_working_days":
+            if not v.isdigit() or not 1 <= int(v) <= 90:
+                return False, "Days must be a number from 1 to 90."
+        elif k == "att_titles":
+            import json as _json
+            try:
+                d = v if isinstance(v, dict) else _json.loads(v or "{}")
+            except ValueError:
+                return False, "Titles must be a set of names."
+            keys = ("kicker", "nlo_title", "nlo_sub", "lo_title", "lo_sub", "mgr_title", "mgr_sub")
+            d = {k2: " ".join(str(d.get(k2) or "").split())[:90] for k2 in keys if str(d.get(k2) or "").strip()}
+            v = _json.dumps(d)
         elif k in ("att_chats", "att_exclude"):
             import json as _json
             try:

@@ -32,7 +32,8 @@ KIND_WORDS = {
                  "sync": "Updating the distributor list", "add": "Adding a loading"},
     "itinerary": {"itinerary": "Reading itineraries", "detect": "Finding territories"},
     "outlets": {"routes": "Reading SFA's route list", "sequence": "Rep sheets — reading / saving in SFA"},
-    "attendance": {"attendance": "Rep attendance — download, images, WhatsApp"},
+    "attendance": {"attendance": "Rep attendance — download, images, WhatsApp",
+                   "backfill": "Rep attendance — reading earlier days from SFA"},
     "whatsapp": {"send": "Sending reports", "reminder": "Sending reminders", "attendance": "Sending rep attendance", "test": "Sending a test message",
                  "link": "Linking WhatsApp", "chats": "Loading your chats"},
 }

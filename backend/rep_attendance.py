@@ -274,7 +274,7 @@ def get_day(day, skip=()):
         k = squash(r["territory"])
         r["left_out"] = "always" if k in always else "this_send" if k in skipped else ""
         (left if r["left_out"] else kept).append(r)
-    working = [t for t in working_territories() if squash(t) not in always]
+    working = [t for t in working_territories(day) if squash(t) not in always]
     have = {squash(r["territory"]) for r in rows}
     missing = [t for t in working if squash(t) not in have]
     lo = [r for r in kept if r["group"] == "logged_out"]
@@ -307,15 +307,16 @@ def all_territories():
     """Every territory Chimera knows — Outlet Updates' list (working ones flagged) plus any seen in rep
     attendance — for the leave-out picker. [{territory, working}] working first, then A-Z."""
     out = {}
+    working = {squash(t) for t in working_territories()}
     try:
         import outlet_store
         for t in outlet_store.list_territories():
-            out[squash(t["territory"])] = {"territory": t["territory"], "working": bool(t["enabled"])}
+            out[squash(t["territory"])] = {"territory": t["territory"], "working": squash(t["territory"]) in working}
     except Exception:
         pass
     conn = db.get_connection()
     for (terr,) in conn.execute("SELECT DISTINCT territory FROM att_rows"):
-        out.setdefault(squash(terr), {"territory": terr, "working": False})
+        out.setdefault(squash(terr), {"territory": terr, "working": squash(terr) in working})
     conn.close()
     return sorted(out.values(), key=lambda t: (not t["working"], t["territory"].lower()))
 
@@ -332,13 +333,80 @@ def set_always_left_out(territory, on):
     return AS.save_automation_settings({"att_exclude": cur})
 
 
-def working_territories():
-    """Territories switched on in Outlet Updates › Working Territories."""
+WORKING_MODES = ("auto", "manual", "both")
+
+
+def working_settings():
+    """How Chimera knows which territories are working (Rep Attendance › Settings):
+    auto   — any territory a rep logged in to SFA in the last N days (from the rep attendance it reads)
+    manual — the territories switched on in Outlet Updates › Working Territories
+    both   — either of those."""
+    try:
+        import automation_store as AS
+        s = AS.get_automation_settings()
+    except Exception:
+        s = {}
+    mode = s.get("att_working") if s.get("att_working") in WORKING_MODES else "auto"
+    try:
+        n = max(1, min(90, int(s.get("att_working_days") or 14)))
+    except ValueError:
+        n = 14
+    return mode, n
+
+
+def _manual_working():
     try:
         import outlet_store
         return [t["territory"] for t in outlet_store.list_territories(enabled_only=True)]
     except Exception:
         return []
+
+
+def window_days(day, n):
+    from datetime import timedelta
+    d = date.fromisoformat(day)
+    return [(d - timedelta(days=i)).isoformat() for i in range(n - 1, -1, -1)]
+
+
+def recent_logins(day, n):
+    """{territory: last day it logged in} over the n days ending on `day` (inclusive)."""
+    days = window_days(day, n)
+    conn = db.get_connection()
+    rows = conn.execute("SELECT territory, MAX(day) FROM att_rows WHERE day BETWEEN ? AND ? AND in_time<>'' "
+                        "GROUP BY territory", (days[0], days[-1])).fetchall()
+    conn.close()
+    return {t: d for t, d in rows}
+
+
+def working_info(day=None):
+    """What the working list is built from, for the screen: mode, days, how many of those days Chimera has."""
+    day = day or date.today().isoformat()
+    mode, n = working_settings()
+    days = window_days(day, n)
+    conn = db.get_connection()
+    have = conn.execute("SELECT COUNT(*) FROM att_days WHERE day BETWEEN ? AND ?", (days[0], days[-1])).fetchone()[0]
+    conn.close()
+    return {"mode": mode, "days": n, "have_days": have, "from": days[0], "to": day,
+            "count": len(working_territories(day)), "manual_count": len(_manual_working())}
+
+
+def working_territories(day=None):
+    """The working territories on `day` (default today) — see working_settings(). Automatic mode with no
+    attendance read yet falls back to the Outlet Updates switches, so the list is never empty by accident."""
+    day = day or date.today().isoformat()
+    mode, n = working_settings()
+    manual = _manual_working() if mode in ("manual", "both") else []
+    auto = list(recent_logins(day, n)) if mode in ("auto", "both") else []
+    if mode == "auto" and not auto:
+        manual = _manual_working()
+    out, seen = [], set()
+    spelled = {squash(t): t for t in _manual_working()}           # prefer Outlet Updates' spelling
+    for t in manual + auto:
+        k = squash(t)
+        if k not in seen:
+            seen.add(k)
+            out.append(spelled.get(k, t))
+    return sorted(out, key=str.lower)
 
 
 def edit_row(day, territory, rep=None, in_time=None, out_time=None):

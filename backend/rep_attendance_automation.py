@@ -46,9 +46,27 @@ def settings():
         chats = []
     return {"url": s.get("att_url") or R.DEFAULT_URL, "style": s.get("att_style") or "both",
             "send_style": s.get("att_send_style") or "classic", "chats": chats, "send_pdf": s.get("att_send_pdf") == "1",
-            "by_manager": s.get("att_by_manager") == "1",
+            "by_manager": s.get("att_by_manager") == "1", "titles": _json_dict(s.get("att_titles")),
             "timeout_ms": int(s.get("page_timeout_seconds") or 60) * 1000, "headless": s.get("headless", "1") == "1",
             "wa_headless": s.get("wa_show_browser") != "1"}
+
+
+def _json_dict(v):
+    try:
+        d = json.loads(v or "{}")
+        return d if isinstance(d, dict) else {}
+    except ValueError:
+        return {}
+
+
+LOOKS = ("classic", "professional", "nologo")
+
+
+def looks(st):
+    """The looks to build, and the one to send."""
+    built = list(LOOKS) if st["style"] == "both" else [st["style"]]
+    send = st["send_style"] if st["send_style"] in built else built[0]
+    return built, send
 
 
 def output_folder(day):
@@ -143,7 +161,8 @@ async def _with_browser(cfg, st, body):
 def _build(rid, day, st, as_of=None, skip=()):
     info = R.get_day(day, skip)
     info["as_of"] = as_of or datetime.now().strftime("%H:%M")
-    styles = ["classic", "professional"] if st["style"] == "both" else [st["style"]]
+    info["titles"] = st.get("titles") or {}
+    styles, send_style = looks(st)
     folder = output_folder(day)
     images, pdfs = [], []
     for style in styles:
@@ -153,14 +172,19 @@ def _build(rid, day, st, as_of=None, skip=()):
             pdfs.append(out["pdf"])
     if st.get("by_manager"):            # Field Force Attendance — the extra image, grouped by ASM
         info["last_seen"] = R.last_seen(info["not_logged_in"], day)
-        images += RI.build_by_manager(day, info, folder)["images"]
-    send_style = st["send_style"] if st["style"] == "both" else st["style"]
-    R.set_run(rid, style=send_style, images=images, pdf=next((p for p in pdfs if send_style in os.path.basename(p)), ""),
+        images += RI.build_by_manager(day, info, folder, logo=send_style != "nologo")["images"]
+    R.set_run(rid, style=send_style, images=images, pdf=next((p for p in pdfs if p.endswith(f"_{send_style}.pdf")), ""),
               counts=info["counts"], left_out=sorted(skip or ()))
     return info, images
 
 
 GROUP_LABEL = {"not_logged_out": "Not logged out yet", "logged_out": "Logged out", "by_manager": "Field Force Attendance"}
+
+
+def group_label(g, st=None):
+    if g == "by_manager":
+        return RI.titles((st or settings()).get("titles"))["mgr_title"]
+    return GROUP_LABEL[g]
 ALL_GROUPS = ("not_logged_out", "logged_out", "by_manager")
 
 
@@ -207,7 +231,7 @@ def review(rid):
             if r["left_out"] != "always"]
     rows.sort(key=lambda r: (r["group"] != "not_logged_out", r["in_time"], r["territory"]))
     import whatsapp_sender as W
-    tg = [{**t, "group_labels": [GROUP_LABEL[g] for g in t["groups"]] if t["images"] else [],
+    tg = [{**t, "group_labels": [group_label(g) for g in t["groups"]] if t["images"] else [],
            "pre_message": W.fill_message(t["pre_message"], run["day"])} for t in targets()]
     return {"ok": True, "run": run, "targets": tg, "rows": rows,
             "always_left_out": [r["territory"] for r in info["left_out"] if r["left_out"] == "always"],
@@ -239,7 +263,7 @@ def send(rid, wait=True, skip=None):
     caps = {"not_logged_out": f"Rep attendance {d:%d %b %Y} — not logged out yet ({c.get('not_logged_out', 0)})"
                               + (f" · not logged in: {c['not_logged_in']}" if c.get("working") else ""),
             "logged_out": f"Rep attendance {d:%d %b %Y} — logged out ({c.get('logged_out', 0)})",
-            "by_manager": f"Field force attendance {d:%d %b %Y} — by ASM"}
+            "by_manager": f"{RI.titles(st.get('titles'))['mgr_title']} — {d:%d %b %Y}"}
     pdf = run["pdf"] if run["pdf"] and os.path.exists(run["pdf"]) else ""
     state = {"sent": 0, "failed": []}
     st["chats"] = [t["chat"] for t in tg]
@@ -363,6 +387,110 @@ def run(day=None, trigger="manual", slot="", review=False, send=False, headless=
         if rid:
             return _finish(rid, "failed", f"Unexpected error: {type(e).__name__}: {e}")
         raise
+
+
+def missing_days(n=None, today=None):
+    """Earlier days in the working window that Chimera hasn't read yet (today is read by the normal run)."""
+    today = today or date.today().isoformat()
+    n = n or R.working_settings()[1]
+    have = {x["day"] for x in R.days_list(400)}
+    return [d for d in R.window_days(today, n)[:-1] if d not in have]
+
+
+def backfill(days=None, headless=None):
+    """Reads the earlier days of the working window from SFA (one Rep Attendance Report per day, read only,
+    no images, nothing sent) so 'working territories' is right from the start."""
+    st = settings()
+    if headless is not None:
+        st["headless"] = headless
+    cfg = sfa_config.load_config()
+    todo = days if days is not None else missing_days()
+    LIVE.reset(kind="backfill", trigger="manual", steps=STEPS, lanes=[_lane()])
+    if not todo:
+        res = {"ok": True, "status": "done", "message": "Nothing to read — Chimera already has every day of the window."}
+        LIVE.set(active=False, phase="done", result=res)
+        return res
+    if not (cfg.get("login_url") and cfg.get("username") and cfg.get("password")):
+        res = {"ok": False, "status": "failed", "message": "SFA login isn't set up — Settings › SFA Connection."}
+        LIVE.set(active=False, phase="done", result=res)
+        return res
+    if not AS.acquire_lock(f"rep attendance history ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder() or {}
+        res = {"ok": False, "status": "busy", "message": f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."}
+        LIVE.set(active=False, phase="done", result=res)
+        return res
+    done, empty, failed = [], [], []
+
+    async def body(page):
+        for i, day in enumerate(todo, 1):
+            if LIVE.cancelled():
+                break
+            LIVE.log(f"[{i}/{len(todo)}] {day}: reading SFA's Rep Attendance Report…")
+            for s in STEPS:
+                LIVE.step(0, s, "pending")
+            try:
+                path = await _download(page, cfg, st["url"], day, st["timeout_ms"])
+                parsed = R.read_excel(path)
+                if parsed["day"] != day:
+                    raise R.ReadError(f"SFA's file is for {parsed['day']}, not {day}")
+                saved = R.save_day(parsed, "sfa", path)
+                done.append(day)
+                LIVE.log(f"{day}: {saved['reps']} rep(s) logged in.")
+            except StepError as e:
+                if "no rep attendance" in e.message:
+                    empty.append(day)
+                    R.save_day({"day": day, "rows": []}, "sfa")      # remembered, so it isn't read again
+                    LIVE.log(f"{day}: nobody logged in (holiday / Sunday?).")
+                else:
+                    failed.append(day)
+                    LIVE.log(f"{day}: {e.message}", "warn")
+            except R.ReadError as e:
+                failed.append(day)
+                LIVE.log(f"{day}: {e}", "warn")
+    try:
+        asyncio.run(_with_browser(cfg, st, body))
+    except StepError as e:
+        failed.extend(d for d in todo if d not in done and d not in empty and d not in failed)
+        LIVE.log(e.message, "error")
+    except Exception as e:
+        if not LIVE.cancelled():
+            LIVE.log(f"Unexpected error: {type(e).__name__}: {e}", "error")
+    finally:
+        AS.release_lock()
+    if LIVE.cancelled():
+        res = {"ok": False, "status": "cancelled", "message": f"Stopped by you — {len(done)} day(s) read."}
+    else:
+        info = R.working_info()
+        res = {"ok": not failed, "status": "done" if not failed else "partial",
+               "message": f"Read {len(done)} earlier day(s) from SFA" + (f", {len(empty)} with no logins" if empty else "")
+                          + (f"; couldn't read {len(failed)}: {', '.join(failed[:5])}" if failed else "")
+                          + f". Working territories now: {info['count']}."}
+    LIVE.set(active=False, phase="done", result=res)
+    return res
+
+
+def start_backfill(headless=None):
+    import itinerary_automation, loading_automation, sequence_automation
+    if LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active") \
+            or itinerary_automation.LIVE.snapshot().get("active") or sequence_automation.LIVE.snapshot().get("active"):
+        return {"ok": False, "message": "Another SFA run is already in progress."}
+    todo = missing_days()
+    if not todo:
+        return {"ok": False, "message": "Chimera already has every day of the window — nothing to read."}
+    LIVE.reset(kind="backfill", trigger="manual")
+
+    def guarded():
+        try:
+            res = backfill(todo, headless)
+        except Exception as e:
+            res = {"ok": False, "status": "failed", "message": f"Unexpected error: {type(e).__name__}: {e}"}
+        if LIVE.snapshot().get("active"):
+            LIVE.set(active=False, phase="done", result=res)
+
+    t = threading.Thread(target=guarded, daemon=True, name="chimera-attendance-backfill")
+    _ACTIVE["thread"] = t
+    t.start()
+    return {"ok": True, "message": f"Reading {len(todo)} earlier day(s) from SFA.", "days": todo}
 
 
 def _after_download(rid, day, path, st, review, send_now, source):

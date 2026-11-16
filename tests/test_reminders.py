@@ -134,7 +134,8 @@ class RemindersTest(unittest.TestCase):
         st = {(s["send_at"], s["status"]) for s in R.recent_sends()}
         self.assertEqual(st, {("10:00", "sent"), ("12:00", "skipped"), ("14:00", "skipped")})
         import activity
-        ev = [e for e in activity.events(DAY.isoformat(), DAY.isoformat()) if e["process"] == "whatsapp"]
+        today = date.today().isoformat()      # the Activity Monitor files a send under when it was recorded
+        ev = [e for e in activity.events(today, today) if e["process"] == "whatsapp"]
         self.assertTrue(any(e["title"].startswith("Reminder skipped") for e in ev))
         self.assertTrue(any("12.15 PM report" in e["title"] for e in ev))
         self.assertTrue(R.plan_day(DAY)[0]["done"] == "sent")

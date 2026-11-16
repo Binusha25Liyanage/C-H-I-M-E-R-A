@@ -111,6 +111,9 @@ function renderLdSettings() {
   document.getElementById("al-for").value = s.add_loading_for || "";
   document.getElementById("al-company").value = s.add_loading_company || "";
   document.getElementById("al-dry").checked = s.add_loading_dry_run !== "0";
+  const dt = document.getElementById("ld-dry-toggle"), dry = s.add_loading_dry_run !== "0";
+  dt.className = "ld-dry-btn " + (dry ? "dry" : "live");
+  dt.innerHTML = dry ? "&#9888; Dry run: ON" : "&#9679; Live: saves in SFA";
   document.getElementById("al-mode-chip").innerHTML = s.add_loading_dry_run !== "0"
     ? '<span class="chip chip-warn">Dry run — nothing is saved in SFA</span>' : '<span class="chip chip-missing">Live — Create saves in SFA</span>';
   document.getElementById("ld-users-url").value = s.users_url;
@@ -597,6 +600,20 @@ document.getElementById("al-save").addEventListener("click", async () => {
     add_loading_dry_run: document.getElementById("al-dry").checked ? "1" : "0" });
   document.getElementById("al-msg").innerHTML = `<span class="${r.ok ? "hint" : "error"}">${esc(r.ok ? "Saved." : r.message)}</span>`;
   if (r.ok) loadLoadings();
+});
+
+// The Dry run button at the top: flips Add loading between Dry run (stops before SAVE) and Live (saves in SFA)
+document.getElementById("ld-dry-toggle").addEventListener("click", () => {
+  const dry = (LD.ov && LD.ov.settings.add_loading_dry_run) !== "0";
+  confirmModal(dry ? "Switch Add loading to Live?" : "Switch Add loading to Dry run?",
+    dry ? `<div class="problem-box">From now on <b>Fill the page</b> in Add loading presses <b>SAVE</b> and answers <b>Yes</b> — it <b>creates real loadings in SFA</b>.</div>
+           <p class="hint">Only switch to Live once a dry run on your test distributor looked right.</p>`
+        : `<p>Add loading will fill SFA's page but <b>stop before SAVE</b> and keep a screenshot. Nothing is saved in SFA.</p>`,
+    dry ? "Switch to Live" : "Switch to Dry run", async () => {
+      const r = await API().save_loading_settings({ add_loading_dry_run: dry ? "0" : "1" });
+      if (!r.ok) { openModal({ title: "Dry run", body: `<div class="problem-box">${esc(r.message)}</div>`, footer: `<button class="btn-primary" onclick="closeModal()">OK</button>` }); return; }
+      loadLoadings();
+    });
 });
 
 const AL = { id: null, d: null, fields: null, reps: null, products: [], number: "", dry: true, log: [] };

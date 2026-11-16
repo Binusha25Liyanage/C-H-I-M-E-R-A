@@ -59,6 +59,7 @@ function switchView(view, tab) {
   target.style.display = "block";
   document.querySelector("main").scrollTop = 0; window.scrollTo(0, 0);
   if (view === "import-data") loadImportLog();
+  if (view === "overview") loadOverviewKpis();
   if (view === "settings") { loadSfaConfig(); loadReportSettings(); loadManagerGroups(); loadDataUsage(); loadOutputFolder(); }
   if (view === "daily") { loadDailyStatus(); loadRuns(); refreshStyleDefaultLabel(); }
   if (view === "automation" && window.loadAutomation) window.loadAutomation();
@@ -80,32 +81,29 @@ document.querySelectorAll("[data-goto]").forEach(btn => {
 });
 
 // ---------------- Overview ----------------
-async function loadDashboard() {
-  try {
-    const s = await window.pywebview.api.get_dashboard_summary();
-    document.getElementById("stat-total-outlets").textContent = s.total_outlets.toLocaleString();
-    document.getElementById("stat-territories").textContent = s.territories_with_outlets.toLocaleString();
-    document.getElementById("stat-routes").textContent = s.routes_with_outlets.toLocaleString();
-  } catch (err) {
-    console.error("Dashboard load error:", err);
-  }
+// The four boxes: live SFA data Chimera reads by itself (rep attendance, distributor list, report downloads).
+async function loadOverviewKpis() {
+  if (typeof window.pywebview?.api?.get_overview_kpis !== "function") return;
+  let k; try { k = await window.pywebview.api.get_overview_kpis(); } catch (e) { return; }
+  const set = (id, html, foot, stale) => {
+    document.getElementById(id).innerHTML = html;
+    const f = document.getElementById(id + "-foot");
+    f.innerHTML = (stale ? "" : '<span class="live-dot"></span> ') + foot;
+    f.className = "stat-foot" + (stale ? " stat-foot-warn" : "");
+  };
+  const li = k.logged_in || {}, inv = k.invoices || {}, di = k.distributors || {}, sy = k.last_sync || {};
+  document.getElementById("kpi-li-label").textContent = li.day && !li.is_today ? "TERRITORIES LOGGED IN (LATEST)" : "TERRITORIES LOGGED IN TODAY";
+  set("kpi-li", li.value == null ? "&mdash;" : `${li.value}${li.of ? `<span class="kpi-of"> / ${li.of}</span>` : ""}`, esc(li.foot || ""), li.value == null || !li.is_today);
+  set("kpi-dist", di.value == null ? "&mdash;" : di.value.toLocaleString(), esc(di.foot || ""), di.value == null);
+  document.getElementById("kpi-inv-label").textContent = inv.day && !inv.is_today ? "INVOICES (LATEST DAY)" : "INVOICES TODAY";
+  set("kpi-inv", inv.value == null ? "&mdash;" : inv.value.toLocaleString(), esc(inv.foot || ""), inv.value == null || !inv.is_today);
+  set("kpi-sync", sy.value == null ? "Never" : esc(sy.value), esc(sy.foot || ""), sy.value == null);
+}
+window.loadOverviewKpis = loadOverviewKpis;
+setInterval(() => { const v = document.getElementById("view-overview"); if (v && v.style.display !== "none" && !document.hidden) loadOverviewKpis(); }, 60000);
 
-  try {
-    const log = await window.pywebview.api.get_import_log();
-    const entries = Object.values(log);
-    const lastImportEl = document.getElementById("stat-last-import");
-    if (entries.length === 0) {
-      lastImportEl.textContent = "Never";
-    } else {
-      const mostRecent = entries.map(e => e.last_imported).sort().reverse()[0];
-      lastImportEl.textContent = mostRecent.slice(0, 10);
-      const foot = document.getElementById("stat-last-import-foot");
-      foot.className = "stat-foot";
-      foot.textContent = `at ${mostRecent.slice(11, 16)} · ${entries.length} data type(s) imported`;
-    }
-  } catch (err) {
-    console.error("Import log load error:", err);
-  }
+async function loadDashboard() {
+  loadOverviewKpis();
 }
 
 // ---------------- Reports (Combined SKU + Invoice) ----------------

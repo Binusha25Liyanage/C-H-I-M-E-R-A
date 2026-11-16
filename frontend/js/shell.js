@@ -378,7 +378,7 @@ async function loadWhatsApp() {
   document.getElementById("wa-show").checked = w.settings.wa_show_browser === "1";
   document.getElementById("wa-style").value = w.settings.wa_style;
   document.getElementById("wa-send-latest").disabled = !w.last_saved_run || !w.rules.some(r => r.enabled);
-  const kindLabel = { sku: "SKU", pivot: "Pivot", hourly: "Hourly", att_nlo: "Attendance: not logged out", att_lo: "Attendance: logged out", att_mgr: "Field Force Attendance" };
+  const kindLabel = { sku: "SKU", pivot: "Pivot", hourly: "Hourly", att_nlo: "Attendance: not logged out", att_lo: "Attendance: logged out", att_mgr: w.att_mgr_title || "Field Force Attendance" };
   document.getElementById("wa-rules").innerHTML = w.rules.length ? w.rules.map(r => `
     <div class="rule-card ${r.enabled ? "" : "off"}"><div>
       <div class="who">${esc(r.chat_name)} ${r.enabled ? "" : '<span class="chip chip-grey">off</span>'}</div>
@@ -455,7 +455,7 @@ function openRuleModal(rule) {
         <div class="wa-list" id="wr-chat-list" style="display:none;"></div></div></label>
     <div class="section-title">Reports to send</div>
     ${WR_KINDS.map(([title, hint, ks]) => `<div class="wr-kind-group"><div class="wr-kind-title">${title}<span>${hint}</span></div>
-      <div class="wr-grid">${ks.map(([k, l]) => `<label class="wr-check"><input type="checkbox" class="wr-kind" value="${k}" ${r.kinds.includes(k) ? "checked" : ""}> ${l}</label>`).join("")}</div></div>`).join("")}
+      <div class="wr-grid">${ks.map(([k, l]) => `<label class="wr-check"><input type="checkbox" class="wr-kind" value="${k}" ${r.kinds.includes(k) ? "checked" : ""}> ${k === "att_mgr" && w.att_mgr_title ? esc(w.att_mgr_title) : l}</label>`).join("")}</div></div>`).join("")}
     <div class="section-title">Send as</div>
     <div class="radio-row wr-radios" style="margin-bottom:6px;">
       <label class="radio"><input type="radio" name="wr-as" value="images" ${sendAs === "images" ? "checked" : ""}> Photos (Photos &amp; videos)</label>
@@ -541,6 +541,7 @@ async function waChatPicker(input, list) {
   const arrow = input.parentElement.querySelector(".wa-pick-arrow");
   let chats = SH.waChats || (SH.wa && SH.wa.chats || []).map(n => ({ name: n }));
   const draw = () => {
+    chats = SH.waChats || (SH.wa && SH.wa.chats || []).map(n => ({ name: n }));   // chats loaded since this opened
     const q = input.value.trim(), ql = q.toLowerCase();
     const showAll = input.dataset.all === "1";
     const hits = chats.filter(c => showAll || !ql || c.name.toLowerCase().includes(ql))

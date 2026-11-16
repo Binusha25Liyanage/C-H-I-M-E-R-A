@@ -74,6 +74,20 @@ class Api:
     # (or excel_import.py / sfa_automation.py), and returns plain
     # data back to JS.
     # ------------------------------------------------------------
+    def start_startup(self):
+        """The splash screen: starts the startup steps (once per window) and returns where they are."""
+        import startup
+        return startup.start()
+
+    def get_startup(self):
+        import startup
+        return startup.snapshot()
+
+    def get_overview_kpis(self):
+        """The Overview's four boxes, from SFA data Chimera reads by itself."""
+        import overview_kpis
+        return overview_kpis.overview()
+
     def get_dashboard_summary(self):
         total, territories, routes = db.get_outlet_count()
         return {
@@ -972,7 +986,9 @@ class Api:
                 "settings": {"att_url": st["url"], "att_style": st["style"], "att_send_style": st["send_style"],
                              "att_chats": st["chats"], "att_send_pdf": "1" if st["send_pdf"] else "0",
                              "att_exclude": R.always_left_out(), "att_by_manager": "1" if st["by_manager"] else "0",
-                             "att_titles": st["titles"], "titles_default": RI.DEFAULT_TITLES, "titles_used": RI.titles(st["titles"])},
+                             "att_titles": st["titles"], "titles_default": RI.DEFAULT_TITLES, "titles_used": RI.titles(st["titles"]),
+                             "att_working": R.working_settings()[0], "att_working_days": str(R.working_settings()[1])},
+                "working": R.working_info(), "missing_days": RA.missing_days(),
                 "targets": RA.targets(st),
                 "live_active": bool(live.get("active")), "today": _d.today().isoformat(),
                 "pending": [r for r in R.list_runs(20) if r["state"] == "pending_review"]}
@@ -1045,9 +1061,15 @@ class Api:
 
     def save_rep_attendance_settings(self, values):
         vals = {k: v for k, v in (values or {}).items()
-                if k in ("att_url", "att_style", "att_send_style", "att_chats", "att_send_pdf", "att_exclude", "att_by_manager", "att_titles")}
+                if k in ("att_url", "att_style", "att_send_style", "att_chats", "att_send_pdf", "att_exclude", "att_by_manager", "att_titles",
+                                     "att_working", "att_working_days")}
         ok, msg = automation_store.save_automation_settings(vals)
         return {"ok": ok, "message": msg}
+
+    def start_rep_attendance_backfill(self, show_browser=False):
+        """Reads the earlier days of the working-territories window from SFA (read only, nothing sent)."""
+        import rep_attendance_automation as RA
+        return RA.start_backfill(headless=not show_browser)
 
     def get_rep_attendance_live(self):
         import rep_attendance_automation as RA

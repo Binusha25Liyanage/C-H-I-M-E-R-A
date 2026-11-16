@@ -51,6 +51,7 @@ class RepAttendanceTest(unittest.TestCase):
             conn.execute(f"DELETE FROM {t}")
         conn.commit()
         conn.close()
+        AS.save_automation_settings({"att_working": "manual", "att_working_days": "14"})   # most tests: the switches
 
     def test_reads_attendance_times_not_asm(self):
         p = R.read_excel(fresh_file("a.xlsx"))
@@ -144,7 +145,7 @@ class RepAttendanceTest(unittest.TestCase):
         run = R.get_run(rid)
         self.assertEqual(run["state"], "pending_review")
         self.assertEqual(run["style"], "professional")
-        self.assertEqual({i["style"] for i in run["images"]}, {"classic", "professional"})
+        self.assertEqual({i["style"] for i in run["images"]}, {"classic", "professional", "nologo"})
         # wrong day in the file: nothing saved
         rid2 = R.start_run("2026-11-13", "manual")
         RA._after_download(rid2, "2026-11-13", fresh_file("j.xlsx"), st, review=False, send_now=False, source="sfa")
@@ -185,7 +186,7 @@ class RepAttendanceTest(unittest.TestCase):
         import whatsapp_sender as W
         W.init_schema()
         conn = db.get_connection(); conn.execute("DELETE FROM wa_rules"); conn.commit(); conn.close()
-        AS.save_automation_settings({"att_style": "classic", "att_chats": '["Sales Managers"]', "att_send_pdf": "0",
+        AS.save_automation_settings({"att_style": "classic", "att_chats": '["Sales Managers"]', "att_send_pdf": "0", "att_by_manager": "0",
                                      "att_exclude": "[]"})
         self.assertTrue(W.save_rule({"chat_name": "Field Team", "kinds": ["att_lo"], "send_as": "both",
                                      "pre_message": "Attendance for {date}"})[0])
@@ -243,6 +244,77 @@ class RepAttendanceTest(unittest.TestCase):
         AS.save_automation_settings({"att_by_manager": "0"})
         run = R.get_run(RA.rebuild(DAY)["run_id"])
         self.assertFalse([i for i in run["images"] if i["group"] == "by_manager"])
+
+    def test_no_logo_look_and_titles(self):
+        import rep_attendance_automation as RA
+        import rep_attendance_images as RI
+        self.assertTrue(AS.save_automation_settings({"att_style": "nologo", "att_by_manager": "1", "att_exclude": "[]",
+            "att_titles": {"kicker": "Lakmee Holdings", "nlo_title": "  Still   Working ", "mgr_title": "Team by ASM", "lo_sub": ""}})[0])
+        st = RA.settings()
+        self.assertEqual(st["titles"], {"kicker": "Lakmee Holdings", "nlo_title": "Still Working", "mgr_title": "Team by ASM"})
+        t = RI.titles(st["titles"])
+        self.assertEqual((t["nlo_title"], t["lo_title"], t["lo_sub"]), ("Still Working", "Reps Logged Out", RI.DEFAULT_TITLES["lo_sub"]))
+        self.assertEqual(RA.group_label("by_manager"), "Team by ASM")
+        res = RA.import_file(fresh_file("o.xlsx"))
+        run = R.get_run(res["run_id"])
+        self.assertEqual(run["style"], "nologo")
+        self.assertEqual({i["style"] for i in run["images"]}, {"nologo", "manager"})
+        self.assertTrue(run["pdf"].endswith("_nologo.pdf"))
+        import pypdfium2 as pdfium                                  # the titles are really on the page
+        text = pdfium.PdfDocument(run["pdf"])[0].get_textpage().get_text_range()
+        self.assertIn("Still Working", text)
+        self.assertIn("LAKMEE HOLDINGS", text)
+        self.assertNotIn("CHIMERA", text)
+        self.assertFalse(AS.save_automation_settings({"att_style": "fancy"})[0])
+        AS.save_automation_settings({"att_titles": {}, "att_style": "professional"})
+
+    def test_working_territories_automatic(self):
+        AS.save_automation_settings({"att_working": "auto", "att_working_days": "3"})
+        outlet_store.add_territory("Switched On Only")
+        self.assertEqual(R.working_territories(DAY), ["Switched On Only"])     # nothing read yet: the switches
+        R.save_day(R.read_excel(fresh_file("w1.xlsx", day="2026-11-09", reps=[("Old Place", "A", "VAN", "08:00:00", "")])), "sfa")
+        R.save_day(R.read_excel(fresh_file("w2.xlsx", day="2026-11-11", reps=[("Beta Bay", "B", "VAN", "08:00:00", "")])), "sfa")
+        R.save_day(R.read_excel(fresh_file("w3.xlsx", reps=[("Alpha Town", "C", "VAN", "08:00:00", "")])), "sfa")
+        # 3 days ending 12 Nov = 10, 11, 12: Old Place (9 Nov) has dropped off; the switch isn't used in auto
+        self.assertEqual(R.working_territories(DAY), ["Alpha Town", "Beta Bay"])
+        d = R.get_day(DAY)
+        self.assertEqual((d["counts"]["working"], d["not_logged_in"]), (2, ["Beta Bay"]))
+        AS.save_automation_settings({"att_working": "both"})
+        self.assertEqual(R.working_territories(DAY), ["Alpha Town", "Beta Bay", "Switched On Only"])
+        info = R.working_info(DAY)
+        self.assertEqual((info["have_days"], info["days"]), (2, 3))
+        self.assertFalse(AS.save_automation_settings({"att_working_days": "0"})[0])
+        self.assertFalse(AS.save_automation_settings({"att_working": "guess"})[0])
+
+    def test_backfill_reads_missing_days(self):
+        import asyncio
+        import rep_attendance_automation as RA
+        AS.save_automation_settings({"att_working": "auto", "att_working_days": "4"})
+        import sfa_config
+        sfa_config.save_config("http://127.0.0.1:1/login", "tester", "secret", "chrome")
+        R.save_day(R.read_excel(fresh_file("b0.xlsx", day="2026-11-10")), "sfa")
+        self.assertEqual(RA.missing_days(today=DAY), ["2026-11-09", "2026-11-11"])
+        asked = []
+
+        async def fake_download(page, cfg, url, day, timeout_ms):
+            asked.append(day)
+            if day == "2026-11-09":
+                raise RA.StepError("export", f"SFA shows no rep attendance for {day} (nobody has logged in yet?).")
+            return fresh_file(f"b_{day}.xlsx", day=day)
+
+        async def fake_browser(cfg, st, body):
+            return await body(None)
+        keep = RA._download, RA._with_browser
+        RA._download, RA._with_browser = fake_download, fake_browser
+        try:
+            res = RA.backfill(["2026-11-09", "2026-11-11"])
+        finally:
+            RA._download, RA._with_browser = keep
+        self.assertTrue(res["ok"], res)
+        self.assertEqual(asked, ["2026-11-09", "2026-11-11"])
+        self.assertEqual(len(R.get_day("2026-11-11")["rows"]), 4)
+        self.assertEqual(RA.missing_days(today=DAY), [])              # the empty day is remembered too
+        self.assertIn("1 with no logins", res["message"])
 
     def test_settings_and_schedule_type(self):
         ok, _msg = AS.save_automation_settings({"att_chats": "not json"})

@@ -7,6 +7,24 @@
 </head>
 <body>
 
+  <!-- Splash screen: every part of the bar is a real startup step (startup.py) -->
+  <div id="splash" class="splash" aria-live="polite">
+    <span class="sp-corner tl"></span><span class="sp-corner tr"></span><span class="sp-corner bl"></span><span class="sp-corner br"></span>
+    <div class="sp-center">
+      <div class="sp-emblem"><img src="assets/chimera-logo-splash.png" alt=""></div>
+      <div class="sp-title">CHIMERA</div>
+      <div class="sp-sub">SFA MANAGEMENT SYSTEM</div>
+      <div class="sp-pill"><i></i>LAKMEE EXPORTS LANKA &mdash; SFA AUTOMATION</div>
+      <div class="sp-bar"><div id="sp-fill"></div></div>
+      <div class="sp-status"><i id="sp-dot"></i><span id="sp-msg">Starting Chimera&hellip;</span><b id="sp-pct">0%</b></div>
+      <div class="sp-steps" id="sp-steps"></div>
+      <button class="sp-skip" id="sp-skip" type="button">Continue to dashboard &rarr;</button>
+      <div class="sp-note" id="sp-note"></div>
+    </div>
+    <div class="sp-foot"><span>&#10070; Chimera &middot; Windows desktop &middot; reads SFA only &mdash; nothing is changed at startup</span>
+      <span><i id="sp-sfa-dot"></i><span id="sp-sfa">SFA: checking&hellip;</span><em>|</em><span id="sp-clock"></span></span></div>
+  </div>
+
   <div class="app-shell">
 
     <aside class="sidebar">
@@ -89,7 +107,7 @@
         <section id="view-overview" class="view">
           <div class="view-heading-row">
             <div>
-              <p class="hint">Real-time status of export data imports and routing metrics.</p>
+              <p class="hint">Live from SFA — Chimera reads it by itself; these boxes refresh every minute.</p>
             </div>
             <div class="heading-actions">
               <div class="folder-split"><button class="btn-outline btn-folder" data-open-reports="latest" title="Open the folder of the newest saved reports"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Open saved reports</span></button><button class="btn-outline folder-caret" data-folder-menu title="Choose which folder">&#9662;</button></div>
@@ -99,25 +117,25 @@
           </div>
 
           <div class="stat-cards">
-            <div class="stat-card">
-              <div class="stat-label">TOTAL OUTLETS</div>
-              <div class="stat-value" id="stat-total-outlets">&mdash;</div>
-              <div class="stat-foot"><span class="live-dot"></span> Live</div>
+            <div class="stat-card ov-kpi" data-goto="rep-attendance" title="Open Rep Attendance">
+              <div class="stat-label" id="kpi-li-label">TERRITORIES LOGGED IN TODAY</div>
+              <div class="stat-value" id="kpi-li">&mdash;</div>
+              <div class="stat-foot" id="kpi-li-foot">&nbsp;</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">TERRITORIES LOADED</div>
-              <div class="stat-value" id="stat-territories">&mdash;</div>
-              <div class="stat-foot"><span class="live-dot"></span> Live</div>
+            <div class="stat-card ov-kpi" data-goto="loadings" title="Open Distributor Loadings">
+              <div class="stat-label">DISTRIBUTORS</div>
+              <div class="stat-value" id="kpi-dist">&mdash;</div>
+              <div class="stat-foot" id="kpi-dist-foot">&nbsp;</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">ROUTES LOADED</div>
-              <div class="stat-value" id="stat-routes">&mdash;</div>
-              <div class="stat-foot"><span class="live-dot"></span> Live</div>
+            <div class="stat-card ov-kpi" data-goto="daily" title="Open Daily Reports">
+              <div class="stat-label" id="kpi-inv-label">INVOICES TODAY</div>
+              <div class="stat-value" id="kpi-inv">&mdash;</div>
+              <div class="stat-foot" id="kpi-inv-foot">&nbsp;</div>
             </div>
-            <div class="stat-card">
-              <div class="stat-label">LAST DATA IMPORT</div>
-              <div class="stat-value stat-value-small" id="stat-last-import">Never</div>
-              <div class="stat-foot stat-foot-warn" id="stat-last-import-foot">No imports recorded yet</div>
+            <div class="stat-card ov-kpi" data-goto="activity" title="Open Activity Monitor">
+              <div class="stat-label">LAST SFA SYNC</div>
+              <div class="stat-value" id="kpi-sync">&mdash;</div>
+              <div class="stat-foot" id="kpi-sync-foot">&nbsp;</div>
             </div>
           </div>
 
@@ -565,6 +583,7 @@
               <button class="btn-outline" id="ld-sync">&#8635; Update distributor list</button>
               <button class="btn-outline" id="ld-add">+ Add distributor</button>
               <button class="btn-primary" id="ld-prepare-daily">&#9654; Prepare today's loadings</button>
+              <button class="ld-dry-btn" id="ld-dry-toggle" type="button" title="Add loading: Dry run stops before SAVE; Live saves in SFA">Dry run: &hellip;</button>
             </div>
           </div>
           <div id="ld-approve-banner"></div>
@@ -692,6 +711,7 @@
           </div>
           <div class="tab-panel" id="att-panel-settings" style="display:none;">
             <div class="two-col">
+              <div class="att-col">
               <div class="card">
                 <h3>Where and how</h3>
                 <label class="field">Rep Attendance Report <input id="att-url"><span>SFA › Reports › Rep Attendance Report. Chimera sets Date From and Date To to the day and leaves the other filters empty.</span></label>
@@ -709,8 +729,21 @@
                   grouped by its ASM (logged in / in the field / logged out / not logged in). For a territory that didn't log in, the ASM
                   is the last one Chimera saw. Goes to the chats here, and to delivery rules that tick it.</span></span>
                   <label class="switch2"><input type="checkbox" id="att-mgr"><span></span></label></label>
-                <p class="hint"><b>Not logged in</b> on the Professional image lists your working territories with no login &mdash; switch them on in
-                  Outlet Updates › Working Territories.</p>
+              </div>
+              <div class="card">
+                <h3>Working territories</h3>
+                <p class="hint" style="margin-top:0;">Used for <b>Not logged in</b>, "of N working" and Field Force Attendance. Chimera can work them out by itself
+                  from the rep attendance it reads.</p>
+                <div class="radio-row att-wk-modes">
+                  <label><input type="radio" name="att-wk" value="auto"> Automatic: a rep logged in during the last
+                    <input type="number" id="att-wk-days" min="1" max="90" class="att-wk-days"> days</label>
+                  <label><input type="radio" name="att-wk" value="manual"> Only the ones switched on in Outlet Updates</label>
+                  <label><input type="radio" name="att-wk" value="both"> Both (automatic + Outlet Updates switches)</label>
+                </div>
+                <div id="att-wk-status" class="att-wk-status"></div>
+                <div class="att-sync"><button class="btn-outline btn-small" id="att-wk-fill" type="button">&#8635; Read earlier days from SFA</button>
+                  <span class="hint" id="att-wk-msg"></span></div>
+              </div>
               </div>
               <div class="card">
                 <h3>WhatsApp chats</h3>
@@ -721,6 +754,8 @@
                     <button type="button" class="wa-pick-arrow" tabindex="-1" title="Show chats">&#9662;</button>
                     <div class="wa-list" id="att-chat-list" style="display:none;"></div></div>
                   <button class="btn-outline" id="att-chat-add" type="button">+ Add</button></div>
+                <div class="att-sync"><button class="btn-outline btn-small" id="att-chat-sync" type="button">&#8635; Load my chats</button>
+                  <span class="hint" id="att-chat-sync-msg"></span></div>
                 <div class="section-title">Also sent by delivery rules</div>
                 <div id="att-rule-targets"></div>
                 <div class="section-title">When</div>
@@ -755,6 +790,8 @@
                   <button type="button" class="att-pick-arrow" id="att-ex-arrow" tabindex="-1" title="Show all territories">&#9662;</button>
                   <div class="att-pick-list" id="att-ex-list" style="display:none;"></div></div>
                 <button class="btn-outline" id="att-ex-add" type="button">+ Add</button></div>
+              <div class="att-sync"><button class="btn-outline btn-small" id="att-terr-sync" type="button">&#8635; Get territories from SFA</button>
+                <span class="hint" id="att-terr-sync-msg"></span></div>
             </div>
             <div style="display:flex;gap:10px;align-items:center;"><button class="btn-primary" id="att-save">Save settings</button><span id="att-save-msg"></span></div>
           </div>
@@ -1130,6 +1167,7 @@
       <div class="modal-footer" id="modal-footer"></div>
     </div>
   </div>
+  <script src="js/splash.js"></script>
   <script src="js/main.js"></script>
   <script src="js/automation.js"></script>
   <script src="js/schedules.js"></script>
