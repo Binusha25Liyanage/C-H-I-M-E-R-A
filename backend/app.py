@@ -145,6 +145,60 @@ def set_app_identity():
         logging.info("App identity not set: %s", e)
 
 
+def center_window(window, fit=0.94):
+    """Before the window first appears: put it in the middle of the screen it opens on, and never make it bigger
+    than that screen's free area (the part above the taskbar). Runs on the window's own thread (before_show)."""
+    if os.name != "nt":
+        return
+    try:
+        from System.Windows.Forms import Screen, FormStartPosition
+        from System.Drawing import Point, Size
+        form = window.native
+        area = Screen.FromHandle(form.Handle).WorkingArea          # physical pixels, taskbar left out
+        w, h = min(form.Width, int(area.Width * fit)), min(form.Height, int(area.Height * fit))
+        form.StartPosition = FormStartPosition.Manual
+        form.Size = Size(w, h)
+        form.Location = Point(area.X + (area.Width - w) // 2, area.Y + (area.Height - h) // 2)
+    except Exception as e:
+        logging.info("Window not centred before showing: %s", e)
+
+
+def center_window_now(window, fit=0.94):
+    """Once the window is showing: if it isn't in the middle of its screen (or doesn't fit), move it there.
+    Plain Windows calls, so it also works on pywebview versions without before_show."""
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+        from ctypes import wintypes
+        user32 = ctypes.windll.user32
+        try:
+            hwnd = int(window.native.Handle.ToInt64())
+        except Exception:
+            hwnd = user32.FindWindowW(None, APP_TITLE)
+        if not hwnd or user32.IsZoomed(hwnd) or user32.IsIconic(hwnd):
+            return
+
+        class MONITORINFO(ctypes.Structure):
+            _fields_ = [("cbSize", wintypes.DWORD), ("rcMonitor", wintypes.RECT), ("rcWork", wintypes.RECT), ("dwFlags", wintypes.DWORD)]
+        user32.MonitorFromWindow.restype = wintypes.HANDLE
+        mon = user32.MonitorFromWindow(wintypes.HWND(hwnd), 2)          # MONITOR_DEFAULTTONEAREST
+        mi = MONITORINFO(); mi.cbSize = ctypes.sizeof(MONITORINFO)
+        if not user32.GetMonitorInfoW(mon, ctypes.byref(mi)):
+            return
+        wa, r = mi.rcWork, wintypes.RECT()
+        user32.GetWindowRect(wintypes.HWND(hwnd), ctypes.byref(r))
+        aw, ah = wa.right - wa.left, wa.bottom - wa.top
+        w, h = min(r.right - r.left, int(aw * fit)), min(r.bottom - r.top, int(ah * fit))
+        x, y = wa.left + (aw - w) // 2, wa.top + (ah - h) // 2
+        if abs(r.left - x) <= 4 and abs(r.top - y) <= 4 and (r.right - r.left) == w and (r.bottom - r.top) == h:
+            return                                                   # already centred
+        SWP_NOZORDER, SWP_NOACTIVATE = 0x0004, 0x0010
+        user32.SetWindowPos(wintypes.HWND(hwnd), None, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE)
+    except Exception as e:
+        logging.info("Window not centred: %s", e)
+
+
 def set_window_icon(window, icon_path=None):
     """Puts Chimera's icon on the window (title bar, taskbar, Alt+Tab) instead of Python's."""
     icon_path = icon_path or ICON_PATH
@@ -248,7 +302,10 @@ def main():
     api._scheduler = scheduler.InAppScheduler()
     api._scheduler.start()
 
-    window.events.shown += lambda: (style_title_bar(window), set_window_icon(window))
+    # Open in the middle of the screen (and never taller than the space above the taskbar)
+    if hasattr(window.events, "before_show"):
+        window.events.before_show += lambda: center_window(window)
+    window.events.shown += lambda: (center_window_now(window), style_title_bar(window), set_window_icon(window))
     # Closing the window stops Chimera's own runs and frees the run lock, so the
     # next run doesn't report "Another SFA run is already in progress".
     window.events.closing += lambda: api._on_window_closing()

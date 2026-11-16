@@ -19,6 +19,7 @@
     if (closed) return; closed = true; closeWanted = false;
     if (poll) { clearInterval(poll); poll = null; }
     if (fxStop) fxStop();
+    if (audio && (preview || audio.duration > 9)) stopSound(true);   // a long soundtrack you added fades out with the splash
     el.classList.add("sp-out");
     setTimeout(() => {
       el.style.display = "none";
@@ -60,59 +61,155 @@
     }
   }
 
+  // ------------------------------------------------------------------ soundtracks and videos you added
+  // Played straight from Chimera's data folder when the window allows it; otherwise read through Chimera in
+  // pieces and played from memory.
+  const media = {};
+  function canPlay(url, kind) {
+    return new Promise((res) => {
+      const m = document.createElement(kind === "video" ? "video" : "audio");
+      let settled = false; const end = (ok) => { if (!settled) { settled = true; m.removeAttribute("src"); res(ok); } };
+      m.preload = "metadata"; m.onloadedmetadata = () => end(true); m.onerror = () => end(false);
+      setTimeout(() => end(false), 1500); m.src = url;
+    });
+  }
+  async function mediaUrl(id) {
+    if (media[id]) return media[id];
+    const api = window.pywebview && window.pywebview.api;
+    if (!api || typeof api.get_look_media !== "function") return null;
+    const info = await api.get_look_media(id);
+    if (!info || !info.ok) return null;
+    const kind = id.startsWith("v_") ? "video" : "sound";
+    if (await canPlay(info.url, kind)) return (media[id] = info.url);
+    const parts = [];
+    for (let i = 0; i < info.chunks; i++) {
+      const c = await api.get_look_media_chunk(id, i); if (!c || !c.ok) return null;
+      const bin = atob(c.data), u8 = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+      parts.push(u8);
+    }
+    return (media[id] = URL.createObjectURL(new Blob(parts, { type: info.mime })));
+  }
+  window.chimeraMediaUrl = mediaUrl;
+  async function prepare(look) {
+    if (!look) return;
+    const ids = [look.look_sound, look.look_splash].filter(x => x && (x.startsWith("s_") || x.startsWith("v_")));
+    await Promise.race([Promise.all(ids.map(id => mediaUrl(id).catch(() => null))), new Promise(res => setTimeout(res, 6000))]);
+  }
+
   // ------------------------------------------------------------------ soundtrack
+  function stopSound(fade) {
+    const a = audio; audio = null; if (!a) return;
+    if (!fade) { try { a.pause(); } catch (e) { /* */ } return; }
+    const v0 = a.volume, t0 = performance.now();
+    const step = (now) => { const q = (now - t0) / 1200; if (q >= 1) { a.pause(); return; } a.volume = v0 * (1 - q); requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  }
   function playSound(look) {
-    if (audio) { try { audio.pause(); } catch (e) { /* */ } audio = null; }
+    stopSound(false);
     if (!look || !look.look_sound || look.look_sound === "none") return;
     const vol = Math.max(0, Math.min(100, parseInt(look.look_volume, 10) || 0)) / 100;
     if (!vol) return;
-    audio = new Audio(`assets/sounds/chimera-splash-${look.look_sound}.mp3`);
+    const key = look.look_sound;
+    const src = key.startsWith("s_") ? media[key] : `assets/sounds/chimera-splash-${key}.mp3`;
+    if (!src) return;
+    audio = new Audio(src);
     audio.volume = vol;
     audio.play().catch(() => { /* the system blocked sound — the splash still runs */ });
   }
 
   // ------------------------------------------------------------------ the opening
+  const fxCtx = () => ({ el, red, cloneRed, alive: () => !!fxStop, done: finishIntro });
   function startIntro(look) {
-    const style = (look && look.look_splash) || "displacement";
+    let style = (look && look.look_splash) || "displacement";
     el.classList.remove("sp-wait");
     playSound(look);
+    if (style.startsWith("v_")) {
+      const item = ((look && look.custom) || []).find(x => x.id === style);
+      if (item && media[style]) return startVideo(item, media[style], look);
+      style = "displacement";                     // the video can't be played: use the default opening
+    }
+    const FX = window.ChimeraFX || {};
+    const fx = FX[style] && FX[style].run ? FX[style] : null;
+    if (!fx && !["displacement", "glitch", "classic"].includes(style)) style = "displacement";
     if (style === "classic" || !red) { if (red) red.style.display = "none"; introDone = true; return; }
     introDone = false;
-    red.style.cssText = "";                       // visible, fresh (also for a replay)
-    red.classList.remove("r-static"); void red.offsetWidth;
+    const showRed = fx ? fx.red : true;
+    red.style.cssText = ""; red.className = "sp-red";
+    if (!showRed) red.style.display = "none";
+    void red.offsetWidth;
+    if (reduce()) {                               // no flashing for people who turned animations off
+      if (!showRed) { introDone = true; return; }
+      const t = setTimeout(() => { red.style.transition = "opacity .35s"; red.style.opacity = 0; setTimeout(finishIntro, 400); }, INTRO_AT);
+      fxStop = () => { clearTimeout(t); finishIntro(); };
+      return;
+    }
     const t = setTimeout(() => {
-      if (closed) return;
-      if (reduce()) {                             // no flashing for people who turned animations off
-        red.style.transition = "opacity .35s"; red.style.opacity = 0;
-        setTimeout(finishIntro, 400); return;
-      }
-      (style === "glitch" ? sliceGlitch : displacement)(finishIntro);
-    }, INTRO_AT);
+      if (!fxStop) return;
+      if (fx) fx.run(fxCtx());
+      else (style === "glitch" ? sliceGlitch : displacement)(finishIntro);
+    }, fx ? fx.at : INTRO_AT);
     fxStop = () => { clearTimeout(t); finishIntro(); };
   }
+
+  // a video opening you added: plays full screen (its own sound only when no soundtrack is chosen),
+  // then hands over to the dark splash with the transition you picked for it
+  function startVideo(item, url, look) {
+    introDone = false; red.style.display = "none";
+    const lay = document.createElement("div"); lay.className = "sp-fx fx-video";
+    const v = document.createElement("video"); v.src = url; v.playsInline = true; v.preload = "auto";
+    v.muted = !!(look.look_sound && look.look_sound !== "none");
+    v.volume = Math.max(0, Math.min(100, parseInt(look.look_volume, 10) || 0)) / 100;
+    lay.appendChild(v); el.appendChild(lay);
+    let handed = false;
+    const go = () => { if (handed || !fxStop) return; handed = true; clearTimeout(cap); handover(item.transition || "displacement", v, lay); };
+    const cap = setTimeout(go, 15000);            // a long video hands over after 15 s
+    v.onended = go; v.onerror = go;
+    v.play().catch(() => { v.muted = true; v.play().catch(go); });
+    fxStop = () => { clearTimeout(cap); finishIntro(); };
+  }
+  function handover(tr, v, lay) {
+    if (tr === "cut" || reduce()) return finishIntro();
+    let from = null;
+    if (tr !== "fade") {
+      try {                                       // freeze the last frame so the glitch can tear it apart
+        const c = document.createElement("canvas");
+        c.width = v.videoWidth || el.clientWidth; c.height = v.videoHeight || el.clientHeight;
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        from = document.createElement("div"); from.className = "sp-fx fx-frame";
+        from.innerHTML = `<img src="${c.toDataURL("image/jpeg", .88)}" alt="">`; el.appendChild(from);
+      } catch (e) { from = null; }
+    }
+    if (!from) { lay.style.transition = "opacity .6s ease"; lay.style.opacity = 0; setTimeout(finishIntro, 650); return; }
+    lay.remove();
+    (tr === "glitch" ? sliceGlitch : displacement)(finishIntro, from);
+  }
   function finishIntro() {
-    if (red) { red.style.display = "none"; red.style.opacity = ""; red.style.transform = ""; red.style.visibility = ""; }
+    if (red) { red.style.display = "none"; red.style.opacity = ""; red.style.transform = ""; red.style.visibility = ""; red.style.filter = ""; red.className = "sp-red"; }
     el.querySelectorAll(".sp-fx").forEach(n => n.remove());
     el.style.transform = ""; el.classList.remove("gl-flash");
     fxStop = null;
     if (!introDone) { introDone = true; if (closeWanted) close(); }
   }
 
-  const cloneRed = () => { const c = red.cloneNode(true); c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); c.style.cssText = ""; return c; };
+  const cloneOf = (node) => { const c = node.cloneNode(true); c.removeAttribute("id"); c.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+    c.style.cssText = ""; c.classList.remove("sp-fx"); c.style.position = "absolute"; c.style.inset = "0"; return c; };
+  const cloneRed = () => { const c = cloneOf(red); c.style.display = ""; return c; };
 
   // fast horizontal slices of the red screen tear away into the dark one
-  function sliceGlitch(done) {
+  function sliceGlitch(done, from) {
+    const src = from || red, cloneSrc = () => cloneOf(src);
     const slices = [], N = 12, DUR = 800, until = performance.now() + DUR;
     for (let k = 0; k < N; k++) {
       const s = document.createElement("div"); s.className = "sp-fx gl-slice" + (k % 3 === 0 ? " c1" : "");
-      s.appendChild(cloneRed()); el.appendChild(s); slices.push(s);
+      s.appendChild(cloneSrc()); el.appendChild(s); slices.push(s);
     }
     const noise = document.createElement("div"); noise.className = "sp-fx gl-noise"; el.appendChild(noise);
     const scan = document.createElement("div"); scan.className = "sp-fx gl-scan"; el.appendChild(scan);
-    red.style.visibility = "hidden";
+    src.style.visibility = "hidden";
     let frame = 0;
     const tick = () => {
-      if (closed && !preview) return done();
+      if (!fxStop) return done();
       const left = until - performance.now(), p = 1 - Math.max(0, left) / DUR;
       slices.forEach(s => {
         const top = Math.random() * 100, h = 3 + Math.random() * 16;
@@ -122,7 +219,7 @@
       });
       scan.style.top = (Math.random() * 100) + "%";
       el.classList.toggle("gl-flash", frame % 5 === 2 && p < .7);
-      red.style.visibility = p < .45 && frame % 4 < 2 ? "visible" : "hidden";
+      src.style.visibility = p < .45 && frame % 4 < 2 ? "visible" : "hidden";
       frame++;
       if (left > 0 && fxStop) requestAnimationFrame(tick); else done();
     };
@@ -131,11 +228,12 @@
 
   // "dimensional displacement": the two screens bleed into each other — offset magenta/cyan copies jitter at a
   // choppy 12 fps, boxes of the other screen tear open with misprinted edges, comic-print dots flicker, then dark.
-  function displacement(done) {
+  function displacement(done, from) {
+    const src = from || red, cloneSrc = () => cloneOf(src);
     const darkParts = [...el.children].filter(n => n !== red && !n.classList.contains("sp-fx"));
     const snapDark = () => { const w = document.createElement("div"); w.className = "dd-dark";
       darkParts.forEach(n => w.appendChild(n.cloneNode(true))); w.querySelectorAll("[id]").forEach(e => e.removeAttribute("id")); return w; };
-    const ghost = (cls) => { const g = document.createElement("div"); g.className = "sp-fx dd-layer dd-ghost " + cls; g.appendChild(cloneRed()); el.appendChild(g); return g; };
+    const ghost = (cls) => { const g = document.createElement("div"); g.className = "sp-fx dd-layer dd-ghost " + cls; g.appendChild(cloneSrc()); el.appendChild(g); return g; };
     const gm = ghost("m"), gc = ghost("c");
     const dots = Object.assign(document.createElement("div"), { className: "sp-fx dd-layer dd-dots" }); el.appendChild(dots);
     const lines = Object.assign(document.createElement("div"), { className: "sp-fx dd-layer dd-lines" }); el.appendChild(lines);
@@ -162,12 +260,12 @@
           const bw = r(.14, .42) * W(), bh = r(.06, .2) * H(), bl = r(.12 * W(), .88 * W() - bw), bt = r(.08 * H(), .82 * H() - bh);
           const box = document.createElement("div"); box.className = "sp-fx dd-box";
           box.style.cssText = `left:${bl}px;top:${bt}px;width:${bw}px;height:${bh}px`;
-          const inner = Math.random() < p ? snapDark() : cloneRed();
+          const inner = Math.random() < p ? snapDark() : cloneSrc();
           Object.assign(inner.style, { position: "absolute", left: `${-bl + r(-30, 30)}px`, top: `${-bt}px`, width: W() + "px", height: H() + "px" });
           box.appendChild(inner); el.appendChild(box); boxes.push(box);
         }
-        red.style.opacity = p < .5 ? 1 : p < .8 ? (step % 2 ? 1 : 0) : 0;   // the red world flickers out
-        red.style.transform = `translate(${r(-amp / 2, amp / 2)}px, 0)`;
+        src.style.opacity = p < .5 ? 1 : p < .8 ? (step % 2 ? 1 : 0) : 0;   // the first world flickers out
+        src.style.transform = `translate(${r(-amp / 2, amp / 2)}px, 0)`;
       }
       if (p < 1) return requestAnimationFrame(frame);
       done();
@@ -186,6 +284,7 @@
     const api = window.pywebview.api;
     const look = await readLook(api);
     window.chimeraLook = look || window.chimeraLook || null;
+    await prepare(look);
     if (!closed) startIntro(look);
     if (typeof api.start_startup !== "function") { closeWhenReady(); return; }      // older backend
     try { render(await api.start_startup()); } catch (e) { closeWhenReady(); return; }
@@ -198,17 +297,21 @@
   window.closeSplash = close;
 
   // Settings › Customize Appearance › Preview splash: plays the opening again with the chosen look and sound
-  window.chimeraSplashPreview = (look) => {
+  window.chimeraSplashPreview = async (look) => {
     if (!closed) return;
+    await prepare(look);
     closed = false; preview = true; closeWanted = false;
     document.documentElement.classList.add("sp-lock");
     el.style.display = ""; el.classList.remove("sp-out"); void el.offsetWidth;
     el.dataset.skipText = $("sp-skip").innerHTML;
     $("sp-skip").innerHTML = "Close preview"; $("sp-skip").classList.add("on");
     startIntro(look);
-    const wait = (look && look.look_splash === "classic") ? 2500 : INTRO_AT + 1600 + 2200;
-    setTimeout(() => { if (preview && !closed) close(); }, wait);
+    // close the preview a couple of seconds after the opening has finished
+    const t0 = Date.now();
+    const check = setInterval(() => {
+      if (!preview || closed) { clearInterval(check); return; }
+      if (introDone && Date.now() - t0 > 2500) { clearInterval(check); setTimeout(() => { if (preview && !closed) close(); }, 1800); }
+    }, 200);
   };
-  window.chimeraPlaySound = (key, volume) => playSound({ look_sound: key, look_volume: volume });
-  window.chimeraStopSound = () => { if (audio) { try { audio.pause(); } catch (e) { /* */ } audio = null; } };
+  window.chimeraStopSound = () => stopSound(false);
 })();

@@ -969,20 +969,14 @@
             <div class="card">
               <div class="card-header-row"><h3>Splash screen</h3>
                 <button class="btn-primary btn-small" id="lk-play">&#9654; Preview splash</button></div>
-              <p class="hint" style="margin:-4px 0 14px;">How Chimera opens. The loading bar is the real startup either way; only the look changes.</p>
-              <div class="lk-cards" id="lk-splash">
-                <button class="lk-card" data-v="displacement"><span class="lk-thumb lk-t-disp"></span><b>Dimensional displacement</b>
-                  <span class="hint">Red opening, then the comic-book displacement into the dark splash.</span></button>
-                <button class="lk-card" data-v="glitch"><span class="lk-thumb lk-t-glitch"></span><b>Glitch</b>
-                  <span class="hint">Red opening, then a fast slice glitch into the dark splash.</span></button>
-                <button class="lk-card" data-v="classic"><span class="lk-thumb lk-t-classic"></span><b>Classic</b>
-                  <span class="hint">Straight to the dark splash, no opening animation.</span></button>
-              </div>
+              <p class="hint" style="margin:-4px 0 14px;">How Chimera opens. The loading bar is the real startup either way; only the look changes.
+                Click a card to choose it, or its &#9654; to watch it first. Add your own opening as a video.</p>
+              <div class="lk-cards" id="lk-splash"></div>
             </div>
             <div class="card">
               <h3>Splash soundtrack</h3>
-              <p class="hint" style="margin:-4px 0 14px;">Plays once while the splash opens (about 6 seconds). Each one is timed to the displacement.
-                Click &#9654; to listen; click a row to choose it.</p>
+              <p class="hint" style="margin:-4px 0 14px;">Plays once while the splash opens (about 6 seconds). The built-in ones are timed to the
+                openings. Click &#9654; to listen; click a row to choose it. Add your own as an MP3, WAV, OGG or M4A file — long ones fade out when the splash closes.</p>
               <div class="lk-sounds" id="lk-sounds"></div>
               <div class="lk-vol"><span>Volume</span><input type="range" min="0" max="100" step="5" id="lk-volume"><b id="lk-volume-v"></b></div>
             </div>
@@ -1225,6 +1219,7 @@
       <div class="modal-footer" id="modal-footer"></div>
     </div>
   </div>
+  <script src="js/splash_fx.js"></script>
   <script src="js/splash.js"></script>
   <script src="js/main.js"></script>
   <script src="js/automation.js"></script>

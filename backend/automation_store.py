@@ -101,12 +101,13 @@ DEFAULT_AUTOMATION = {
     "clock_source": "",
     "clock_checked_at": "",
     # Settings › Customize Appearance (looks only — nothing here changes what Chimera does)
-    "look_splash": "displacement",       # splash opening: displacement | glitch | classic (dark splash only)
-    "look_sound": "c",                   # splash soundtrack: a..h (LOOK_SOUNDS) or none
+    "look_splash": "displacement",       # splash opening: LOOK_SPLASHES, or a video you added (v_…)
+    "look_sound": "c",                   # splash soundtrack: a..h (LOOK_SOUNDS), a soundtrack you added (s_…), or none
     "look_volume": "70",                 #   0..100
     "look_logo": "neon",                 # sidebar logo: neon (glitch to neon and back) | flash (quick glitch) | off
     "look_logo_freq": "rare",            #   rare (every 20–45 s) | often (every 8–15 s)
     "look_ecg": "live",                  # line under the logo: live (faster while busy) | calm | still | off
+    "look_custom": "[]",                 # soundtracks and video openings you added (appearance_media.py) (JSON list)
 }
 
 # the splash soundtracks in frontend/assets/sounds/chimera-splash-<key>.mp3 (all original, made for Chimera)
@@ -114,8 +115,10 @@ LOOK_SOUNDS = {
     "a": "Heartbeat Pad", "b": "Digital Glitch", "c": "Brand Sting", "d": "Punk Glitch",
     "e": "Comic Hip-Hop", "f": "Cyber Trailer", "g": "Acoustic Glitch", "h": "Future Synth",
 }
+# the splash openings built into Chimera (frontend/js/splash_fx.js + splash.js)
+LOOK_SPLASHES = ("displacement", "glitch", "neon", "heartbeat", "portal", "shatter", "assemble", "terminal", "vhs", "classic")
 LOOK_CHOICES = {
-    "look_splash": ("displacement", "glitch", "classic"),
+    "look_splash": LOOK_SPLASHES,
     "look_sound": tuple(LOOK_SOUNDS) + ("none",),
     "look_logo": ("neon", "flash", "off"),
     "look_logo_freq": ("rare", "often"),
@@ -407,11 +410,35 @@ def get_automation_settings():
     return s
 
 
+def look_custom():
+    """The soundtracks and video openings you added (their files are in ~/Chimera/data/looks)."""
+    import json as _json
+    try:
+        lst = _json.loads(get_automation_settings().get("look_custom") or "[]")
+    except ValueError:
+        return []
+    return [x for x in lst if isinstance(x, dict) and x.get("id")]
+
+
+def look_custom_ids(kind):
+    return {x["id"] for x in look_custom() if x.get("kind") == kind}
+
+
 def get_appearance():
-    """Settings › Customize Appearance: the chosen looks, plus the soundtrack list."""
+    """Settings › Customize Appearance: the chosen looks, the soundtrack list and what you added.
+    A chosen soundtrack or video whose file has gone falls back to the default."""
     s = get_automation_settings()
-    look = {k: s[k] for k in DEFAULT_AUTOMATION if k.startswith("look_")}
+    look = {k: s[k] for k in DEFAULT_AUTOMATION if k.startswith("look_") and k != "look_custom"}
+    looks_dir = os.path.join(db.APP_DATA_DIR, "looks")
+    custom = [x for x in look_custom() if os.path.isfile(os.path.join(looks_dir, os.path.basename(str(x.get("file", "")))))]
     look["sounds"] = [{"key": k, "name": n} for k, n in LOOK_SOUNDS.items()]
+    look["splashes"] = list(LOOK_SPLASHES)
+    look["custom"] = custom
+    ids = {x["id"] for x in custom}
+    if look["look_sound"][:2] == "s_" and look["look_sound"] not in ids:
+        look["look_sound"] = DEFAULT_AUTOMATION["look_sound"]
+    if look["look_splash"][:2] == "v_" and look["look_splash"] not in ids:
+        look["look_splash"] = DEFAULT_AUTOMATION["look_splash"]
     return look
 
 
@@ -452,9 +479,16 @@ def save_automation_settings(values):
                    "notify_finished", "notify_failed", "att_send_pdf", "auto_rep_attendance", "att_by_manager"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
         elif k in LOOK_CHOICES:
-            v = v.lower()
-            if v not in LOOK_CHOICES[k]:
+            v = v if v[:2] in ("s_", "v_") else v.lower()
+            custom = {"look_sound": "sound", "look_splash": "video"}.get(k)
+            if custom and v in look_custom_ids(custom):
+                pass
+            elif v not in LOOK_CHOICES[k]:
                 return False, f"'{v}' is not one of the choices ({', '.join(LOOK_CHOICES[k])})."
+        elif k == "look_custom":
+            import json as _json
+            lst = v if isinstance(v, list) else _json.loads(v or "[]")
+            v = _json.dumps([x for x in lst if isinstance(x, dict) and x.get("id")])
         elif k == "look_volume":
             if not v.isdigit() or not 0 <= int(v) <= 100:
                 return False, "Volume must be from 0 to 100."

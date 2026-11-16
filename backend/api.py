@@ -88,9 +88,43 @@ class Api:
         return automation_store.get_appearance()
 
     def save_appearance(self, values):
-        vals = {k: v for k, v in (values or {}).items() if str(k).startswith("look_")}
+        vals = {k: v for k, v in (values or {}).items() if str(k).startswith("look_") and k != "look_custom"}
         ok, message = automation_store.save_automation_settings(vals)
         return {"ok": ok, "message": message, "look": automation_store.get_appearance()}
+
+    def add_look_media(self, kind):
+        """Customize Appearance › + Add soundtrack / + Add video opening: pick a file, Chimera keeps a copy."""
+        import appearance_media
+        if kind not in appearance_media.TYPES:
+            return {"ok": False, "message": "Unknown kind."}
+        window = self._win or (webview.windows[0] if webview.windows else None)
+        if window is None:
+            return {"ok": False, "message": "No window to open the file picker from."}
+        picked = window.create_file_dialog(webview.OPEN_DIALOG, file_types=appearance_media.file_types(kind))
+        if not picked:
+            return {"ok": False, "cancelled": True, "message": ""}
+        path = picked[0] if isinstance(picked, (list, tuple)) else picked
+        ok, message, item = appearance_media.add(kind, path)
+        return {"ok": ok, "message": message, "item": item, "look": automation_store.get_appearance()}
+
+    def update_look_media(self, media_id, values):
+        import appearance_media
+        values = values or {}
+        ok, message = appearance_media.update(media_id, values.get("name"), values.get("transition"))
+        return {"ok": ok, "message": message, "look": automation_store.get_appearance()}
+
+    def delete_look_media(self, media_id):
+        import appearance_media
+        ok, message = appearance_media.delete(media_id)
+        return {"ok": ok, "message": message, "look": automation_store.get_appearance()}
+
+    def get_look_media(self, media_id):
+        import appearance_media
+        return appearance_media.media_info(media_id)
+
+    def get_look_media_chunk(self, media_id, index):
+        import appearance_media
+        return appearance_media.media_chunk(media_id, index)
 
     def get_overview_kpis(self):
         """The Overview's four boxes, from SFA data Chimera reads by itself."""
