@@ -197,6 +197,14 @@ class DistributorSyncTest(unittest.TestCase):
         self.assertTrue(LC.check_quantities(prods, {"PRO_0007": 0}))                          # nothing to load
         self.assertTrue(any("isn't on the Add Loading page" in x for x in LC.check_quantities(prods, {"PRO_999": 2})))
         self.assertTrue(any("negative" in x for x in LC.check_quantities(prods, {"PRO_0007": -1, "PRO_163": 1})))
+        # the same product code at different prices is separate lines: quantities go by code@price
+        dup = LC._products({"rows": [
+            {"name": "Buddy 50g", "code": "PRO_0007", "price": "15.00", "stock": "60", "last_unloaded": "0"},
+            {"name": "Buddy 50g", "code": "PRO_0007", "price": "16.00", "stock": "60", "last_unloaded": "0"}]})
+        self.assertEqual([p["key"] for p in dup], ["PRO_0007@15.0000", "PRO_0007@16.0000"])
+        self.assertEqual(LC.check_quantities(dup, {"PRO_0007@16.0000": 60}), [])
+        self.assertTrue(any("only 60" in x for x in LC.check_quantities(dup, {"PRO_0007@15.0000": 61})))
+        self.assertEqual(LC._norm_qty({"PRO_0007": 5}, dup), {"PRO_0007": 5.0})   # ambiguous old key isn't guessed
         self.assertTrue(AS.get_automation_settings()["add_loading_dry_run"] == "1")           # safe by default
 
     def test_rename_and_gone(self):

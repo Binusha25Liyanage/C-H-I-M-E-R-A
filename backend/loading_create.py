@@ -81,7 +81,20 @@ _TABLE_JS = r"""
   // The product table: PRODUCT | PRODUCT CODE | PRICE | AVAILABLE STOCK | LAST UNLOADED QTY | QUANTITY | VOLUME | AMOUNT
   const vis = e => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length);
   const norm = s => (s || '').replace(/\s+/g, ' ').trim();
-  const valOf = c => { if (!c) return ''; const i = c.querySelector('input, textarea, select'); return norm(i ? i.value : c.innerText); };
+  // What SFA shows in a cell: a dropdown's chosen text, a visible box's value, otherwise the visible text.
+  // Hidden inputs (SFA keeps the product's internal id in one) are ignored — they made PRODUCT show "136".
+  const valOf = c => {
+    if (!c) return '';
+    const sel = [...c.querySelectorAll('select')].find(vis);
+    if (sel) return norm(sel.selectedOptions[0] ? sel.selectedOptions[0].text : sel.value);
+    const box = [...c.querySelectorAll('input:not([type=hidden]), textarea')].find(vis);
+    if (box) return norm(box.value);
+    const txt = norm(c.innerText);
+    if (txt) return txt;
+    const any = c.querySelector('input, textarea, select');
+    return any ? norm(any.value) : '';
+  };
+  const hiddenId = c => { const h = c && c.querySelector('input[type=hidden]'); return h ? norm(h.value) : ''; };
   const field = (re) => {
     for (const l of [...document.querySelectorAll('label, span, div, p, th')].filter(vis)) {
       if (l.children.length > 1 || !re.test(norm(l.childNodes.length ? [...l.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ') : l.textContent))) continue;
@@ -107,7 +120,7 @@ _TABLE_JS = r"""
       const name = valOf(c[iP >= 0 ? iP : 0]);
       if (!q || /^total$/i.test(name)) return;
       q.setAttribute('data-chimera-q', token + '-' + rows.length);
-      rows.push({name, code: iC >= 0 ? valOf(c[iC]) : '', price: iPr >= 0 ? valOf(c[iPr]) : '', stock: valOf(c[iS]),
+      rows.push({name, product_id: hiddenId(c[iP >= 0 ? iP : 0]), code: iC >= 0 ? valOf(c[iC]) : '', price: iPr >= 0 ? valOf(c[iPr]) : '', stock: valOf(c[iS]),
                  last_unloaded: iU >= 0 ? valOf(c[iU]) : '', qty: q.value, amount: iA >= 0 ? valOf(c[iA]) : '',
                  qref: token + '-' + (rows.length)});
     });
@@ -263,12 +276,61 @@ async def _browser(st, body):
                 pass
 
 
+def _key(code, price):
+    """One product line: SFA can list the same product code more than once at different prices (batches)."""
+    return f"{code}@{_n(price):.4f}"
+
+
 def _products(tbl):
     out = []
     for r in tbl["rows"]:
         out.append({"name": r["name"], "code": r["code"], "price": _n(r["price"]), "stock": _n(r["stock"]),
-                    "last_unloaded": _n(r["last_unloaded"])})
+                    "last_unloaded": _n(r["last_unloaded"]), "key": _key(r["code"], r["price"])})
     return out
+
+
+def _norm_qty(qty, products):
+    """{key: qty}. Accepts the older {code: qty} too, when that code is on one line only."""
+    by_code = {}
+    for p in products:
+        by_code.setdefault(p["code"], []).append(p.get("key") or _key(p["code"], p.get("price", 0)))
+    out = {}
+    for k, v in (qty or {}).items():
+        k = str(k)
+        if "@" not in k and len(by_code.get(k, [])) == 1:
+            k = by_code[k][0]
+        out[k] = _n(v)
+    return out
+
+
+_SET_QTY_JS = r"""
+(el, v) => {
+  el.focus();
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+  set.call(el, v);
+  for (const t of ['input', 'keyup', 'change']) el.dispatchEvent(new Event(t, {bubbles: true}));
+  el.blur();
+  return el.value;
+}
+"""
+
+
+async def _type_qty(page, box, q, label, log):
+    """Types one quantity like a person would; if SFA's page won't let the box be clicked (covered or off
+    screen), sets it the way typing ends up. Never touches a box SFA has locked (read-only / disabled)."""
+    state = await box.evaluate("e => ({ro: e.readOnly, dis: e.disabled})")
+    if state.get("ro") or state.get("dis"):
+        raise AddError(f"SFA doesn't allow a quantity for {label} (the box is locked).", "quantity")
+    try:
+        await box.scroll_into_view_if_needed(timeout=4000)
+        await box.click(timeout=5000)
+        await box.fill("", timeout=5000)
+        await box.type(f"{q:g}", delay=15, timeout=10000)
+        await box.dispatch_event("change")
+        await box.press("Tab", timeout=3000)
+    except Exception as e:
+        log(f"{label}: the quantity box couldn't be clicked ({type(e).__name__}) — typing it directly instead.")
+        await box.evaluate(_SET_QTY_JS, f"{q:g}")
 
 
 def _run(fn):
@@ -332,8 +394,9 @@ def read_form(distributor_id, fields=None, headless=None):
 
 
 def check_quantities(products, qty):
-    """qty {code: number}. Problems as text (empty = fine)."""
-    by = {p["code"]: p for p in products}
+    """qty {key: number} (key = code@price, see _key). Problems as text (empty = fine)."""
+    qty = _norm_qty(qty, products)
+    by = {(p.get("key") or _key(p["code"], p.get("price", 0))): p for p in products}
     bad = []
     for code, q in qty.items():
         q = _n(q)
@@ -341,7 +404,7 @@ def check_quantities(products, qty):
             bad.append(f"{code}: quantity can't be negative")
         elif code not in by:
             if q > 0:
-                bad.append(f"{code} isn't on the Add Loading page any more")
+                bad.append(f"{code.split('@')[0]} isn't on the Add Loading page any more")
         elif q > by[code]["stock"]:
             bad.append(f"{by[code]['name']}: {q:g} wanted, only {by[code]['stock']:g} in stock now")
     if not any(_n(q) > 0 for q in qty.values()):
@@ -378,20 +441,19 @@ def create(distributor_id, quantities, fields=None, dry_run=None, headless=None)
         bad = check_quantities(prods, qty)
         if bad:
             return {"blocked": "Not saved — the numbers changed in SFA: " + "; ".join(bad)}
+        want = _norm_qty(qty, prods)
         for r in tbl["rows"]:
-            q = qty.get(r["code"], 0)
+            q = want.get(_key(r["code"], r["price"]), 0)
             if q <= 0:
                 continue
             box = page.locator(f"[data-chimera-q='{r['qref']}']").first
-            await box.click()
-            await box.fill("")
-            await box.type(f"{q:g}", delay=15)
-            await box.dispatch_event("change")
-            await box.press("Tab")
+            label = f"{r['name'] or r['code']} ({r['code']} @ {r['price']})"
+            await _type_qty(page, box, q, label, log)
+            log(f"{label}: {q:g}")
         await page.wait_for_timeout(500)
         check = await page.evaluate(_TABLE_JS, [uuid.uuid4().hex[:8]])
-        typed = {r["code"]: _n(r["qty"]) for r in check["rows"]}
-        wrong = [c for c, q in qty.items() if q > 0 and abs(typed.get(c, -1) - q) > 1e-9]
+        typed = {_key(r["code"], r["price"]): _n(r["qty"]) for r in check["rows"]}
+        wrong = [c.split("@")[0] for c, q in want.items() if q > 0 and abs(typed.get(c, -1) - q) > 1e-9]
         if wrong:
             return {"blocked": "Not saved — SFA didn't take the quantity for: " + ", ".join(wrong)}
         number = check.get("number") or tbl.get("number", "")

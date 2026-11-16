@@ -307,13 +307,15 @@ def all_territories():
     """Every territory Chimera knows — Outlet Updates' list (working ones flagged) plus any seen in rep
     attendance — for the leave-out picker. [{territory, working}] working first, then A-Z."""
     out = {}
-    working = {squash(t) for t in working_territories()}
     try:
-        import outlet_store
-        for t in outlet_store.list_territories():
-            out[squash(t["territory"])] = {"territory": t["territory"], "working": squash(t["territory"]) in working}
-    except Exception:
-        pass
+        working = {squash(t) for t in working_territories()}
+    except Exception:                                  # the list itself must never fail because of this
+        working = {squash(t) for t in _manual_working()}
+    conn = db.get_connection()                         # straight from the table Outlet Updates shows
+    for terr, enabled in conn.execute("SELECT territory, enabled FROM ou_territories"):
+        if terr and str(terr).strip():
+            out[squash(terr)] = {"territory": terr, "working": squash(terr) in working or (not working and bool(enabled))}
+    conn.close()
     conn = db.get_connection()
     for (terr,) in conn.execute("SELECT DISTINCT territory FROM att_rows"):
         out.setdefault(squash(terr), {"territory": terr, "working": squash(terr) in working})

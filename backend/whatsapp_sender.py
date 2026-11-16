@@ -327,6 +327,104 @@ def force_stop(timeout=10):
 # ===========================================================================
 # Browser
 # ===========================================================================
+PROFILE_LOCK = os.path.join(os.path.expanduser("~"), "Chimera", "data", "whatsapp.lock")
+PROFILE_WAIT_SECONDS = 15 * 60
+
+
+def _profile_in_use_error(e):
+    t = str(e).lower()
+    return "existing browser session" in t or "already in use" in t or "profile appears to be in use" in t
+
+
+def _lock_profile(wait_s=PROFILE_WAIT_SECONDS):
+    """Only one Chimera window/process uses the WhatsApp browser at a time — the app, a scheduled run started
+    by Windows, a reminder, rep attendance... The others wait their turn (up to 15 minutes) instead of failing
+    with 'profile is already in use'. A lock left by a Chimera that was closed mid-send is ignored."""
+    import automation_store as AS
+    os.makedirs(os.path.dirname(PROFILE_LOCK), exist_ok=True)
+    start, told = time.time(), False
+    while True:
+        try:
+            fd = os.open(PROFILE_LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            with os.fdopen(fd, "w") as f:
+                json.dump({"pid": os.getpid(), "since": time.time(), "action": WA.snapshot().get("action")}, f)
+            return True
+        except FileExistsError:
+            try:
+                with open(PROFILE_LOCK) as f:
+                    info = json.load(f)
+                pid = int(info.get("pid", 0))
+                stale = pid == os.getpid() or not AS.pid_alive(pid)   # in this process WA.start already queues
+            except Exception:
+                stale, info = True, {}
+            if stale:
+                try:
+                    os.remove(PROFILE_LOCK)
+                except OSError:
+                    pass
+                continue
+            if time.time() - start > wait_s:
+                raise WAError("WhatsApp is still being used by another Chimera task after 15 minutes — try again later.")
+            if not told:
+                WA.log(f"Waiting — another Chimera task is using WhatsApp ({info.get('action') or 'sending'}). "
+                       "This continues by itself when it finishes.")
+                told = True
+            time.sleep(2)
+
+
+def _unlock_profile():
+    try:
+        with open(PROFILE_LOCK) as f:
+            if int(json.load(f).get("pid", 0)) != os.getpid():
+                return
+        os.remove(PROFILE_LOCK)
+    except Exception:
+        pass
+
+
+def _close_leftover_browser():
+    """Closes a WhatsApp browser Chimera left running (Chimera was closed or crashed mid-send) — only the
+    browser using Chimera's own WhatsApp profile, never your normal Chrome — and clears its lock files."""
+    closed = 0
+    try:
+        import subprocess
+        if os.name == "nt":
+            ps = ("$p = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*whatsapp_profile*' -and "
+                  "($_.Name -eq 'chrome.exe' -or $_.Name -eq 'chromium.exe' -or $_.Name -eq 'msedge.exe') }; "
+                  "$p | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }; $p.Count")
+            out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True,
+                                 text=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            closed = int((out.stdout or "0").strip().splitlines()[-1] or 0) if (out.stdout or "").strip() else 0
+        else:
+            out = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True, timeout=15)
+            for line in out.stdout.splitlines():
+                pid, _, args = line.strip().partition(" ")
+                if PROFILE_DIR in args and ("chrom" in args.lower()) and int(pid) != os.getpid():
+                    try:
+                        os.kill(int(pid), 9)
+                        closed += 1
+                    except OSError:
+                        pass
+    except Exception:
+        pass
+    time.sleep(1.5)
+    for name in ("SingletonLock", "SingletonCookie", "SingletonSocket", "lockfile"):
+        try:
+            os.remove(os.path.join(PROFILE_DIR, name))
+        except OSError:
+            pass
+    return closed
+
+
+async def _launch(p, kw):
+    try:
+        return await p.chromium.launch_persistent_context(channel="chrome", **kw)
+    except Exception as e:
+        if _profile_in_use_error(e):
+            raise
+        return await p.chromium.launch_persistent_context(**kw)
+
+
 async def _open(p, headless):
     os.makedirs(PROFILE_DIR, exist_ok=True)
     if os.environ.get("CHIMERA_WA_FORCE_HEADLESS") == "1":   # automated tests only (no screen)
@@ -334,9 +432,22 @@ async def _open(p, headless):
     kw = dict(user_data_dir=PROFILE_DIR, headless=headless, viewport={"width": 1280, "height": 860},
               args=["--disable-blink-features=AutomationControlled"])
     try:
-        return await p.chromium.launch_persistent_context(channel="chrome", **kw)
-    except Exception:
-        return await p.chromium.launch_persistent_context(**kw)
+        return await _launch(p, kw)
+    except Exception as e:
+        if not _profile_in_use_error(e):
+            raise
+        # We hold the WhatsApp lock, so no other Chimera task is using it: it's a WhatsApp browser left
+        # open by an earlier Chimera (closed or crashed mid-send). Close that one and try again.
+        n = await asyncio.to_thread(_close_leftover_browser)
+        WA.log(f"Closed a WhatsApp browser an earlier Chimera left open{f' ({n})' if n else ''} — trying again.", "warn")
+        try:
+            return await _launch(p, kw)
+        except Exception as e2:
+            if _profile_in_use_error(e2):
+                raise WAError("Chimera's WhatsApp browser is still open from an earlier run and couldn't be closed. "
+                              "Close any 'Chrome for Testing' / WhatsApp window Chimera opened (or restart the "
+                              "laptop) and try again.")
+            raise
 
 
 async def _state(page, timeout_s, ready_only=False):
@@ -823,6 +934,15 @@ async def _send_text(page, text, what="The test message"):
 
 
 async def _session(action, headless, fn, link_timeout=180):
+    _STEP["name"] = "opening WhatsApp"
+    await asyncio.to_thread(_lock_profile)
+    try:
+        return await _session_locked(action, headless, fn, link_timeout)
+    finally:
+        _unlock_profile()
+
+
+async def _session_locked(action, headless, fn, link_timeout):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
         ctx = await _open(p, headless)

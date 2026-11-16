@@ -2,7 +2,7 @@
 // sending to WhatsApp, history and settings. Relies on esc/API/chip/openModal/closeModal/confirmModal (automation.js),
 // copyText (main.js), waChatPicker/SH/openStopNow/switchView (shell.js / main.js).
 
-const AT = { day: null, data: null, style: "classic", poll: null, wasActive: false, hPeriod: "7", chats: [], ex: [] };
+const AT = { terrs: [], terrNote: "", day: null, data: null, style: "classic", poll: null, wasActive: false, hPeriod: "7", chats: [], ex: [] };
 const atApi = () => window.pywebview.api;
 const AT_TK = ["kicker", "nlo_title", "nlo_sub", "lo_title", "lo_sub", "mgr_title", "mgr_sub"];
 const AT_LOOK = { classic: "Classic", professional: "Professional", nologo: "Professional (no logo)" };
@@ -22,12 +22,27 @@ async function loadRepAttendance(day) {
   if (day) AT.day = day;
   if (!AT.day) AT.day = atIso(new Date());
   document.getElementById("att-day").value = AT.day;
-  try { AT.data = await atApi().get_rep_attendance(AT.day); } catch (e) { return; }
+  atLoadTerritories();                       // the leave-out picker's list, on its own
+  try { AT.data = await atApi().get_rep_attendance(AT.day); } catch (e) {
+    // never fail silently: say what went wrong, and don't leave buttons that act on data that isn't there
+    document.getElementById("att-pending").innerHTML = `<div class="problem-box">Chimera couldn't load this screen: ${esc(String(e && e.message || e))}
+      — close Chimera completely and start it again. If it stays, send this message to support.</div>`;
+    ["att-rebuild", "att-send", "att-open-folder"].forEach(id => { const b = document.getElementById(id); if (b) b.disabled = true; });
+    return;
+  }
   const d = AT.data;
   AT.chats = [...d.settings.att_chats];
   AT.ex = [...(d.settings.att_exclude || [])];
   AT.style = d.settings.att_style !== "both" ? d.settings.att_style : d.settings.att_send_style;
   atRenderPending(); atRenderDay(); atRenderSettings();
+  if ((d.errors || []).length) {   // a part couldn't be read: show it (the rest of the screen still works)
+    const box = document.createElement("div");
+    box.className = "problem-box att-errs";
+    box.innerHTML = `<b>Part of this screen couldn't be read:</b><br>${d.errors.map(esc).join("<br>")}
+      <br><button class="btn-outline btn-small" type="button">Copy for support</button>`;
+    box.querySelector("button").onclick = (e) => copyText(d.errors.join("\n"), e.target);
+    document.getElementById("att-pending").prepend(box);
+  }
   const b = document.getElementById("nav-att-badge");
   if (b) { b.textContent = d.pending.length; b.style.display = d.pending.length ? "" : "none"; }
   if (d.live_active && !AT.poll) atStartPoll();
@@ -239,6 +254,30 @@ function atRenderSettings() {
 
   atRenderChips();
 }
+// Every territory Chimera knows, for the leave-out picker. Kept on its own (AT.terrs) and loaded from the same
+// list Outlet Updates › Working Territories shows if the dedicated call isn't there or comes back empty.
+async function atLoadTerritories() {
+  const api = atApi(), notes = [];
+  let list = [];
+  try {
+    if (typeof api.get_known_territories === "function") {
+      const r = await api.get_known_territories();
+      list = r.territories || [];
+      if (!r.ok) notes.push(r.message);
+    }
+  } catch (e) { notes.push(String(e)); }
+  if (!list.length) {
+    try {
+      const o = await api.get_outlet_updates_overview();
+      list = (o.territories || []).map(t => ({ territory: t.territory, working: !!t.enabled }));
+    } catch (e) { notes.push(String(e)); }
+  }
+  list.sort((a, b) => (b.working - a.working) || a.territory.localeCompare(b.territory));
+  AT.terrs = list;
+  AT.terrNote = !list.length && notes.length ? notes.join(" · ") : "";
+  return list;
+}
+
 function atRenderWorking() {
   const w = AT.data.working, miss = AT.data.missing_days || [];
   const el = document.getElementById("att-wk-status");
@@ -328,7 +367,8 @@ function atRenderChips() {
       clearInterval(wait);
       msg.innerHTML = s.result ? `<span class="${s.result.ok ? "" : "error"}">${esc(s.result.message)}</span>` : "";
       try { const d = await atApi().get_rep_attendance(AT.day); AT.data.working = d.working; AT.data.missing_days = d.missing_days;
-        AT.data.all_territories = d.all_territories; } catch (x) { /* keep */ }
+      } catch (x) { /* keep */ }
+      atLoadTerritories();
       atRenderWorking();
     }, 1500);
   };
@@ -356,22 +396,25 @@ function atRenderChips() {
     btn.disabled = false;
     msg.innerHTML = r.ok ? `${esc(r.message)} Click the box above to pick.`
       : `<span class="error">${esc(r.message)}</span>`;
-    if (r.ok) { try { const d = await atApi().get_rep_attendance(AT.day); AT.data.all_territories = d.all_territories; } catch (x) { /* keep */ } }  // your unsaved edits stay
+    if (r.ok) await atLoadTerritories();   // your unsaved edits on this tab stay
   };
   document.getElementById("att-t-reset").onclick = () => AT_TK.forEach(k => { document.getElementById("att-t-" + k).value = ""; });
   const addEx = (v) => { const i = document.getElementById("att-ex"), val = (typeof v === "string" ? v : i.value).trim();
     if (val && !AT.ex.some(x => x.toLowerCase() === val.toLowerCase())) AT.ex.push(val); i.value = ""; atRenderChips(); exList(false); };
   // territory picker: every territory Chimera knows (Outlet Updates + attendance), working ones first
   const exBox = document.getElementById("att-ex-list"), exIn = document.getElementById("att-ex");
+  exIn.addEventListener("focus", () => { if (!AT.terrs.length) atLoadTerritories().then(() => exList(true)); });
   const exList = (show) => {
     if (!show) { exBox.style.display = "none"; return; }
     const q = exIn.value.trim().toLowerCase(), have = new Set(AT.ex.map(x => x.toLowerCase()));
-    const all = (AT.data && AT.data.all_territories) || [];
+    const all = AT.terrs;
     const hits = all.filter(t => !have.has(t.territory.toLowerCase()) && (!q || t.territory.toLowerCase().includes(q)));
     const nW = all.filter(t => t.working).length;
     exBox.innerHTML = `<div class="att-pick-head">${all.length} territories · ${nW} working</div>` + (hits.length ? hits.map(t =>
       `<div class="att-pick-row" data-v="${esc(t.territory)}"><span>${esc(t.territory)}</span>${t.working ? '<span class="chip chip-ok">working</span>' : '<span class="chip chip-grey">not working</span>'}</div>`).join("")
-      : `<div class="att-pick-empty">${q ? `No territory matches — <b>+ Add</b> adds “${esc(exIn.value.trim())}” as typed.` : "All territories are already on the list."}</div>`);
+      : `<div class="att-pick-empty">${q ? `No territory matches — <b>+ Add</b> adds “${esc(exIn.value.trim())}” as typed.`
+          : !all.length ? `Chimera has no territories yet — click <b>Get territories from SFA</b>.${AT.terrNote ? `<br><span class="error">${esc(AT.terrNote)}</span>` : ""}`
+          : "All territories are already on the list."}</div>`);
     exBox.style.display = "";
   };
   exIn.addEventListener("focus", () => exList(true));

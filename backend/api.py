@@ -971,27 +971,48 @@ class Api:
     # Rep Attendance
     # ------------------------------------------------------------
     def get_rep_attendance(self, day=None):
+        """Everything the Rep Attendance screen shows. Each part is read on its own: if one fails, the rest still
+        shows and the problem is reported (errors) instead of the whole screen staying empty."""
+        import traceback
         import rep_attendance as R
         import rep_attendance_automation as RA
         import rep_attendance_images as RI
         from datetime import date as _d
         day = (day or _d.today().isoformat())[:10]
-        info = R.get_day(day)
-        st = RA.settings()
-        runs = R.list_runs(10, day)
-        latest = next((r for r in runs if r["images"]), None)
-        live = RA.LIVE.snapshot()
-        return {"ok": True, **info, "runs": runs, "latest": latest, "days": R.days_list(45),
-                "all_territories": R.all_territories(),
+        errors = []
+
+        def part(name, fn, default):
+            try:
+                return fn()
+            except Exception as e:
+                tb = traceback.extract_tb(e.__traceback__)[-1]
+                errors.append(f"{name}: {type(e).__name__}: {e} ({os.path.basename(tb.filename)} line {tb.lineno})")
+                return default
+        empty_day = {"day": day, "rows": [], "left_out": [], "meta": None, "not_logged_in": [], "working_count": 0,
+                     "counts": {"logged_in": 0, "not_logged_out": 0, "logged_out": 0, "not_logged_in": 0, "working": 0,
+                                "edited": 0, "left_out": 0}}
+        info = part("the day's attendance", lambda: R.get_day(day), empty_day)
+        st = part("settings", RA.settings, None) or {"url": "", "style": "classic", "send_style": "classic", "chats": [],
+                                                     "send_pdf": False, "by_manager": False, "titles": {}}
+        runs = part("runs", lambda: R.list_runs(10, day), [])
+        latest = next((r for r in runs if r.get("images")), None)
+        live = part("live status", RA.LIVE.snapshot, {})
+        ws = part("working territories setting", R.working_settings, ("auto", 14))
+        return {"ok": True, **info, "runs": runs, "latest": latest, "days": part("days", lambda: R.days_list(45), []),
+                "all_territories": part("territory list", R.all_territories, []),
                 "settings": {"att_url": st["url"], "att_style": st["style"], "att_send_style": st["send_style"],
                              "att_chats": st["chats"], "att_send_pdf": "1" if st["send_pdf"] else "0",
-                             "att_exclude": R.always_left_out(), "att_by_manager": "1" if st["by_manager"] else "0",
-                             "att_titles": st["titles"], "titles_default": RI.DEFAULT_TITLES, "titles_used": RI.titles(st["titles"]),
-                             "att_working": R.working_settings()[0], "att_working_days": str(R.working_settings()[1])},
-                "working": R.working_info(), "missing_days": RA.missing_days(),
-                "targets": RA.targets(st),
+                             "att_exclude": part("leave-out list", R.always_left_out, []),
+                             "att_by_manager": "1" if st.get("by_manager") else "0",
+                             "att_titles": st.get("titles") or {}, "titles_default": RI.DEFAULT_TITLES,
+                             "titles_used": part("titles", lambda: RI.titles(st.get("titles")), dict(RI.DEFAULT_TITLES)),
+                             "att_working": ws[0], "att_working_days": str(ws[1])},
+                "working": part("working territories", R.working_info, None),
+                "missing_days": part("missing days", RA.missing_days, []),
+                "targets": part("WhatsApp chats", lambda: RA.targets(st), []),
                 "live_active": bool(live.get("active")), "today": _d.today().isoformat(),
-                "pending": [r for r in R.list_runs(20) if r["state"] == "pending_review"]}
+                "pending": part("waiting runs", lambda: [r for r in R.list_runs(20) if r["state"] == "pending_review"], []),
+                "errors": errors}
 
     def start_rep_attendance(self, day=None, send=False, show_browser=False):
         import rep_attendance_automation as RA
@@ -1065,6 +1086,19 @@ class Api:
                                      "att_working", "att_working_days")}
         ok, msg = automation_store.save_automation_settings(vals)
         return {"ok": ok, "message": msg}
+
+    def get_known_territories(self):
+        """Every territory Chimera knows (for pickers) — on its own, so a problem elsewhere never empties it."""
+        try:
+            import rep_attendance as R
+            return {"ok": True, "territories": R.all_territories()}
+        except Exception as e:
+            try:
+                return {"ok": True, "territories": [{"territory": t["territory"], "working": bool(t["enabled"])}
+                                                    for t in outlet_store.list_territories()],
+                        "note": f"{type(e).__name__}: {e}"}
+            except Exception as e2:
+                return {"ok": False, "territories": [], "message": f"{type(e2).__name__}: {e2}"}
 
     def start_rep_attendance_backfill(self, show_browser=False):
         """Reads the earlier days of the working-territories window from SFA (read only, nothing sent)."""

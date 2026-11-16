@@ -725,7 +725,7 @@ function alConfirm(t) {
 }
 
 async function alCreate() {
-  const qty = Object.fromEntries(AL.products.filter(p => p.qty > 0).map(p => [p.code, p.qty]));
+  const qty = Object.fromEntries(AL.products.filter(p => p.qty > 0).map(p => [p.key || p.code, p.qty]));   // key = code@price (same code can repeat)
   document.getElementById("modal-body").innerHTML = `<p><span class="spinner"></span> ${AL.dry ? "Filling SFA's Add Loading page (dry run)…" : "Creating the loading in SFA…"}</p>`;
   document.getElementById("modal-footer").innerHTML = "";
   AU.busyModal = true;

@@ -553,7 +553,20 @@ _SHOW_MAX_JS = r"""
 """
 
 
-async def _read_territory_page(cfg, url, headless, timeout_ms):
+async def _click_soft(loc, timeout=6000):
+    """Clicks like a person; if SFA's page won't let it be clicked (covered, off screen), clicks it from the
+    page instead of waiting 30 seconds."""
+    try:
+        await loc.scroll_into_view_if_needed(timeout=3000)
+    except Exception:
+        pass
+    try:
+        await loc.click(timeout=timeout)
+    except Exception:
+        await loc.evaluate("e => e.click()")
+
+
+async def _read_territory_page(cfg, url, headless, timeout_ms, partial=None):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
         browser = await SA._launch(p, cfg.get("browser", "chrome"), headless)
@@ -567,7 +580,7 @@ async def _read_territory_page(cfg, url, headless, timeout_ms):
                 await SA._settle(page)
             btn, _l, _seen = await SA._find_button(page, "SEARCH", 8000)
             if btn is not None:
-                await btn.click()
+                await _click_soft(btn)
             res, deadline = None, time.time() + max(25, timeout_ms / 1000)
             while time.time() < deadline:
                 await page.wait_for_timeout(800)
@@ -583,14 +596,17 @@ async def _read_territory_page(cfg, url, headless, timeout_ms):
             if await page.evaluate(_SHOW_MAX_JS):
                 await page.wait_for_timeout(1500)
                 res = await page.evaluate(_TERR_TABLE_JS)
-            found = {}
+            found = partial if partial is not None else {}
             for _ in range(300):                       # pages
                 for r in res["rows"]:
                     found.setdefault(r["code"] or r["territory"], r)
                 if not res["nextOk"]:
                     break
                 before = res["first"]
-                await page.locator("[data-chimera-next='1']").last.click()
+                try:
+                    await _click_soft(page.locator("[data-chimera-next='1']").last)
+                except Exception:
+                    break                               # keep the pages read so far
                 for _w in range(30):
                     await page.wait_for_timeout(300)
                     try:
@@ -618,8 +634,9 @@ def detect_territories(headless=True):
     turl = s.get("ou_territory_url") or OS.DEFAULT_TERRITORY_URL
     timeout_ms = int(s.get("page_timeout_seconds") or 60) * 1000
     first_err = ""
+    partial = {}
     try:
-        rows, total = asyncio.run(_read_territory_page(cfg, turl, headless, timeout_ms))
+        rows, total = asyncio.run(_read_territory_page(cfg, turl, headless, timeout_ms, partial))
         added = OS.merge_detected(rows)
         active = sum(1 for r in rows if r["sfa_status"].startswith("ACTIVE"))
         note = f" (SFA says {total} in all)" if total and total != len(rows) else ""
@@ -628,7 +645,16 @@ def detect_territories(headless=True):
                            + (f", {len(added)} new (switched off)." if added else ".")}
     except Exception as e:
         first_err = e.message if isinstance(e, StepError) else str(e).splitlines()[0][:200]
+        if partial:                                    # some pages were read before it stopped: use them
+            rows = list(partial.values())
+            added = OS.merge_detected(rows)
+            return {"ok": True, "found": len(rows), "added": added, "source": "View Territory",
+                    "message": f"Read {len(rows)} territories from View Territory (it stopped part-way: {first_err})"
+                               + (f", {len(added)} new (switched off)." if added else ".")}
     res = SA.detect_filters(settings()["url"], headless=headless)
+    if not res.get("ok") and "login page" in (res.get("message") or "").lower():
+        time.sleep(5)                                  # SFA sometimes refuses a login straight after another one
+        res = SA.detect_filters(settings()["url"], headless=headless)
     if not res.get("ok"):
         return {"ok": False, "message": f"View Territory: {first_err}. Itinerary page: {res.get('message')}"}
     f = next((x for x in res["fields"] if x["label"].strip().lower() == "territory"), None)
