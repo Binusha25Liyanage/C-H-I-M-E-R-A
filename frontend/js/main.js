@@ -633,8 +633,9 @@ window.addEventListener("pywebviewready", () => {
 document.getElementById("st-tabs").addEventListener("click", (e) => {
   const t = e.target.dataset.tab; if (!t) return;
   document.querySelectorAll("#st-tabs .tab").forEach(b => b.classList.toggle("active", b.dataset.tab === t));
-  ["sfa", "rules", "groups", "network", "notify"].forEach(x => { document.getElementById("st-panel-" + x).style.display = x === t ? "block" : "none"; });
+  ["sfa", "rules", "groups", "network", "notify", "look"].forEach(x => { const p = document.getElementById("st-panel-" + x); if (p) p.style.display = x === t ? "block" : "none"; });
   if (t === "network") loadDataUsage();
+  if (t === "look" && window.loadAppearanceSettings) window.loadAppearanceSettings();
   if (t === "notify") loadNotifySettings();
 });
 

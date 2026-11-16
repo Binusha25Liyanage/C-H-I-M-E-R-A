@@ -31,6 +31,7 @@ async function rnLoad() {
 function rnBadge() {
   const b = document.getElementById("nav-run-badge"); if (!b || !RN.data) return;
   const n = RN.data.active_count;
+  if (window.chimeraEcgBusy) window.chimeraEcgBusy(n > 0);      // the heartbeat line beats faster while something runs
   b.textContent = n; b.style.display = n ? "" : "none"; b.title = n ? `${n} process(es) running` : "";
 }
 

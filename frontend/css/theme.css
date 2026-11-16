@@ -923,3 +923,119 @@ tr.rn-skip td { color: #999; }
 .ld-dry-btn.dry:hover { background: #ffefcf; }
 .ld-dry-btn.live { background: #fdecee; color: #b5121b; border-color: #f1b5bb; }
 .ld-dry-btn.live:hover { background: #fbdde1; }
+
+/* The sidebar stays fixed down the whole left side, however far the page scrolls (a long dropdown used to
+   make the page taller than the shell and leave a blank strip under the sidebar). */
+.sidebar { position: fixed; left: 0; top: 0; bottom: 0; height: auto; z-index: 30; }
+.app-shell > .main-col { margin-left: 272px; }
+#att-style-seg button.att-unbuilt { opacity: .55; }
+#att-style-seg button.att-unbuilt.on { opacity: 1; }
+.att-soft-off { opacity: .55; }
+.att-noimg { padding: 6px 0; }
+.att-noimg p { margin: 0 0 8px; }
+
+/* ---------- Splash openings (Settings › Customize Appearance) ---------- */
+.splash.sp-wait > * { visibility: hidden; }
+.sp-red { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; text-align: center; padding: 20px;
+  background: radial-gradient(ellipse at 20% 0%, #2a0d0f 0%, transparent 55%),
+              linear-gradient(120deg, #3a0c10 0%, #8f0e15 45%, #b5121b 75%, #c23a42 100%); }
+.sp-red .r-logo { width: min(30vh, 250px); height: min(30vh, 250px); border-radius: 50%; padding: 12px; background: rgba(255,255,255,.12);
+  box-shadow: 0 14px 50px rgba(0,0,0,.4); animation: rIn .7s cubic-bezier(.2,.8,.2,1) both; }
+.sp-red .r-logo img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid #f1e6d2; display: block; }
+.sp-red h1 { margin: 4.5vh 0 2vh; font-size: clamp(40px, 7vh, 70px); font-weight: 800; letter-spacing: .32em; padding-left: .32em;
+  animation: rIn .7s .12s cubic-bezier(.2,.8,.2,1) both; }
+.sp-red p { margin: 0; max-width: 680px; font-size: clamp(14px, 2vh, 18px); line-height: 1.6; color: rgba(255,255,255,.9);
+  animation: rIn .7s .22s cubic-bezier(.2,.8,.2,1) both; }
+.sp-red .r-bar { margin-top: 5vh; width: min(460px, 70vw); height: 3px; background: rgba(255,255,255,.2); border-radius: 2px; overflow: hidden; }
+.sp-red .r-bar i { display: block; height: 100%; width: 3%; background: #fff; box-shadow: 0 0 10px rgba(255,255,255,.8); transition: width .5s ease; }
+.sp-red .r-msg { margin-top: 12px; font-size: 13px; letter-spacing: .06em; color: rgba(255,255,255,.8); min-height: 18px; }
+@keyframes rIn { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .sp-red .r-logo, .sp-red h1, .sp-red p { animation: none; } }
+/* slice glitch */
+.gl-slice { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.gl-slice > .sp-red, .gl-slice > .sp-red * { animation: none !important; }
+.gl-slice.c1 > .sp-red { filter: drop-shadow(-6px 0 0 rgba(255, 30, 70, .85)) drop-shadow(6px 0 0 rgba(0, 240, 255, .75)); }
+.gl-scan { position: absolute; left: 0; right: 0; height: 3px; z-index: 6; background: rgba(255,255,255,.85);
+  box-shadow: 0 0 18px 4px rgba(255,255,255,.5); pointer-events: none; }
+.gl-noise { position: absolute; inset: 0; z-index: 5; pointer-events: none; mix-blend-mode: overlay; opacity: .35;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.15) 0 1px, transparent 1px 3px); }
+.splash.gl-flash::after { content: ""; position: absolute; inset: 0; z-index: 7; background: #fff; opacity: .16; pointer-events: none; }
+/* dimensional displacement */
+.dd-layer { position: absolute; inset: 0; pointer-events: none; }
+.dd-ghost { z-index: 4; mix-blend-mode: hard-light; }
+.dd-ghost.m > * { filter: sepia(1) saturate(9) hue-rotate(290deg) brightness(1.1); }
+.dd-ghost.c > * { filter: sepia(1) saturate(9) hue-rotate(140deg) brightness(1.05); }
+.dd-ghost > *, .dd-box > * { position: absolute; inset: 0; }
+.dd-ghost *, .dd-box * { animation: none !important; transition: none !important; }
+.dd-dots { z-index: 6; opacity: 0; mix-blend-mode: multiply;
+  background-image: radial-gradient(circle, rgba(0,180,255,.9) 1.4px, transparent 1.6px), radial-gradient(circle, rgba(255,0,140,.9) 1.4px, transparent 1.6px),
+                    radial-gradient(circle, rgba(255,220,0,.9) 1.4px, transparent 1.6px);
+  background-size: 7px 7px, 7px 7px, 7px 7px; background-position: 0 0, 2px 3px, 4px 1px; }
+.dd-box { position: absolute; z-index: 5; overflow: hidden; outline: 2px solid rgba(255,255,255,.9); pointer-events: none;
+  box-shadow: -5px 0 0 rgba(0,230,255,.85), 5px 0 0 rgba(255,0,150,.85); }
+.dd-dark { display: flex; flex-direction: column; background: linear-gradient(180deg, #17181c, #111215 60%, #0e0f12); }
+.dd-lines { z-index: 7; opacity: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(255,255,255,.06) 22px 23px),
+              repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 2px, transparent 2px 4px); }
+
+/* ---------- Sidebar logo: neon look + glitch, heartbeat line ---------- */
+.sidebar-brand.ecg-on { border-bottom: 0; margin-bottom: 0; }
+.brand-ecg { display: block; width: calc(100% - 4px); height: 30px; margin: 0 2px 6px; }
+.bg-wrap { position: relative; display: inline-block; line-height: 0; flex: none; }
+.bn-neon { position: absolute; inset: 0; border-radius: 8px; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 45%, #2a0a0e 0%, #140406 70%);
+  box-shadow: 0 0 0 1px rgba(255, 60, 75, .8), 0 0 8px 1px rgba(255, 30, 50, .55), inset 0 0 8px rgba(255, 30, 50, .35); }
+.bn-glow { position: absolute; inset: 2px; filter: drop-shadow(0 0 .6px rgba(255, 80, 95, .9)); }
+.bn-art { position: absolute; inset: 0; background: #ff5a69;
+  -webkit-mask: url(../assets/chimera-logo-mono.png) center / contain no-repeat; mask: url(../assets/chimera-logo-mono.png) center / contain no-repeat; }
+.bn-on .bn-neon { opacity: 1; }
+.bn-on .bn-neon.dim { opacity: .55; }
+.brand-title.neon { color: #ffe9eb; text-shadow: 0 0 2px #fff, 0 0 6px #ff2d3f, 0 0 12px #ff2d3f, 0 0 22px rgba(255, 20, 40, .75); }
+.brand-title.neon.dim { color: #ffb3bb; text-shadow: 0 0 4px rgba(255, 45, 63, .6); }
+.bg-slice { position: absolute; inset: 0; pointer-events: none; }
+.bg-slice img { width: 100%; height: 100%; border-radius: 8px; object-fit: contain; display: block; background: #f4ead9; }
+.bg-slice.m { filter: sepia(1) saturate(8) hue-rotate(290deg); mix-blend-mode: screen; }
+.bg-slice.c { filter: sepia(1) saturate(8) hue-rotate(140deg); mix-blend-mode: screen; }
+.brand-title.bg-on { text-shadow: -2px 0 rgba(0, 230, 255, .9), 2px 0 rgba(255, 0, 150, .9); }
+
+/* ---------- Settings › Customize Appearance ---------- */
+.lk-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.lk-card { display: flex; flex-direction: column; gap: 6px; text-align: left; padding: 10px 10px 12px; border: 2px solid #e3e3e6; border-radius: 10px;
+  background: #fff; cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.lk-card:hover { border-color: #c9c9ce; }
+.lk-card.on, .lk-seg button.on, .lk-snd.on { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(200, 16, 46, .12); }
+.lk-card .hint { font-size: 12px; line-height: 1.45; }
+.lk-thumb { display: block; height: 92px; border-radius: 6px; position: relative; overflow: hidden;
+  background: linear-gradient(180deg, #17181c, #0e0f12); }
+.lk-thumb::after { content: ""; position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -22px 0 0 -15px; border-radius: 50%;
+  background: url(../assets/chimera-logo-splash.png) center / 80% no-repeat, rgba(255,255,255,.06); box-shadow: 0 22px 0 -11px rgba(255,255,255,.5); }
+.lk-t-disp, .lk-t-glitch { background: linear-gradient(120deg, #3a0c10 0%, #8f0e15 45%, #b5121b 75%, #c23a42 100%); }
+.lk-t-disp::before { content: ""; position: absolute; left: 34%; top: 18%; width: 52%; height: 36%; z-index: 1;
+  background: linear-gradient(180deg, #17181c, #0e0f12); outline: 2px solid #fff; box-shadow: -4px 0 0 rgba(0,230,255,.85), 4px 0 0 rgba(255,0,150,.85);
+  background-image: radial-gradient(circle, rgba(0,180,255,.6) 1px, transparent 1.3px); background-size: 5px 5px; }
+.lk-t-glitch::before { content: ""; position: absolute; inset: 0; z-index: 1;
+  background: linear-gradient(180deg, transparent 22%, #121316 22% 31%, transparent 31% 52%, #121316 52% 57%, transparent 57% 74%, #121316 74% 86%, transparent 86%); }
+.lk-sounds { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.lk-snd { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 2px solid #e3e3e6; border-radius: 8px; background: #fff;
+  cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.lk-snd:hover { border-color: #c9c9ce; }
+.lk-snd .lk-play { width: 30px; height: 30px; border-radius: 50%; border: 0; background: #f1f1f3; cursor: pointer; flex: none; font-size: 11px; color: #333; }
+.lk-snd .lk-play:hover, .lk-snd .lk-play.playing { background: var(--color-primary); color: #fff; }
+.lk-snd span { display: flex; flex-direction: column; line-height: 1.3; } .lk-snd small { color: #888; font-size: 11.5px; }
+.lk-vol { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 13.5px; }
+.lk-vol input { width: 220px; accent-color: var(--color-primary); } .lk-vol b { min-width: 40px; }
+.lk-seg { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.lk-seg button { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 12px; border: 2px solid #e3e3e6; border-radius: 8px;
+  background: #fff; cursor: pointer; font: inherit; color: inherit; }
+.lk-seg button:hover { border-color: #c9c9ce; }
+.lk-seg button span { font-size: 12px; color: #888; }
+.lk-seg-small { grid-template-columns: repeat(auto-fill, minmax(160px, 220px)); }
+.lk-seg.lk-dis { opacity: .45; pointer-events: none; }
+
+/* ---------- Scrollbars: hidden until you scroll (page) or point at the sidebar ---------- */
+html.sp-lock, html.sp-lock body { overflow: hidden; }          /* the splash doesn't scroll — no scrollbar behind it */
+html { scrollbar-width: thin; scrollbar-color: transparent transparent; transition: scrollbar-color .3s; }
+html.is-scrolling { scrollbar-color: rgba(60, 60, 67, .45) transparent; }
+.sidebar { scrollbar-color: transparent transparent; }
+.sidebar:hover, .sidebar.is-scrolling { scrollbar-color: #3a3a3d transparent; }

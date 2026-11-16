@@ -100,6 +100,26 @@ DEFAULT_AUTOMATION = {
     "clock_offset_s": "",                # SFA server time minus PC time, seconds (last check)
     "clock_source": "",
     "clock_checked_at": "",
+    # Settings › Customize Appearance (looks only — nothing here changes what Chimera does)
+    "look_splash": "displacement",       # splash opening: displacement | glitch | classic (dark splash only)
+    "look_sound": "c",                   # splash soundtrack: a..h (LOOK_SOUNDS) or none
+    "look_volume": "70",                 #   0..100
+    "look_logo": "neon",                 # sidebar logo: neon (glitch to neon and back) | flash (quick glitch) | off
+    "look_logo_freq": "rare",            #   rare (every 20–45 s) | often (every 8–15 s)
+    "look_ecg": "live",                  # line under the logo: live (faster while busy) | calm | still | off
+}
+
+# the splash soundtracks in frontend/assets/sounds/chimera-splash-<key>.mp3 (all original, made for Chimera)
+LOOK_SOUNDS = {
+    "a": "Heartbeat Pad", "b": "Digital Glitch", "c": "Brand Sting", "d": "Punk Glitch",
+    "e": "Comic Hip-Hop", "f": "Cyber Trailer", "g": "Acoustic Glitch", "h": "Future Synth",
+}
+LOOK_CHOICES = {
+    "look_splash": ("displacement", "glitch", "classic"),
+    "look_sound": tuple(LOOK_SOUNDS) + ("none",),
+    "look_logo": ("neon", "flash", "off"),
+    "look_logo_freq": ("rare", "often"),
+    "look_ecg": ("live", "calm", "still", "off"),
 }
 
 LOCK_PATH = os.path.join(db.APP_DATA_DIR, "automation.lock")
@@ -387,6 +407,14 @@ def get_automation_settings():
     return s
 
 
+def get_appearance():
+    """Settings › Customize Appearance: the chosen looks, plus the soundtrack list."""
+    s = get_automation_settings()
+    look = {k: s[k] for k in DEFAULT_AUTOMATION if k.startswith("look_")}
+    look["sounds"] = [{"key": k, "name": n} for k, n in LOOK_SOUNDS.items()]
+    return look
+
+
 def save_automation_settings(values):
     clean = {}
     for k, v in (values or {}).items():
@@ -423,6 +451,13 @@ def save_automation_settings(values):
                    "seq_need_approval", "seq_dry_run", "notify_desktop", "notify_started", "notify_approval",
                    "notify_finished", "notify_failed", "att_send_pdf", "auto_rep_attendance", "att_by_manager"):
             v = "1" if v.lower() in ("1", "true", "on", "yes") else "0"
+        elif k in LOOK_CHOICES:
+            v = v.lower()
+            if v not in LOOK_CHOICES[k]:
+                return False, f"'{v}' is not one of the choices ({', '.join(LOOK_CHOICES[k])})."
+        elif k == "look_volume":
+            if not v.isdigit() or not 0 <= int(v) <= 100:
+                return False, "Volume must be from 0 to 100."
         elif k == "att_style":
             if v not in ("classic", "professional", "nologo", "both"):
                 return False, "Rep attendance look must be classic, professional, professional without logo, or all."

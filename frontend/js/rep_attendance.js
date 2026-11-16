@@ -73,21 +73,23 @@ function atRenderDay() {
   // images
   const latest = d.latest;
   const styles = latest ? [...new Set(latest.images.map(i => i.style).filter(s => s !== "manager"))] : [];
-  if (styles.length && !styles.includes(AT.style)) AT.style = styles[0];
-  document.querySelectorAll("#att-style-seg button").forEach(b => { b.classList.toggle("on", b.dataset.s === AT.style); b.style.display = styles.includes(b.dataset.s) ? "" : "none"; });
-  document.getElementById("att-style-seg").style.display = styles.length > 1 ? "" : "none";
+  // the three looks are always offered; a look with no images yet is shown lighter and can be built from here
+  document.querySelectorAll("#att-style-seg button").forEach(b => { b.classList.toggle("on", b.dataset.s === AT.style);
+    b.classList.toggle("att-unbuilt", !styles.includes(b.dataset.s)); b.style.display = "";
+    b.title = styles.includes(b.dataset.s) ? `Show the ${AT_LOOK[b.dataset.s]} images` : `${AT_LOOK[b.dataset.s]}: not built for this day yet`; });
+  document.getElementById("att-style-seg").style.display = "";
   const imgs = latest ? latest.images.filter(i => i.style === AT.style || i.style === "manager") : [];
   const box = document.getElementById("att-images");
   box.innerHTML = imgs.length ? imgs.map(i => `<figure><figcaption>${{ logged_out: "Logged out", by_manager: esc(d.settings.titles_used.mgr_title) }[i.group] || "Not logged out yet"}</figcaption>
       <img data-att-img="${esc(i.path)}" alt=""></figure>`).join("")
-    : `<p class="hint">${d.rows.length ? "No images yet — click <b>Rebuild images</b>." : "Images appear here once the day is read."}</p>`;
+    : atNoImages(d, styles);
   imgs.forEach(async i => { const b64 = await atApi().get_image_b64(i.path); const el = box.querySelector(`img[data-att-img="${CSS.escape(i.path)}"]`);
     if (el && b64) { el.src = "data:image/png;base64," + b64; el.onclick = () => atZoom(el.src); } });
   const st = latest ? AT_STATE[latest.state] : null;
   document.getElementById("att-send").textContent = latest && latest.state === "sent" ? "Send again" : "Send to WhatsApp";
-  document.getElementById("att-send").disabled = !latest;
-  document.getElementById("att-rebuild").disabled = !d.rows.length;
-  document.getElementById("att-open-folder").disabled = !latest;
+  // always clickable: with nothing to act on they say what to do first instead of doing nothing
+  [["att-send", !latest], ["att-rebuild", !d.rows.length], ["att-open-folder", !latest]].forEach(([id, off]) => {
+    const b = document.getElementById(id); b.disabled = false; b.classList.toggle("att-soft-off", off); });
   // tables
   const nlo = d.rows.filter(r => r.group === "not_logged_out"), lo = d.rows.filter(r => r.group === "logged_out");
   const table = (rows, out) => rows.length ? `<div class="am-scroll"><table class="report-table am-table att-table"><thead><tr><th>Territory</th><th>Sales rep</th>
@@ -118,6 +120,38 @@ function atRenderDay() {
         <td style="text-align:right;white-space:nowrap;">${r.state === "pending_review" ? `<button class="btn-primary btn-small" data-att-approve="${r.id}">Approve &amp; send</button> ` : ""}
           <button class="icon-action" data-att-log="${r.id}">Copy log</button></td></tr>`; }).join("")}</tbody></table>`
     : `<p class="hint" style="padding:12px 16px;">Nothing has run for this day.</p>`;
+}
+
+function atNoImages(d, styles) {
+  const look = AT_LOOK[AT.style] || AT.style, setting = d.settings.att_style;
+  const builds = setting === "both" || setting === AT.style;
+  if (!d.rows.length) {
+    return `<div class="att-noimg"><p>No images yet — Chimera hasn't read this day. Click <b>Download from SFA</b> (or <b>Upload Excel</b>).</p>
+      <p class="hint">They'll be built in: <b>${esc(setting === "both" ? "all three looks" : AT_LOOK[setting] || setting)}</b>.
+      ${builds ? "" : `<button class="link-btn" data-att-use="${AT.style}">Use ${esc(look)} instead</button>`}</p></div>`;
+  }
+  if (styles.length) {      // the day has images, just not in this look
+    return `<div class="att-noimg"><p>No <b>${esc(look)}</b> images for this day.</p>
+      <button class="btn-primary btn-small" data-att-build="${AT.style}">Build the ${esc(look)} images</button></div>`;
+  }
+  return `<div class="att-noimg"><p>The day is read but no images were built yet.</p>
+    <button class="btn-primary btn-small" data-att-build="${AT.style}">Build the ${esc(look)} images</button></div>`;
+}
+
+// Makes `look` the one Chimera builds (keeps "all three" if that's the setting), then builds today's images.
+async function atUseLook(look, build) {
+  const s = AT.data.settings;
+  if (s.att_style !== "both" && s.att_style !== look) {
+    const r = await atApi().save_rep_attendance_settings({ att_style: look, att_send_style: look });
+    if (!r.ok) { atAlert(r.message); return; }
+  }
+  AT.style = look;
+  if (build && AT.data.rows.length) {
+    const r = await atApi().rebuild_rep_attendance(AT.day);
+    if (!r.ok) { atAlert(r.message); return; }
+  }
+  await loadRepAttendance();
+  AT.style = look; atRenderDay();
 }
 
 function atZoom(src) {
@@ -323,13 +357,20 @@ function atRenderChips() {
     if (r.ok) loadRepAttendance(r.day);
   };
   document.getElementById("att-style-seg").addEventListener("click", (e) => { const b = e.target.closest("button[data-s]"); if (!b) return; AT.style = b.dataset.s; atRenderDay(); });
-  document.getElementById("att-rebuild").onclick = async (e) => { e.target.disabled = true; const r = await atApi().rebuild_rep_attendance(AT.day); e.target.disabled = false;
+  const first = () => atAlert(`There's no rep attendance for ${atLong(AT.day)} yet — click Download from SFA (or Upload Excel) first.`);
+  document.getElementById("att-rebuild").onclick = async (e) => {
+    if (!AT.data || !AT.data.rows.length) return first();
+    e.target.disabled = true; const r = await atApi().rebuild_rep_attendance(AT.day); e.target.disabled = false;
     if (!r.ok) { atAlert(r.message); return; } loadRepAttendance(); };
-  document.getElementById("att-open-folder").onclick = () => { const l = AT.data.latest; if (l && l.images.length) atApi().open_path(l.images[0].path.replace(/[\\/][^\\/]+[\\/][^\\/]+$/, "")); };
-  document.getElementById("att-send").onclick = () => { if (AT.data.latest) atSend(AT.data.latest.id); };
+  document.getElementById("att-open-folder").onclick = () => { const l = AT.data && AT.data.latest;
+    if (!l || !l.images.length) return first();
+    atApi().open_path(l.images[0].path.replace(/[\\/][^\\/]+[\\/][^\\/]+$/, "")); };
+  document.getElementById("att-send").onclick = () => { if (!AT.data || !AT.data.latest) return first(); atSend(AT.data.latest.id); };
   v.addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.attEdit) atEdit(b.dataset.attEdit);
+    if (b.dataset.attUse) atUseLook(b.dataset.attUse, false);
+    if (b.dataset.attBuild) { b.disabled = true; b.innerHTML = `<span class="spinner"></span> Building…`; await atUseLook(b.dataset.attBuild, true); }
     if (b.dataset.attApprove) atSend(Number(b.dataset.attApprove));
     if (b.dataset.attSkip) confirmModal("Don't send", "Mark this run as not sent? The images stay on the Day tab.", "Don't send", async () => {
       await atApi().discard_rep_attendance(Number(b.dataset.attSkip)); loadRepAttendance(); });

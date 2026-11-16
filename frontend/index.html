@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="sp-lock">
 <head>
 <meta charset="UTF-8">
 <title>Chimera</title>
@@ -8,7 +8,7 @@
 <body>
 
   <!-- Splash screen: every part of the bar is a real startup step (startup.py) -->
-  <div id="splash" class="splash" aria-live="polite">
+  <div id="splash" class="splash sp-wait" aria-live="polite">
     <span class="sp-corner tl"></span><span class="sp-corner tr"></span><span class="sp-corner bl"></span><span class="sp-corner br"></span>
     <div class="sp-center">
       <div class="sp-emblem"><img src="assets/chimera-logo-splash.png" alt=""></div>
@@ -23,6 +23,15 @@
     </div>
     <div class="sp-foot"><span>&#10070; Chimera &middot; Windows desktop &middot; reads SFA only &mdash; nothing is changed at startup</span>
       <span><i id="sp-sfa-dot"></i><span id="sp-sfa">SFA: checking&hellip;</span><em>|</em><span id="sp-clock"></span></span></div>
+    <!-- red opening (Settings › Customize Appearance › Splash): shown first, then glitches into the dark splash -->
+    <div class="sp-red" id="sp-red" style="display:none;">
+      <div class="r-logo"><img src="assets/chimera-logo-round.png" alt="Chimera"></div>
+      <h1>CHIMERA</h1>
+      <p>A sales-operations desk for SFA &mdash; downloads the day's reports automatically, checks every file, builds the SKU, Pivot and
+         Hourly reports, and delivers them, all from one desktop app.</p>
+      <div class="r-bar"><i id="r-fill"></i></div>
+      <div class="r-msg" id="r-msg">Starting Chimera&hellip;</div>
+    </div>
   </div>
 
   <div class="app-shell">
@@ -953,6 +962,55 @@
             <button class="tab" data-tab="groups">Manager Groups</button>
             <button class="tab" data-tab="network">Network &amp; Data</button>
             <button class="tab" data-tab="notify">Notifications</button>
+            <button class="tab" data-tab="look">Customize Appearance</button>
+          </div>
+
+          <div class="tab-panel" id="st-panel-look" style="display:none;">
+            <div class="card">
+              <div class="card-header-row"><h3>Splash screen</h3>
+                <button class="btn-primary btn-small" id="lk-play">&#9654; Preview splash</button></div>
+              <p class="hint" style="margin:-4px 0 14px;">How Chimera opens. The loading bar is the real startup either way; only the look changes.</p>
+              <div class="lk-cards" id="lk-splash">
+                <button class="lk-card" data-v="displacement"><span class="lk-thumb lk-t-disp"></span><b>Dimensional displacement</b>
+                  <span class="hint">Red opening, then the comic-book displacement into the dark splash.</span></button>
+                <button class="lk-card" data-v="glitch"><span class="lk-thumb lk-t-glitch"></span><b>Glitch</b>
+                  <span class="hint">Red opening, then a fast slice glitch into the dark splash.</span></button>
+                <button class="lk-card" data-v="classic"><span class="lk-thumb lk-t-classic"></span><b>Classic</b>
+                  <span class="hint">Straight to the dark splash, no opening animation.</span></button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Splash soundtrack</h3>
+              <p class="hint" style="margin:-4px 0 14px;">Plays once while the splash opens (about 6 seconds). Each one is timed to the displacement.
+                Click &#9654; to listen; click a row to choose it.</p>
+              <div class="lk-sounds" id="lk-sounds"></div>
+              <div class="lk-vol"><span>Volume</span><input type="range" min="0" max="100" step="5" id="lk-volume"><b id="lk-volume-v"></b></div>
+            </div>
+            <div class="card">
+              <div class="card-header-row"><h3>Logo glitch</h3>
+                <button class="btn-outline btn-small" id="lk-logo-try">&#9654; Try it now</button></div>
+              <p class="hint" style="margin:-4px 0 14px;">The Chimera logo and name at the top of the sidebar. Never glitches while your mouse is on it.</p>
+              <div class="lk-seg" id="lk-logo">
+                <button data-v="neon"><b>Neon switch</b><span>Glitches to a red neon look and back</span></button>
+                <button data-v="flash"><b>Quick glitch</b><span>A short flicker, no neon</span></button>
+                <button data-v="off"><b>Off</b><span>Logo stays still</span></button>
+              </div>
+              <div class="lk-seg lk-seg-small" id="lk-logo-freq" style="margin-top:10px;">
+                <button data-v="rare"><b>Now and then</b><span>every 20–45 s</span></button>
+                <button data-v="often"><b>Often</b><span>every 8–15 s</span></button>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Heartbeat line</h3>
+              <p class="hint" style="margin:-4px 0 14px;">The red line under the logo, drawn like a heart monitor.</p>
+              <div class="lk-seg" id="lk-ecg">
+                <button data-v="live"><b>Live</b><span>Beats faster while something is running</span></button>
+                <button data-v="calm"><b>Calm</b><span>Always the slow beat</span></button>
+                <button data-v="still"><b>Still</b><span>A heartbeat line that doesn't move</span></button>
+                <button data-v="off"><b>Off</b><span>The plain grey line</span></button>
+              </div>
+            </div>
+            <div id="lk-msg" class="hint"></div>
           </div>
 
           <div class="tab-panel" id="st-panel-notify" style="display:none;">
@@ -1179,5 +1237,6 @@
   <script src="js/reminders.js"></script>
   <script src="js/rep_attendance.js"></script>
   <script src="js/shell.js"></script>
+  <script src="js/appearance.js"></script>
 </body>
 </html>

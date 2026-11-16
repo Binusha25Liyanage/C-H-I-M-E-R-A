@@ -16,6 +16,14 @@ import webview
 
 from api import Api
 
+
+class _DisposedFilter(logging.Filter):
+    """Drops pywebview's 'Error occurred in script … Cannot access a disposed object' (window already closed)."""
+    def filter(self, record):
+        exc = record.exc_info[1] if record.exc_info else None
+        text = f"{record.getMessage()} {exc or ''} {type(exc).__name__ if exc else ''}"
+        return not ("disposed object" in text.lower() or "ObjectDisposedException" in text)
+
 APP_TITLE = "C H I M E R A"
 APP_ICON = "frontend/assets/chimera.ico"
 
@@ -36,6 +44,11 @@ else:
 _wv_args = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
 if "ElasticOverscroll" not in _wv_args:
     os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (_wv_args + " --disable-features=ElasticOverscroll").strip()
+
+# The splash soundtrack (Settings › Customize Appearance) plays as Chimera opens, before any click — let it.
+_wv_args = os.environ.get("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "")
+if "autoplay-policy" not in _wv_args:
+    os.environ["WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS"] = (_wv_args + " --autoplay-policy=no-user-gesture-required").strip()
 
 INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
 ICON_PATH = os.path.join(FRONTEND_DIR, "assets", "chimera.ico")
@@ -239,6 +252,11 @@ def main():
     # Closing the window stops Chimera's own runs and frees the run lock, so the
     # next run doesn't report "Another SFA run is already in progress".
     window.events.closing += lambda: api._on_window_closing()
+
+    # While the window closes, an answer the screen was still waiting for (a live-progress poll, the splash, the
+    # Overview boxes) can arrive after the window is gone. pywebview then prints a long "Cannot access a
+    # disposed object" traceback in the black window. It's harmless — hide just that one.
+    logging.getLogger("pywebview").addFilter(_DisposedFilter())
 
     webview.start()
 

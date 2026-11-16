@@ -59,6 +59,49 @@ else:
     CL_FONT, CL_BOLD = "Helvetica", "Helvetica-Bold"
 
 
+# Titles on the Professional images — editable in Rep Attendance › Settings (blank = the default).
+DEFAULT_TITLES = {
+    "kicker": "Rep attendance",
+    "nlo_title": "Reps Not Logged Out Yet", "nlo_sub": "Logged in to SFA and still in the field",
+    "lo_title": "Reps Logged Out", "lo_sub": "Logged in and logged out today",
+    "mgr_title": "Field Force Attendance", "mgr_sub": "Every working territory, grouped by its ASM",
+}
+PRO_STYLES = ("professional", "nologo")      # nologo = the Professional layout without the Chimera logo
+
+
+def titles(saved=None):
+    """The titles to use: your saved ones over the defaults (blank = default)."""
+    out = dict(DEFAULT_TITLES)
+    for k, v in (saved or {}).items():
+        if k in out and str(v or "").strip():
+            out[k] = str(v).strip()
+    return out
+
+
+def _header(t, title, subtitle, day, avail, logo=True):
+    """The Professional header; without the logo the title starts at the left edge."""
+    d = date.fromisoformat(day)
+    when = f"{d:%a} {d.day} {d:%b %Y}"
+    left = [Paragraph(D._esc(t["kicker"].upper()), D._PR_KICK), Paragraph(D._esc(title), D._PR_TITLE),
+            Paragraph(D._esc(subtitle), D._PR_SUB)]
+    right = [Paragraph(when, D._PR_RIGHT), Paragraph(D._as_of_line(when, "att").replace(" | ", "<br/>"), D._PR_RIGHT_S)]
+    mark = D.Image(D.MONO_LOGO, width=17 * mm, height=17 * mm) if logo and os.path.exists(D.MONO_LOGO) else None
+    if mark is not None:
+        tb = Table([[mark, left, right]], colWidths=[21 * mm, avail - 83 * mm, 62 * mm])
+    else:
+        tb = Table([[left, right]], colWidths=[avail - 62 * mm, 62 * mm])
+    tb.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                            ("RIGHTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 0),
+                            ("BOTTOMPADDING", (0, 0), (-1, -1), 0)]))
+    tb.hAlign = "LEFT"
+    return [tb, D.HRule(1.4, D.INK, 5)]
+
+
+def _footer(what, logo=True):
+    return Paragraph(("CHIMERA &nbsp;&middot;&nbsp; " if logo else "") + f"{D._esc(what)} &nbsp;&middot;&nbsp; Generated "
+                     f"{datetime.now():%Y-%m-%d %H:%M} &nbsp;&middot;&nbsp; Internal use only", D._PR_FOOT)
+
+
 def _us_date(day):
     d = date.fromisoformat(day)
     return f"{d.month:02d}/{d.day:02d}/{d.year}"
@@ -105,7 +148,7 @@ def _classic_page(day, rows):
 # ---------------------------------------------------------------------------
 # Professional — Chimera layout
 # ---------------------------------------------------------------------------
-def _pro_pages(day, info, groups):
+def _pro_pages(day, info, groups, logo=True):
     width = 180 * mm
     avail = width - 2 * D.MARGIN
     c = info["counts"]
@@ -128,9 +171,9 @@ def _pro_pages(day, info, groups):
         D._as_of_line = lambda _date, _kind: (f"As of {as_of}" if as_of else "From SFA") + " | Rep attendance from SFA"
         for g, rows in groups:
             out = g == "logged_out"
-            title = "Reps Logged Out" if out else "Reps Not Logged Out Yet"
-            sub = "Logged in and logged out today" if out else "Logged in to SFA and still in the field"
-            flow = D._pro_header("Rep attendance", title, sub, f"{d:%a} {d.day} {d:%b %Y}", "att", avail)
+            t = titles(info.get("titles"))
+            key = "lo" if out else "nlo"
+            flow = _header(t, t[key + "_title"], t[key + "_sub"], day, avail, logo)
             flow += [Spacer(1, 6), D._pro_kpis(kpis, avail), Spacer(1, 10),
                      Paragraph(f"{'LOGGED OUT' if out else 'NOT LOGGED OUT YET'} &nbsp;<font color='#6E6F71'>{len(rows)} "
                                f"rep{'s' if len(rows) != 1 else ''}</font>", sec), Spacer(1, 4)]
@@ -164,9 +207,7 @@ def _pro_pages(day, info, groups):
                 else:
                     flow += [Spacer(1, 8), Paragraph("Switch on your working territories in Outlet Updates to see who hasn't "
                                                      "logged in.", small)]
-            flow += [Spacer(1, 8), D.HRule(0.5, D.GRID, 2),
-                     Paragraph(f"CHIMERA &nbsp;&middot;&nbsp; Rep Attendance &nbsp;&middot;&nbsp; Generated "
-                               f"{datetime.now():%Y-%m-%d %H:%M} &nbsp;&middot;&nbsp; Internal use only", D._PR_FOOT)]
+            flow += [Spacer(1, 8), D.HRule(0.5, D.GRID, 2), _footer("Rep Attendance", logo)]
             pages.append({"width": width, "flow": flow, "name": f"Rep_Attendance_{day}_{GROUP_FILE[g]}"})
     finally:
         D._as_of_line = D_as_of
@@ -198,18 +239,18 @@ def build(day, info, style, folder, include_empty=False):
     os.makedirs(folder, exist_ok=True)
     rows = _sorted(info["rows"])
     groups = [(g, [r for r in rows if r["group"] == g]) for g in ("not_logged_out", "logged_out")]
-    groups = [(g, rs) for g, rs in groups if rs or include_empty or (style == "professional" and g == "not_logged_out")]
+    groups = [(g, rs) for g, rs in groups if rs or include_empty or (style in PRO_STYLES and g == "not_logged_out")]
     if not groups:
         return {"pdf": "", "images": []}
     pdf = os.path.join(folder, f"Rep_Attendance_{day}_{style}.pdf")
     if style == "classic":
         names = _render_classic(pdf, day, groups)
     else:
-        pages = _pro_pages(day, info, groups)
+        pages = _pro_pages(day, info, groups, logo=style != "nologo")
         D._render_pages(pdf, pages)
         names = [p["name"] for p in pages]
     sub = os.path.join(folder, style)
-    paths = D.pdf_to_images(pdf, names, sub, rotate_wide=False, scale=2.6 if style == "professional" else 2.4)
+    paths = D.pdf_to_images(pdf, names, sub, rotate_wide=False, scale=2.6 if style in PRO_STYLES else 2.4)
     return {"pdf": pdf, "images": [{"group": g, "style": style, "path": p} for (g, _), p in zip(groups, paths)]}
 
 
@@ -238,7 +279,7 @@ def manager_groups(info):
     return sorted(out.items(), key=lambda kv: (kv[0] == NO_ASM, kv[0].lower()))
 
 
-def _by_manager_page(day, info):
+def _by_manager_page(day, info, logo=True):
     width = 190 * mm
     avail = width - 2 * D.MARGIN
     d = date.fromisoformat(day)
@@ -255,9 +296,10 @@ def _by_manager_page(day, info):
     bar_l = D._ps("fm_bl", fontName="Helvetica-Bold", fontSize=10.5, leading=13, textColor=colors.white)
     bar_r = D._ps("fm_br", fontName="Helvetica", fontSize=8, leading=10, textColor=colors.HexColor("#F3D9DA"), alignment=2)
     red = lambda n: f"<font color='#B5121B'>{n}</font>" if n else "0"
-    flow = D._pro_header("Rep attendance", "Field Force Attendance",
-                         "Every working territory, grouped by its ASM" if info.get("working_count") else
-                         "Reps who logged in, grouped by their ASM", f"{d:%a} {d.day} {d:%b %Y}", "att", avail)
+    tl = titles(info.get("titles"))
+    sub = tl["mgr_sub"] if info.get("working_count") or tl["mgr_sub"] != DEFAULT_TITLES["mgr_sub"] else \
+        "Reps who logged in, grouped by their ASM"
+    flow = _header(tl, tl["mgr_title"], sub, day, avail, logo)
     kpis = [("Logged in", f"{li}" + (f" <font size=8 color='#6E6F71'>of {len(allr)}</font>" if nli else "")),
             ("In the field", str(li - lo)), ("Logged out", str(lo))]
     if info.get("working_count"):
@@ -308,13 +350,11 @@ def _by_manager_page(day, info):
         tt.setStyle(TableStyle(st))
         tt.hAlign = bar.hAlign = "LEFT"
         flow += [bar, tt, Spacer(1, 10)]
-    flow += [D.HRule(0.5, D.GRID, 2),
-             Paragraph(f"CHIMERA &nbsp;&middot;&nbsp; Field Force Attendance &nbsp;&middot;&nbsp; Generated "
-                       f"{datetime.now():%Y-%m-%d %H:%M} &nbsp;&middot;&nbsp; Internal use only", D._PR_FOOT)]
+    flow += [D.HRule(0.5, D.GRID, 2), _footer(tl["mgr_title"], logo)]
     return {"width": width, "flow": flow, "name": f"Field_Force_Attendance_{day}"}
 
 
-def build_by_manager(day, info, folder):
+def build_by_manager(day, info, folder, logo=True):
     """The Field Force Attendance image (+ its own PDF). -> {"pdf", "images": [{group: 'by_manager', style: 'manager', path}]}"""
     if not info["rows"] and not info.get("not_logged_in"):
         return {"pdf": "", "images": []}
@@ -323,7 +363,7 @@ def build_by_manager(day, info, folder):
     keep = D._as_of_line
     try:
         D._as_of_line = lambda _d, _k: (f"As of {as_of}" if as_of else "From SFA") + " | Rep attendance from SFA"
-        page = _by_manager_page(day, info)
+        page = _by_manager_page(day, info, logo)
     finally:
         D._as_of_line = keep
     pdf = os.path.join(folder, f"Field_Force_Attendance_{day}.pdf")

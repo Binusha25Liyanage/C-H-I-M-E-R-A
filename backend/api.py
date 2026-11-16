@@ -83,6 +83,15 @@ class Api:
         import startup
         return startup.snapshot()
 
+    def get_appearance(self):
+        """Settings › Customize Appearance (splash, soundtrack, logo glitch, heartbeat line)."""
+        return automation_store.get_appearance()
+
+    def save_appearance(self, values):
+        vals = {k: v for k, v in (values or {}).items() if str(k).startswith("look_")}
+        ok, message = automation_store.save_automation_settings(vals)
+        return {"ok": ok, "message": message, "look": automation_store.get_appearance()}
+
     def get_overview_kpis(self):
         """The Overview's four boxes, from SFA data Chimera reads by itself."""
         import overview_kpis
@@ -991,6 +1000,19 @@ class Api:
         empty_day = {"day": day, "rows": [], "left_out": [], "meta": None, "not_logged_in": [], "working_count": 0,
                      "counts": {"logged_in": 0, "not_logged_out": 0, "logged_out": 0, "not_logged_in": 0, "working": 0,
                                 "edited": 0, "left_out": 0}}
+        # files pasted at different times: name the ones that are older than this api.py
+        need = {"rep_attendance": (R, ("all_territories", "working_info", "always_left_out", "last_seen")),
+                "rep_attendance_automation": (RA, ("targets", "review", "missing_days", "group_label", "looks")),
+                "rep_attendance_images": (RI, ("DEFAULT_TITLES", "titles", "build_by_manager"))}
+        try:
+            import whatsapp_sender as _W
+            need["whatsapp_sender"] = (_W, ("attendance_rules", "daily_rules", "ATT_KINDS"))
+        except Exception:
+            pass
+        old = [f"{n}.py" for n, (m, attrs) in need.items() if any(not hasattr(m, x) for x in attrs)]
+        if old:
+            errors.append("These files are an older version than api.py — paste the latest ones into backend\\ and "
+                          "restart Chimera: " + ", ".join(old))
         info = part("the day's attendance", lambda: R.get_day(day), empty_day)
         st = part("settings", RA.settings, None) or {"url": "", "style": "classic", "send_style": "classic", "chats": [],
                                                      "send_pdf": False, "by_manager": False, "titles": {}}
@@ -1004,8 +1026,8 @@ class Api:
                              "att_chats": st["chats"], "att_send_pdf": "1" if st["send_pdf"] else "0",
                              "att_exclude": part("leave-out list", R.always_left_out, []),
                              "att_by_manager": "1" if st.get("by_manager") else "0",
-                             "att_titles": st.get("titles") or {}, "titles_default": RI.DEFAULT_TITLES,
-                             "titles_used": part("titles", lambda: RI.titles(st.get("titles")), dict(RI.DEFAULT_TITLES)),
+                             "att_titles": st.get("titles") or {}, "titles_default": getattr(RI, "DEFAULT_TITLES", {}),
+                             "titles_used": part("titles", lambda: RI.titles(st.get("titles")), dict(getattr(RI, "DEFAULT_TITLES", {}))),
                              "att_working": ws[0], "att_working_days": str(ws[1])},
                 "working": part("working territories", R.working_info, None),
                 "missing_days": part("missing days", RA.missing_days, []),
