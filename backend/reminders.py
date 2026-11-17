@@ -26,6 +26,7 @@ WhatsApp's own *bold* and _italic_ work as usual.
 """
 
 import json
+import os
 import threading
 from datetime import date, datetime, timedelta
 
@@ -301,12 +302,42 @@ def due(now=None, settings=None):
 
 
 def _record(it, status, chats, text, message):
+    """Saves how a reminder send went (replaces the 'sending' claim made just before sending)."""
+    conn = db.get_connection()
+    try:
+        conn.execute("INSERT INTO wa_reminder_sends (reminder_id, day, send_at, report_time, status, chats, text, message, at) "
+                     "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(reminder_id, day, send_at) DO UPDATE SET "
+                     "status=excluded.status, chats=excluded.chats, text=excluded.text, message=excluded.message, at=excluded.at",
+                     (it["reminder_id"], it["at"].date().isoformat(), it["slot"], it["report_time"], status,
+                      json.dumps(chats), text, message, _now()))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _claim(it):
+    """Marks a reminder send as 'sending' before anything goes to WhatsApp. Only the Chimera that manages to
+    write this first sends it — the app and a run started by Windows at the same minute can't both send it
+    (that is what sent the 4 PM reminder twice)."""
+    conn = db.get_connection()
+    try:
+        cur = conn.execute("INSERT OR IGNORE INTO wa_reminder_sends (reminder_id, day, send_at, report_time, status, "
+                           "chats, text, message, at) VALUES (?,?,?,?,?,?,?,?,?)",
+                           (it["reminder_id"], it["at"].date().isoformat(), it["slot"], it["report_time"], "sending",
+                            "[]", "", f"Being sent (Chimera process {os.getpid()}).", _now()))
+        conn.commit()
+        return cur.rowcount == 1
+    finally:
+        conn.close()
+
+
+def _skip_record(it, message):
     conn = db.get_connection()
     try:
         conn.execute("INSERT OR IGNORE INTO wa_reminder_sends (reminder_id, day, send_at, report_time, status, chats, "
                      "text, message, at) VALUES (?,?,?,?,?,?,?,?,?)",
-                     (it["reminder_id"], it["at"].date().isoformat(), it["slot"], it["report_time"], status,
-                      json.dumps(chats), text, message, _now()))
+                     (it["reminder_id"], it["at"].date().isoformat(), it["slot"], it["report_time"], "skipped",
+                      "[]", "", message, _now()))
         conn.commit()
     finally:
         conn.close()
@@ -341,19 +372,36 @@ def run_due(now=None, wait=True):
         now = now or datetime.now()
         send, skip, missed = due(now)
         for it in skip:
-            _record(it, "skipped", [], "", f"Not sent — {it['skip']}.")
+            _skip_record(it, f"Not sent — {it['skip']}.")
         for it in missed:
-            _record(it, "skipped", [], "", "Not sent — Chimera wasn't running until after the report time.")
+            _skip_record(it, "Not sent — Chimera wasn't running until after the report time.")
         if not send:
             return {"busy": False, "sent": 0, "skipped": len(skip), "missed": len(missed)}
-        res = send_items(send, wait=wait)
+        import whatsapp_sender as W
+        if W.WA.snapshot().get("active"):
+            return {"busy": True, "sent": 0, "skipped": len(skip), "missed": len(missed)}   # tried again next minute
+        send = [it for it in send if _claim(it)]           # another Chimera already sending these? leave them
+        if not send:
+            return {"busy": False, "sent": 0, "skipped": len(skip), "missed": len(missed)}
+        res = send_items(send, wait=wait, claimed=True)
+        if res.get("busy"):                                # WhatsApp busy: give the claims back, try next minute
+            conn = db.get_connection()
+            try:
+                for it in send:
+                    conn.execute("DELETE FROM wa_reminder_sends WHERE reminder_id=? AND day=? AND send_at=? "
+                                 "AND status='sending'", (it["reminder_id"], it["at"].date().isoformat(), it["slot"]))
+                conn.commit()
+            finally:
+                conn.close()
         return {"busy": res.get("busy", False), "sent": res.get("sent", 0), "skipped": len(skip), "missed": len(missed)}
     finally:
         _send_lock.release()
 
 
-def send_items(items, wait=True, test=False):
-    """Sends each item's text to each of its chats in one WhatsApp session and records the results."""
+def send_items(items, wait=True, test=False, claimed=False):
+    """Sends each item's text to each of its chats in one WhatsApp session and records the results.
+    A chat that fails BEFORE the message was typed in is tried once more; once Enter was pressed it is never
+    sent again (WhatsApp may still deliver it), so nothing is sent twice."""
     import whatsapp_sender as W
     s = AS.get_automation_settings()
     state = {"sent": 0, "busy": False}
@@ -365,8 +413,19 @@ def send_items(items, wait=True, test=False):
             results = []
             for chat in it["chats"]:
                 try:
-                    await W._open_chat(page, chat)
-                    await W._send_text(page, text, "The reminder")
+                    for attempt in (1, 2):
+                        try:
+                            await W._open_chat(page, chat)
+                            await W._send_text(page, text, "The reminder")
+                            break
+                        except W.WAPending:
+                            raise
+                        except Exception as e:
+                            if attempt == 2:
+                                raise
+                            W.WA.log(f"{chat}: {str(e).splitlines()[0][:120]} — trying once more.", "warn")
+                            await page.keyboard.press("Escape")
+                            await page.wait_for_timeout(2500)
                     results.append({"chat": chat, "ok": True, "message": ""})
                     W._log_delivery(None, chat, 0, "sent", f"Reminder: {it['name']}" + (" (test)" if test else ""))
                     W.WA.log(f"{chat}: reminder '{it['name']}' sent.")
@@ -391,14 +450,25 @@ def send_items(items, wait=True, test=False):
         return {"ok": total_fail == 0, "message": f"{state['sent']} reminder(s) sent"
                                                   + (f", {total_fail} chat(s) failed" if total_fail else "") + "."}
 
+    def unclaim_if_never_done(res):
+        # the WhatsApp session itself failed (didn't open, Chimera stopped…): the claimed sends get a reason
+        if not claimed or (res or {}).get("ok"):
+            return
+        for it in items:
+            row = _q("SELECT status FROM wa_reminder_sends WHERE reminder_id=? AND day=? AND send_at=?",
+                     (it["reminder_id"], it["at"].date().isoformat(), it["slot"]))
+            if row and row[0][0] == "sending":
+                _record(it, "failed", [], "", "Not sent — " + ((res or {}).get("message") or "WhatsApp didn't open."))
+                _notify("failed", f"Reminder not sent — {it['name']}", (res or {}).get("message") or "")
+
     if not W.WA.start("reminder"):
-        state["busy"] = True          # tried again on the next check, until the report time
+        state["busy"] = True          # tried again on the next check, until the report time (run_due gives the claims back)
         return state
+    run = lambda: unclaim_if_never_done(W._run("reminder", s.get("wa_show_browser") != "1", fn))
     if wait:
-        W._run("reminder", s.get("wa_show_browser") != "1", fn)
+        run()
     else:
-        threading.Thread(target=lambda: W._run("reminder", s.get("wa_show_browser") != "1", fn), daemon=True,
-                         name="wa-reminder").start()
+        threading.Thread(target=run, daemon=True, name="wa-reminder").start()
     return state
 
 

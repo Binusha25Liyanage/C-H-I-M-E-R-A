@@ -118,7 +118,7 @@ class RemindersTest(unittest.TestCase):
         rid = self.add()
         sent = []
         orig = R.send_items
-        R.send_items = lambda items, wait=True, test=False: [sent.append(i["slot"]) or R._record(i, "sent", [], "", "ok")
+        R.send_items = lambda items, wait=True, test=False, **kw: [sent.append(i["slot"]) or R._record(i, "sent", [], "", "ok")
                                                                for i in items] and {"sent": len(items), "busy": False}
         try:
             self.assertEqual(R.run_due(at("09:59"))["sent"], 0)
@@ -144,7 +144,7 @@ class RemindersTest(unittest.TestCase):
         rid = self.add()
         self.active_from(rid, "2026-11-12T12:05:00")          # saved at 12:05: 10:00 and 12:00 never happened for it
         orig = R.send_items
-        R.send_items = lambda items, wait=True, test=False: {"sent": len(items), "busy": False}
+        R.send_items = lambda items, wait=True, test=False, **kw: {"sent": len(items), "busy": False}
         try:
             r = R.run_due(at("13:00"))
         finally:
@@ -157,13 +157,32 @@ class RemindersTest(unittest.TestCase):
         self.add()
         orig = R.send_items
         calls = []
-        R.send_items = lambda items, wait=True, test=False: calls.append(1) or {"sent": 0, "busy": True}
+        R.send_items = lambda items, wait=True, test=False, **kw: calls.append(1) or {"sent": 0, "busy": True}
         try:
             self.assertTrue(R.run_due(at("10:00"))["busy"])
             self.assertTrue(R.run_due(at("10:01"))["busy"])                         # still due: tried again
         finally:
             R.send_items = orig
         self.assertEqual(len(calls), 2)
+
+    def test_two_chimeras_at_the_same_minute_send_once(self):
+        """The app and a run started by Windows both check at 10:00: only the first to claim it sends."""
+        self.add()
+        sent = []
+        orig = R.send_items
+        R.send_items = lambda items, wait=True, test=False, **kw: [sent.append(i["slot"]) for i in items] \
+            and {"sent": len(items), "busy": False}
+        try:
+            other = R.due(at("10:00"))[0][0]
+            self.assertTrue(R._claim(other))                 # the other Chimera got there first (still sending)
+            self.assertFalse(R._claim(other))
+            self.assertEqual(R.run_due(at("10:00"))["sent"], 0)
+            self.assertEqual(R.run_due(at("10:01"))["sent"], 0)
+        finally:
+            R.send_items = orig
+        self.assertEqual(sent, [])
+        R._record(other, "sent", [], "", "ok")               # the claim becomes the real result
+        self.assertEqual([x["status"] for x in R.recent_sends() if x["send_at"] == "10:00"], ["sent"])
 
     def test_running_now_overview(self):
         import running_now

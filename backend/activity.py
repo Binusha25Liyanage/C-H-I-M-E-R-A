@@ -32,6 +32,7 @@ STATE_LABEL = {
     "pending_approval": "Read — waiting for approval", "nothing_pending": "Nothing pending", "failed": "Read failed",
     "confirming": "Confirming", "confirmed": "Confirmed", "confirm_failed": "Confirm failed", "changed": "Changed in SFA — not confirmed",
     "skipped": "Skipped by you", "superseded": "Replaced by a newer read", "added": "Added in SFA", "dry_run": "Add — dry run",
+    "add_unconfirmed": "Not confirmed — check SFA",
 }
 
 
@@ -39,7 +40,7 @@ def _status(s):
     s = (s or "").lower()
     if s in ("success", "done", "sent", "confirmed", "ok", "added"):
         return "ok"
-    if s in ("failed", "error", "confirm_failed", "interrupted", "changed"):
+    if s in ("failed", "error", "confirm_failed", "interrupted", "changed", "unconfirmed"):
         return "fail"
     if s in ("running", "pending_review", "confirming", "pending_approval"):
         return "running" if s in ("running", "confirming") else "warn"
@@ -210,9 +211,11 @@ def loadings(d_from=None, d_to=None):
         dry = "dry run" in (msg or "")
         m = re.search(r"loading (?:number )?([^\s;)]+)", msg or "")
         num = m.group(1) if m and m.group(1) != "?" else ""
+        state = "dry_run" if dry else "add_unconfirmed" if status == "unconfirmed" else "added"
         rows.append({"time": st, "distributor": dist, "loading_number": num, "rep": "", "loading_date": "",
-                     "state": "dry_run" if dry else "added", "action": STATE_LABEL["dry_run" if dry else "added"],
-                     "status": "info" if dry else "ok", "qty": 0.0, "amount": 0.0, "message": msg or "", "run_id": rid})
+                     "state": state, "action": STATE_LABEL[state],
+                     "status": {"dry_run": "info", "add_unconfirmed": "fail", "added": "ok"}[state],
+                     "qty": 0.0, "amount": 0.0, "message": msg or "", "run_id": rid})
     rows.sort(key=lambda r: r["time"] or "", reverse=True)
     return rows
 

@@ -3,7 +3,7 @@
 
 const RM = { data: null, edit: null };
 const rmApi = () => window.pywebview.api;
-const RM_STATUS = { sent: ["chip-ok", "Sent"], partial: ["chip-warn", "Partly sent"], failed: ["chip-missing", "Failed"], skipped: ["chip-grey", "Skipped"] };
+const RM_STATUS = { sending: ["chip-warn", "Sending…"], sent: ["chip-ok", "Sent"], partial: ["chip-warn", "Partly sent"], failed: ["chip-missing", "Failed"], skipped: ["chip-grey", "Skipped"] };
 
 function rmFmt(hhmm) {            // 14:15 -> 2.15 PM (as the reps' messages write it)
   if (!hhmm) return "";

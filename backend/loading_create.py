@@ -7,7 +7,8 @@ Two steps, so nothing is saved until the user has seen the numbers:
 
   read_form(id)   opens the page, fills Loading For / Product Company /
                   Territory / Distributor / Sales Rep and reads the product
-                  table (available stock, last unloaded qty, price). If SFA
+                  table (available stock, last unloaded qty, price, and the quantity
+                  SFA pre-fills — its suggestion). If SFA
                   answers with an error pop-up (e.g. "Previously loaded
                   quantities are not unloaded in the selected sales rep")
                   that message is returned instead. Nothing is saved.
@@ -53,11 +54,41 @@ _DIALOG_JS = r"""
   const vis = e => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length);
   const norm = s => (s || '').replace(/\s+/g, ' ').trim();
   const sel = '.swal2-popup, .swal-modal, .sweet-alert, [role=dialog], [role=alertdialog], .modal.show .modal-content, .p-dialog, .mat-dialog-container';
-  const box = [...document.querySelectorAll(sel)].filter(vis).pop();
+  // SFA's own pop-ups (e.g. "Confirmation Alert ! Do you want to submit this record" [Yes] [No]) aren't
+  // SweetAlert/role=dialog boxes: find a Yes/No/OK button that is really on top, and the small box around it.
+  const findBox = () => {
+    const known = [...document.querySelectorAll(sel)].filter(vis).pop();
+    if (known) return known;
+    const words = /^(yes|no|ok|okay|cancel|confirm|close|yes, save it!)$/i;
+    const btns = [...document.querySelectorAll('button, .btn, [role=button], input[type=button], input[type=submit], a')]
+      .filter(b => vis(b) && words.test(norm(b.innerText || b.value)));
+    for (const b of btns) {
+      const r = b.getBoundingClientRect(), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!top || !(top === b || b.contains(top) || top.contains(b))) continue;     // covered: not the pop-up on top
+      let up = b, floating = false;                     // only a box floating over the page counts as a pop-up
+      while (up && up !== document.body) {
+        const cs = getComputedStyle(up);
+        if (cs.position === 'fixed' || (cs.position === 'absolute' && +cs.zIndex >= 10) || +cs.zIndex >= 100) { floating = true; break; }
+        up = up.parentElement;
+      }
+      if (!floating) continue;
+      let el = b.parentElement;
+      for (let k = 0; el && k < 7; k++, el = el.parentElement) {
+        const er = el.getBoundingClientRect();
+        if (er.width > innerWidth * 0.85 || er.height > innerHeight * 0.85) break;
+        if (norm(el.innerText).length > norm(b.innerText || b.value).length + 8) return el;
+      }
+    }
+    return null;
+  };
+  const box = findBox();
   if (!box) return null;
-  const title = norm((box.querySelector('.swal2-title, .swal-title, h2, .modal-title, .p-dialog-title') || {}).innerText);
-  const text = norm((box.querySelector('.swal2-html-container, .swal2-content, .swal-text, p, .modal-body, .p-dialog-content') || {}).innerText);
-  const buttons = [...box.querySelectorAll('button, .btn, [role=button]')].filter(vis).map(b => norm(b.innerText));
+  const lines = (box.innerText || '').split('\n').map(norm).filter(Boolean);
+  const title = norm((box.querySelector('.swal2-title, .swal-title, h2, h3, h4, h5, .modal-title, .p-dialog-title') || {}).innerText) || lines[0] || '';
+  const text = norm((box.querySelector('.swal2-html-container, .swal2-content, .swal-text, p, .modal-body, .p-dialog-content') || {}).innerText)
+               || lines.slice(1).join(' ');
+  const buttons = [...box.querySelectorAll('button, .btn, [role=button], input[type=button], input[type=submit], a')].filter(vis)
+                    .map(b => norm(b.innerText || b.value)).filter(Boolean);
   return {title, text, all: norm(box.innerText), buttons};
 }
 """
@@ -67,12 +98,39 @@ _CLICK_DIALOG_JS = r"""
   const vis = e => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length);
   const norm = s => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
   const sel = '.swal2-popup, .swal-modal, .sweet-alert, [role=dialog], [role=alertdialog], .modal.show .modal-content, .p-dialog, .mat-dialog-container';
-  const box = [...document.querySelectorAll(sel)].filter(vis).pop();
+  // SFA's own pop-ups (e.g. "Confirmation Alert ! Do you want to submit this record" [Yes] [No]) aren't
+  // SweetAlert/role=dialog boxes: find a Yes/No/OK button that is really on top, and the small box around it.
+  const findBox = () => {
+    const known = [...document.querySelectorAll(sel)].filter(vis).pop();
+    if (known) return known;
+    const words = /^(yes|no|ok|okay|cancel|confirm|close|yes, save it!)$/i;
+    const btns = [...document.querySelectorAll('button, .btn, [role=button], input[type=button], input[type=submit], a')]
+      .filter(b => vis(b) && words.test(norm(b.innerText || b.value)));
+    for (const b of btns) {
+      const r = b.getBoundingClientRect(), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (!top || !(top === b || b.contains(top) || top.contains(b))) continue;     // covered: not the pop-up on top
+      let up = b, floating = false;                     // only a box floating over the page counts as a pop-up
+      while (up && up !== document.body) {
+        const cs = getComputedStyle(up);
+        if (cs.position === 'fixed' || (cs.position === 'absolute' && +cs.zIndex >= 10) || +cs.zIndex >= 100) { floating = true; break; }
+        up = up.parentElement;
+      }
+      if (!floating) continue;
+      let el = b.parentElement;
+      for (let k = 0; el && k < 7; k++, el = el.parentElement) {
+        const er = el.getBoundingClientRect();
+        if (er.width > innerWidth * 0.85 || er.height > innerHeight * 0.85) break;
+        if (norm(el.innerText).length > norm(b.innerText || b.value).length + 8) return el;
+      }
+    }
+    return null;
+  };
+  const box = findBox();
   if (!box) return false;
-  const bs = [...box.querySelectorAll('button, .btn, [role=button]')].filter(vis);
-  const b = bs.find(x => want.includes(norm(x.innerText))) || null;
+  const bs = [...box.querySelectorAll('button, .btn, [role=button], input[type=button], input[type=submit], a')].filter(vis);
+  const b = bs.find(x => want.includes(norm(x.innerText || x.value))) || null;
   if (!b) return false;
-  b.click(); return norm(b.innerText);
+  b.click(); return norm(b.innerText || b.value);
 }
 """
 
@@ -184,7 +242,7 @@ async def _dismiss(page, words=("ok", "close", "cancel")):
 
 def _is_error(dlg):
     t = f"{dlg.get('title', '')} {dlg.get('all', '')}".lower()
-    return bool(re.search(r"error|not unloaded|cannot|can't|failed|invalid|exceed|required|please", t))
+    return bool(re.search(r"error|not unloaded|not confirmed by|previously loaded|cannot|can't|failed|invalid|exceed|required|please", t))
 
 
 async def _fill_form(page, cfg, st, f, log, rep_required=True):
@@ -254,7 +312,13 @@ async def _fill_form(page, cfg, st, f, log, rep_required=True):
         tbl = await page.evaluate(_TABLE_JS, [uuid.uuid4().hex[:8]])
         if tbl["rows"]:
             return {"rep": rep, "table": tbl}
-    raise AddError("The product table didn't appear after choosing the Sales Rep.", "table")
+        # SFA sometimes writes its refusal on the page instead of a pop-up
+        said = await page.evaluate("""() => { const m = (document.body.innerText || '').match(
+            /previously loaded quantities[^\\n.]*|[^\\n.]*not confirmed by the sales rep[^\\n.]*/i); return m ? m[0].trim() : ''; }""")
+        if said:
+            return {"blocked": said, "rep": rep}
+    raise AddError("The product table didn't appear after choosing the Sales Rep. If the rep's previous loading isn't "
+                   "confirmed in the SFA mobile app yet, SFA may be refusing a new one — try again in a moment.", "table")
 
 
 async def _browser(st, body):
@@ -284,8 +348,10 @@ def _key(code, price):
 def _products(tbl):
     out = []
     for r in tbl["rows"]:
+        # "suggested": the quantity SFA itself puts in the QUANTITY box when the rep is chosen
         out.append({"name": r["name"], "code": r["code"], "price": _n(r["price"]), "stock": _n(r["stock"]),
-                    "last_unloaded": _n(r["last_unloaded"]), "key": _key(r["code"], r["price"])})
+                    "last_unloaded": _n(r["last_unloaded"]), "suggested": max(0.0, _n(r.get("qty", 0))),
+                    "key": _key(r["code"], r["price"])})
     return out
 
 
@@ -331,6 +397,26 @@ async def _type_qty(page, box, q, label, log):
     except Exception as e:
         log(f"{label}: the quantity box couldn't be clicked ({type(e).__name__}) — typing it directly instead.")
         await box.evaluate(_SET_QTY_JS, f"{q:g}")
+
+
+async def _apply_quantities(page, tbl, want, log):
+    """Types the chosen quantity on every line. SFA pre-fills its suggested quantity, so a line you left at 0
+    is set to 0 — otherwise SFA's number would be saved for a product you didn't choose. Returns how many."""
+    cleared = 0
+    for r in tbl["rows"]:
+        q = want.get(_key(r["code"], r["price"]), 0)
+        box = page.locator(f"[data-chimera-q='{r['qref']}']").first
+        label = f"{r['name'] or r['code']} ({r['code']} @ {r['price']})"
+        if q <= 0:
+            if _n(r.get("qty", 0)) != 0:
+                await _type_qty(page, box, 0, label, log)
+                cleared += 1
+            continue
+        await _type_qty(page, box, q, label, log)
+        log(f"{label}: {q:g}")
+    if cleared:
+        log(f"Set {cleared} line(s) SFA had pre-filled to 0 (you didn't choose them).")
+    return cleared
 
 
 def _run(fn):
@@ -388,6 +474,8 @@ def read_form(distributor_id, fields=None, headless=None):
         LS.set_add_fields(d["id"], f)
         log(f"{len(res['products'])} product(s) with stock" +
             (f"; {res['hidden_zero']} with no stock left out" if res["hidden_zero"] else "") + ".")
+        n_sug = sum(1 for p in res["products"] if p["suggested"] > 0)
+        log(f"SFA suggested a quantity for {n_sug} of them." if n_sug else "SFA didn't suggest any quantities.")
         return {"ok": True, "fields": f, "products": res["products"], "hidden_zero": res["hidden_zero"],
                 "number": res.get("number", ""), "dry_run": st["dry_run"], "log": logs}
     return _run(go)
@@ -442,20 +530,16 @@ def create(distributor_id, quantities, fields=None, dry_run=None, headless=None)
         if bad:
             return {"blocked": "Not saved — the numbers changed in SFA: " + "; ".join(bad)}
         want = _norm_qty(qty, prods)
-        for r in tbl["rows"]:
-            q = want.get(_key(r["code"], r["price"]), 0)
-            if q <= 0:
-                continue
-            box = page.locator(f"[data-chimera-q='{r['qref']}']").first
-            label = f"{r['name'] or r['code']} ({r['code']} @ {r['price']})"
-            await _type_qty(page, box, q, label, log)
-            log(f"{label}: {q:g}")
+        await _apply_quantities(page, tbl, want, log)
         await page.wait_for_timeout(500)
         check = await page.evaluate(_TABLE_JS, [uuid.uuid4().hex[:8]])
         typed = {_key(r["code"], r["price"]): _n(r["qty"]) for r in check["rows"]}
         wrong = [c.split("@")[0] for c, q in want.items() if q > 0 and abs(typed.get(c, -1) - q) > 1e-9]
         if wrong:
             return {"blocked": "Not saved — SFA didn't take the quantity for: " + ", ".join(wrong)}
+        extra = [c.split("@")[0] for c, v in typed.items() if v > 0 and want.get(c, 0) <= 0]
+        if extra:
+            return {"blocked": "Not saved — SFA still has a quantity on lines you set to 0: " + ", ".join(extra)}
         number = check.get("number") or tbl.get("number", "")
         os.makedirs(SHOT_DIR, exist_ok=True)
         shot = os.path.join(SHOT_DIR, f"{re.sub(r'[^A-Za-z0-9]+', '_', d['name'])}_{datetime.now():%Y%m%d_%H%M%S}"
@@ -470,18 +554,30 @@ def create(distributor_id, quantities, fields=None, dry_run=None, headless=None)
             raise AddError("No SAVE button found. Buttons on the page: " + "; ".join(seen[:12]), "save")
         await btn.click()
         log("Pressed SAVE.")
-        outcome, deadline, answered = None, time.time() + max(20, st["timeout_ms"] / 1000), False
+        outcome, deadline, answered = None, time.time() + max(20, st["timeout_ms"] / 1000), 0
         while time.time() < deadline and outcome is None:
             await page.wait_for_timeout(600)
             dlg = await _dialog(page)
             if dlg:
                 txt = f"{dlg.get('title', '')} {dlg.get('text', '')}".strip()
                 low = txt.lower()
-                if not answered and re.search(r"are you sure|confirm|do you want", low) and not _is_error(dlg):
-                    clicked = await _dismiss(page, ("yes", "ok", "confirm", "yes, save it!", "save"))
-                    log(f"SFA asked: '{txt}' — answered {clicked or '?'}.")
-                    answered = True
-                    continue
+                if re.search(r"are you sure|confirm|do you want", low) and not _is_error(dlg):
+                    if not answered:
+                        clicked = await _dismiss(page, ("yes", "ok", "confirm", "yes, save it!", "save"))
+                        log(f"SFA asked: '{txt}' — answered {clicked or '?'}.")
+                        answered = 1
+                        await page.wait_for_timeout(1200)
+                        continue
+                    if answered == 1:                     # still asking: press Yes like a real mouse click
+                        answered = 2
+                        for word in ("Yes", "OK", "Confirm"):
+                            try:
+                                await page.get_by_text(word, exact=True).last.click(timeout=3000)
+                                log(f"SFA still asked — clicked '{word}' again.")
+                                break
+                            except Exception:
+                                continue
+                        continue
                 if _is_error(dlg):
                     await _dismiss(page)
                     outcome = ("error", txt)
@@ -496,19 +592,31 @@ def create(distributor_id, quantities, fields=None, dry_run=None, headless=None)
         if outcome is None:
             outcome = ("unknown", "No message from SFA after SAVE.")
         log(f"SFA: {outcome[1]}")
+        after = shot.replace(".png", "_after_save.png")
+        try:
+            await page.screenshot(path=after, full_page=True)      # what SFA showed after SAVE — evidence either way
+        except Exception:
+            after = shot
         if outcome[0] == "error":
-            return {"blocked": f"SFA didn't save the loading: {outcome[1]}", "screenshot": shot}
-        # Is the new loading listed as pending on View Loadings?
-        verified = False
+            return {"blocked": f"SFA didn't save the loading: {outcome[1]}", "screenshot": after}
+        # Is the new loading on View Loadings? (searched by its distributor, and its loading number if known)
+        verified, seen = False, []
         try:
             lp = await page.context.new_page()
             r = await LA._open_and_search(lp, cfg, LA._settings()["url"], d, 0, st["timeout_ms"], lane_steps=False)
-            verified = any(x["pending"] and (not number or x["number"] == number) for x in r.get("rows") or [])
+            rows = r.get("rows") or []
+            seen = [x.get("number", "") for x in rows]
+            verified = any((not number or x["number"] == number) for x in rows) if number else any(x["pending"] for x in rows)
             await lp.close()
         except Exception as e:
             log(f"Couldn't check View Loadings: {type(e).__name__}")
-        log("View Loadings shows it as pending ✓" if verified else "Not yet visible as pending on View Loadings.")
-        return {"saved": True, "number": number, "verified": verified, "sfa_message": outcome[1], "screenshot": shot}
+        if verified:
+            log("View Loadings lists it ✓")
+        else:
+            log("Not on View Loadings" + (f" (it shows {', '.join(seen[:6])})" if seen else " (nothing listed for this distributor)") + ".")
+        # Saved = SFA said so, or View Loadings lists it. "No message" and not listed = most likely NOT saved.
+        saved = verified or outcome[0] == "ok" and bool(re.search(r"success|added|saved|created", outcome[1], re.I))
+        return {"saved": saved, "number": number, "verified": verified, "sfa_message": outcome[1], "screenshot": after}
 
     def go():
         try:
@@ -521,15 +629,21 @@ def create(distributor_id, quantities, fields=None, dry_run=None, headless=None)
             return {"ok": False, "blocked": True, "message": res["blocked"], "screenshot": res.get("screenshot"), "log": logs}
         if res.get("need_rep"):
             return {"ok": False, "need_rep": res["need_rep"], "message": "Choose the sales rep again.", "log": logs}
-        LS.record_add(d, res, dry)
+        LS.record_add(d, res, dry, "\n".join(logs))
         if res.get("dry_run"):
             return {"ok": True, "dry_run": True, "number": res.get("number"), "screenshot": res["screenshot"],
                     "message": "Dry run done — Chimera filled the Add Loading page and stopped before SAVE. "
                                "Nothing was saved in SFA. Check the screenshot.", "log": logs}
-        return {"ok": True, "saved": True, "verified": res["verified"], "number": res.get("number"),
+        num = res.get("number") or ""
+        if not res.get("saved"):
+            return {"ok": False, "unconfirmed": True, "number": num, "screenshot": res.get("screenshot"), "log": logs,
+                    "message": f"Chimera pressed SAVE, but SFA didn't say the loading {num} was saved and it isn't on View Loadings "
+                               f"(SFA: {res['sfa_message']}). It was most likely NOT saved. Look at SFA's page below and at "
+                               "View Loadings in SFA before trying again, so it isn't added twice."}
+        return {"ok": True, "saved": True, "verified": res["verified"], "number": num,
                 "screenshot": res.get("screenshot"),
-                "message": (f"Loading {res.get('number') or ''} saved in SFA"
-                            + (" and listed as pending on View Loadings." if res["verified"] else
+                "message": (f"Loading {num} saved in SFA"
+                            + (" and listed on View Loadings." if res["verified"] else
                                " (SFA said: " + res["sfa_message"] + "). It isn't visible on View Loadings yet — check SFA.")
                             + " Confirm it through Prepare → Approve Loadings."), "log": logs}
     return _run(go)

@@ -366,15 +366,21 @@ def set_add_fields(did, fields):
     conn.close()
 
 
-def record_add(d, res, dry_run):
-    """An Add Loading attempt, kept in the runs list (kind 'add')."""
+def record_add(d, res, dry_run, log=""):
+    """An Add Loading attempt, kept in the runs list (kind 'add'), with its log.
+    status: done (saved), unconfirmed (SAVE pressed but SFA never said it saved and View Loadings doesn't list it)."""
     rid = start_run("add", "manual")
+    status = "done"
     if dry_run:
         msg = f"{d['name']}: dry run — page filled, stopped before SAVE (loading number {res.get('number') or '?'})."
+    elif not res.get("saved", True):
+        status = "unconfirmed"
+        msg = (f"{d['name']}: loading {res.get('number') or '?'} NOT confirmed — SAVE pressed, but SFA gave no success "
+               f"message and View Loadings doesn't list it (SFA: {res.get('sfa_message', '')}).")
     else:
         msg = (f"{d['name']}: loading {res.get('number') or '?'} saved in SFA"
-               + ("; pending on View Loadings ✓" if res.get("verified") else "; not yet seen on View Loadings") + ".")
-    finish_run(rid, "done", msg, "")
+               + ("; on View Loadings ✓" if res.get("verified") else "; not yet seen on View Loadings") + ".")
+    finish_run(rid, status, msg, log or "")
     return rid
 
 

@@ -63,12 +63,19 @@ _RESULTS_JS = r"""
   const vis = e => !!(e.offsetWidth || e.offsetHeight || e.getClientRects().length);
   for (const t of [...document.querySelectorAll('table')].filter(vis)) {
     const heads = [...t.querySelectorAll('thead th, thead td')];
-    const hs = (heads.length ? heads : [...(t.querySelector('tr') || {children: []}).children]).map(h => norm(h.innerText).toLowerCase());
+    const hs = (heads.length ? heads : [...(t.querySelector('tr') || {children: []}).children])
+                 .map(h => norm(h.innerText || h.textContent).toLowerCase());
     const col = re => hs.findIndex(h => re.test(h));
     const iC = col(/^confirm$/), iN = col(/loading\s*(no|number)/), iR = col(/rep\s*name/), iD = col(/loading\s*date/),
           iT = col(/loading\s*time/), iS = col(/dis\w*\s*confirmation/);
     if (iC < 0) continue;
-    const body = [...t.querySelectorAll('tbody tr')].filter(r => r.children.length > iC);
+    // a scrolling table draws its header in one <table> and its rows in another, side by side in one wrapper
+    let rowsTable = t;
+    if (!t.querySelector('tbody tr td')) {
+      const wrap = t.closest('.dataTables_wrapper, .dataTables_scroll, .table-responsive') || t.parentElement;
+      rowsTable = [...(wrap ? wrap.querySelectorAll('table') : [])].find(x => x !== t && x.querySelector('tbody tr td')) || t;
+    }
+    const body = [...rowsTable.querySelectorAll('tbody tr')].filter(r => r.children.length > iC);
     const rows = [];
     let pending = -1, pendingCount = 0;
     body.forEach((r, k) => {
@@ -86,9 +93,10 @@ _RESULTS_JS = r"""
         (clickable.closest('a, button, [role=button]') || clickable).setAttribute('data-chimera-pending', token);
       }
     });
-    return {table: true, rows, pending, pending_count: pendingCount};
+    const emptyRow = body.length === 1 && /no (data|matching|records?)/i.test(norm(body[0].innerText));
+    return {table: true, rows: emptyRow ? [] : rows, pending: emptyRow ? -1 : pending, pending_count: emptyRow ? 0 : pendingCount};
   }
-  const empty = /no (data|records?)/i.test(document.body.innerText || '');
+  const empty = /no (data|records?|matching)/i.test(document.body.innerText || '');
   return {table: false, rows: [], pending: -1, empty};
 }
 """
@@ -153,6 +161,20 @@ _POPUP_YES_JS = r"""
     const yes = btns.find(x => /^(yes|ok|okay|confirm|yes,?\s.*|sure|proceed)$/i.test((x.innerText || x.value || '').trim()))
              || btns.find(x => /swal-button--confirm|swal2-confirm|btn-primary|btn-success|p-confirm-dialog-accept/.test(x.className || ''));
     if (yes) { yes.setAttribute('data-chimera-yes', token); return (yes.innerText || '').trim() || 'OK'; }
+  }
+  // SFA's own pop-ups: a Yes/OK/Confirm button floating on top of the page (not covered by anything)
+  const words = /^(yes|ok|okay|confirm|yes,?\s.*|sure|proceed)$/i;
+  for (const x of [...document.querySelectorAll('button, a, [role=button], input[type=button], input[type=submit]')].filter(vis)) {
+    if (!words.test((x.innerText || x.value || '').trim()) || x.closest('[data-chimera-pressed]')) continue;
+    const r = x.getBoundingClientRect(), top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    if (!top || !(top === x || x.contains(top) || top.contains(x))) continue;
+    let up = x, floating = false;
+    while (up && up !== document.body) {
+      const cs = getComputedStyle(up);
+      if (cs.position === 'fixed' || +cs.zIndex >= 100) { floating = true; break; }
+      up = up.parentElement;
+    }
+    if (floating) { x.setAttribute('data-chimera-yes', token); return (x.innerText || x.value || '').trim() || 'OK'; }
   }
   return null;
 }
@@ -240,10 +262,16 @@ async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_st
     btn, _lbl, seen = await SA._find_button(page, "SEARCH", 10000)
     if btn is None:
         raise StepError("search", "No SEARCH button found. Buttons on the page: " + ("; ".join(seen[:12]) or "none"))
+    # close any dropdown still open from the last filter — it can swallow the click on SEARCH
+    try:
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(300)
+    except Exception:
+        pass
     await btn.click()
-    # wait for the results table (or a "no data" message)
-    deadline = time.time() + max(20, timeout_ms / 1000)
-    res = None
+    # wait for the results table (or a "no data" message); press SEARCH again if nothing happens
+    deadline = time.time() + max(30, timeout_ms / 1000)
+    res, pressed_at, presses = None, time.time(), 1
     while time.time() < deadline:
         await page.wait_for_timeout(700)
         try:
@@ -254,6 +282,27 @@ async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_st
             break
         if LIVE.cancelled():
             raise Cancelled()
+        if presses < 3 and time.time() - pressed_at > 10:
+            presses += 1
+            pressed_at = time.time()
+            LIVE.log(f"No results yet — pressing SEARCH again ({presses}).", lane=distributor["name"])
+            try:
+                b2, _l, _s = await SA._find_button(page, "SEARCH", 3000)
+                if b2 is not None:
+                    await b2.evaluate("b => b.click()")
+            except Exception:
+                pass
+    if res and not res["table"] and not res.get("empty"):
+        # tell us what the page looked like, so the reason can be found
+        try:
+            info = await page.evaluate("""() => [...document.querySelectorAll('table')].map(t =>
+                [...t.querySelectorAll('thead th, thead td, tr:first-child th')].map(h => (h.textContent || '').trim()).filter(Boolean)
+                  .slice(0, 12).join(' | ') + ` (${t.querySelectorAll('tbody tr').length} rows${t.offsetWidth ? '' : ', hidden'})`)""")
+            LIVE.log("SFA showed no results table after SEARCH. Tables on the page: " + ("; ".join(info) or "none"),
+                     lane=distributor["name"])
+        except Exception:
+            pass
+        res["no_table"] = True
     if lane_steps:
         LIVE.step(idx, "search", "done")
     return res or {"table": False, "rows": [], "pending": -1}
@@ -299,6 +348,10 @@ async def _prepare_lane(context, cfg, url, d, idx, opts, sem):
         try:
             res = await _open_and_search(page, cfg, url, d, idx, opts["timeout_ms"])
             LIVE.step(idx, "find", "active")
+            if res.get("no_table"):
+                # SFA never showed a results table: that is NOT "nothing pending" — say so, with a screenshot
+                raise StepError("search", "SFA showed no results table after SEARCH (pressed 3 times), so Chimera couldn't "
+                                          "check for a pending loading. See the screenshot and the log.")
             if res["pending"] < 0:
                 done = [r for r in res["rows"] if not r["pending"]]
                 msg = ("No pending loading — the latest is already confirmed"
@@ -524,6 +577,10 @@ async def _press_confirm(page, run_id, idx, name):
             raise StepError("confirm", "The green Confirm button wasn't found. Buttons on the page: "
                             + ("; ".join(seen[:12]) or "none"))
         await btn.scroll_into_view_if_needed()
+        try:
+            await btn.evaluate("b => b.setAttribute('data-chimera-pressed', '1')")   # never mistaken for the pop-up's Yes
+        except Exception:
+            pass
         await btn.click()
         deadline = time.time() + 10
         said = None

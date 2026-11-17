@@ -657,11 +657,22 @@ async function alRead() {
   let r; try { r = await API().read_add_loading(AL.id, AL.fields, false); } finally { AU.busyModal = false; }
   AL.log = r.log || [];
   if (r.need_rep) { AL.reps = r.need_rep; if (r.fields) AL.fields = { ...r.fields, sales_rep: r.need_rep[0] }; alFieldsStep(r.message); return; }
-  if (r.blocked) { alResult("SFA didn't allow a new loading", `<div class="problem-box"><b>SFA says:</b> ${esc(r.message)}</div>
-      <p class="hint">Nothing was saved. For “previously loaded quantities are not unloaded”, the rep (${esc((r.fields || {}).sales_rep || "")}) has to unload
-      the previous loading in SFA first; then try again.</p>`); return; }
+  if (r.blocked) {
+    const rep = esc((r.fields || {}).sales_rep || "the rep");
+    const why = /not confirmed by the sales rep/i.test(r.message || "")
+      ? `This is SFA's rule, not a Chimera error: ${rep} hasn't confirmed the previous loading in the SFA mobile app yet.
+         Once the rep confirms it there, add the new loading again.`
+      : /not unloaded/i.test(r.message || "")
+        ? `This is SFA's rule, not a Chimera error: ${rep} has to unload the previous loading in SFA first; then try again.`
+        : "This is SFA's answer — see its message above.";
+    alResult("SFA didn't allow a new loading", `<div class="problem-box"><b>SFA says:</b> ${esc(r.message)}</div>
+      <p class="hint">Nothing was saved. ${why}</p>`); return; }
   if (!r.ok) { alResult("Couldn't read the Add Loading page", `<div class="problem-box">${esc(r.message)}</div>`, true); return; }
-  AL.fields = r.fields; AL.products = r.products.map(p => ({ ...p, qty: p.stock })); AL.number = r.number; AL.dry = r.dry_run;
+  // opens with SFA's own suggested quantities when SFA gave any (never more than the stock); otherwise the stock
+  AL.sugCount = r.products.filter(p => (p.suggested || 0) > 0).length;
+  AL.fields = r.fields; AL.number = r.number; AL.dry = r.dry_run;
+  AL.products = r.products.map(p => ({ ...p, suggested: p.suggested || 0, qty: AL.sugCount ? Math.min(p.suggested || 0, p.stock) : p.stock }));
+  AL.start = AL.sugCount ? "sfa" : "stock";
   AL.hidden = r.hidden_zero;
   alQtyStep();
 }
@@ -677,13 +688,19 @@ function alQtyStep() {
   openModal({ title: `Add loading — ${AL.d.name}`, size: "xl", body: `${alModeBox()}
     <div class="hint" style="margin:6px 0 10px;">Loading number <b>${esc(AL.number || "—")}</b> · ${esc(AL.fields.distributor)} · ${esc(AL.fields.sales_rep)}${AL.fields.territory ? " · " + esc(AL.fields.territory) : ""}
       ${AL.hidden ? ` · ${AL.hidden} product(s) with no stock left out` : ""}</div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;"><button class="btn-outline btn-small" id="al-all">Set every quantity to the stock</button>
-      <button class="btn-outline btn-small" id="al-none">Clear all</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
+      <button class="btn-outline btn-small" id="al-sfa" ${AL.sugCount ? "" : "disabled title=\"SFA didn't pre-fill any quantity for this rep\""}>SFA suggested quantities</button>
+      <button class="btn-outline btn-small" id="al-all">Set every quantity to the stock</button>
+      <button class="btn-outline btn-small" id="al-none">Clear all</button>
+      <span class="hint" id="al-start">${AL.start === "sfa" ? `Started with SFA's suggested quantities (${AL.sugCount} product${AL.sugCount === 1 ? "" : "s"}).`
+        : AL.start === "stock" ? "SFA didn't suggest any quantities — started with the full stock." : ""}</span></div>
     <table class="report-table compact al-table"><thead><tr><th>Product</th><th>Code</th><th>Price</th><th>Available stock</th><th>Last unloaded</th>
+      <th title="The quantity SFA puts in its own Quantity box">SFA suggested</th>
       <th style="width:130px">Quantity</th><th>Amount</th></tr></thead><tbody>${AL.products.map((p, i) => `<tr>
       <td>${esc(p.name)}</td><td>${esc(p.code)}</td><td>${p.price.toFixed(2)}</td><td>${p.stock}</td><td>${p.last_unloaded}</td>
+      <td class="al-sug">${p.suggested > 0 ? `${p.suggested}${p.suggested > p.stock ? ` <span class="hint" title="More than the stock — only the stock can be loaded">(stock ${p.stock})</span>` : ""}` : `<span class="hint">—</span>`}</td>
       <td><input type="number" class="al-q" data-i="${i}" min="0" max="${p.stock}" step="1" value="${p.qty}"></td><td class="al-amt" data-i="${i}"></td></tr>`).join("")}
-      <tr class="ap-total"><td colspan="5"><b>Total</b></td><td><b id="al-tq"></b></td><td><b id="al-ta"></b></td></tr></tbody></table>
+      <tr class="ap-total"><td colspan="6"><b>Total</b></td><td><b id="al-tq"></b></td><td><b id="al-ta"></b></td></tr></tbody></table>
     <div id="al-err"></div>`,
     footer: `<button class="btn-outline" id="al-back2">Back</button><button class="btn-primary" id="al-go">${AL.dry ? "Dry run: fill SFA's page" : "Create loading in SFA"}</button>` });
   const recalc = () => {
@@ -702,8 +719,15 @@ function alQtyStep() {
     return { tq, ta };
   };
   document.querySelector(".al-table").addEventListener("input", recalc);
-  document.getElementById("al-all").onclick = () => { document.querySelectorAll(".al-q").forEach(i => { i.value = AL.products[i.dataset.i].stock; }); recalc(); };
-  document.getElementById("al-none").onclick = () => { document.querySelectorAll(".al-q").forEach(i => { i.value = 0; }); recalc(); };
+  const said = (t) => { AL.start = ""; document.getElementById("al-start").textContent = t; };
+  document.getElementById("al-sfa").onclick = () => {
+    document.querySelectorAll(".al-q").forEach(i => { const p = AL.products[i.dataset.i]; i.value = Math.min(p.suggested || 0, p.stock); });
+    recalc();
+    const capped = AL.products.filter(p => p.suggested > p.stock).length;
+    said(`SFA's suggested quantities set${capped ? ` — ${capped} cut down to the available stock` : ""}.`);
+  };
+  document.getElementById("al-all").onclick = () => { document.querySelectorAll(".al-q").forEach(i => { i.value = AL.products[i.dataset.i].stock; }); recalc(); said(""); };
+  document.getElementById("al-none").onclick = () => { document.querySelectorAll(".al-q").forEach(i => { i.value = 0; }); recalc(); said(""); };
   document.getElementById("al-back2").onclick = () => alFieldsStep();
   document.getElementById("al-go").onclick = () => alConfirm(recalc());
   recalc();
@@ -733,7 +757,7 @@ async function alCreate() {
   AL.log = r.log || [];
   loadLoadings(); if (typeof refreshBell === "function") refreshBell();
   if (!r.ok) {
-    alResult(r.blocked ? "Not saved" : "Couldn't add the loading", `<div class="problem-box">${esc(r.message)}</div>
+    alResult(r.unconfirmed ? "Not confirmed — check SFA" : r.blocked ? "Not saved" : "Couldn't add the loading", `<div class="problem-box">${esc(r.message)}</div>
       ${r.screenshot ? `<div class="section-title">SFA page</div><div class="ap-shot" id="al-shot"></div>` : ""}`, true);
   } else {
     alResult(r.dry_run ? "Dry run done" : "Loading created", `<div class="ok-box">${esc(r.message)}</div>

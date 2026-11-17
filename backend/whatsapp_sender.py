@@ -58,6 +58,11 @@ class WAError(Exception):
     pass
 
 
+class WAPending(WAError):
+    """The message was handed to WhatsApp (Enter/Send pressed) but still shows the clock — never send it again."""
+    pass
+
+
 # ===========================================================================
 # Storage: rules + deliveries
 # ===========================================================================
@@ -535,7 +540,7 @@ async def _click(loc, what, js_ok=True, escape=True):
 async def _open_chat(page, name):
     _at(f"opening the chat '{name}'")
     await page.keyboard.press("Escape")
-    box = await _first(page, SEL_SEARCH, 10000)
+    box = await _first(page, SEL_SEARCH, 25000)
     if box is None:
         raise WAError("Couldn't find WhatsApp's search box.")
     await _click(box, "the search box")
@@ -544,7 +549,7 @@ async def _open_chat(page, name):
     await box.type(name, delay=25)
     await page.wait_for_timeout(1200)
     hit = None
-    deadline = time.time() + 10
+    deadline = time.time() + 20                       # search results can be slow on a big account / slow PC
     while time.time() < deadline and hit is None:
         cands = page.locator("#pane-side span[title], div[aria-label*='Search results' i] span[title]")
         for i in range(await cands.count()):
@@ -559,7 +564,7 @@ async def _open_chat(page, name):
     await _click(hit, f"the chat '{name}'")
     header = page.locator("#main header")
     try:
-        await header.wait_for(state="visible", timeout=8000)
+        await header.wait_for(state="visible", timeout=20000)
     except Exception:
         raise WAError(f"Clicked '{name}' but the chat didn't open.")
     if name.strip().lower() not in (await header.inner_text()).lower():
@@ -573,13 +578,18 @@ async def _open_chat(page, name):
         pass
 
 
-async def _wait_sent(page, timeout_s=90):
-    """Waits until no outgoing message in the open chat still shows the pending clock."""
+async def _wait_sent(page, timeout_s=150):
+    """Waits until no outgoing message in the open chat still shows the pending clock. On a slow connection
+    WhatsApp can take a while; Chimera says so in the log instead of giving up early."""
     await page.wait_for_timeout(1200)
-    deadline = time.time() + timeout_s
+    start = time.time(); deadline = start + timeout_s; told = False
     while time.time() < deadline:
         if await page.locator(SEL_PENDING).count() == 0:
             return True
+        if not told and time.time() - start > 20:
+            WA.log("Still waiting for WhatsApp to send (clock icon) — slow connection? Waiting up to "
+                   f"{timeout_s // 60} min.", "warn")
+            told = True
         await page.wait_for_timeout(700)
     return False
 
@@ -908,8 +918,9 @@ async def _send_files(page, files, caption, which="photos"):
                 raise WAError(f"The preview opened but pressing Send didn't send it (found Send by {how})."
                               + (f" Screenshot: {shot}" if shot else "") + (f" Page details: {dump}" if dump else ""))
         await _cancel_recording(page)
-        if not await _wait_sent(page):
-            raise WAError("WhatsApp is still sending after 90 s (slow connection?). Check the chat.")
+        if not await _wait_sent(page, 240):              # images upload first — give them longer
+            raise WAPending("The images were handed to WhatsApp but are still uploading after 4 minutes (slow connection?). "
+                            "WhatsApp finishes them when it can — Chimera won't send them again. Check the chat.")
         i += n
         first = False
 
@@ -919,7 +930,7 @@ async def _send_images(page, files, caption):
 
 
 async def _send_text(page, text, what="The test message"):
-    box = await _first(page, SEL_COMPOSE, 8000)
+    box = await _first(page, SEL_COMPOSE, 20000)
     if box is None:
         raise WAError("Couldn't find the message box.")
     await _click(box, "the message box")
@@ -929,8 +940,10 @@ async def _send_text(page, text, what="The test message"):
         if line:
             await box.type(line, delay=12)
     await page.keyboard.press("Enter")
-    if not await _wait_sent(page, 45):
-        raise WAError(f"{what} is still pending.")
+    if not await _wait_sent(page, 150):
+        raise WAPending(f"{what} was handed to WhatsApp but still shows the clock after 2½ minutes (no internet on this "
+                        "PC or WhatsApp is slow). WhatsApp sends it when the connection comes back — Chimera won't send "
+                        "it again, so it isn't sent twice.")
 
 
 async def _session(action, headless, fn, link_timeout=180):
@@ -950,8 +963,8 @@ async def _session_locked(action, headless, fn, link_timeout):
         try:
             page = ctx.pages[0] if ctx.pages else await ctx.new_page()
             WA.log("Opening WhatsApp Web…")
-            await page.goto(WA_URL, wait_until="domcontentloaded", timeout=60000)
-            st = await _state(page, 60)
+            await page.goto(WA_URL, wait_until="domcontentloaded", timeout=120000)
+            st = await _state(page, 150)                   # WhatsApp Web loads its chats slowly on a slow connection
             if st == "qr":
                 if action != "link":
                     raise WAError("WhatsApp isn't linked yet (or was logged out). Use 'Link WhatsApp' and scan the QR code.")
@@ -961,13 +974,26 @@ async def _session_locked(action, headless, fn, link_timeout):
                 shot = await _shot(page, "not_ready")
                 raise WAError("WhatsApp Web didn't finish loading." + (f" Screenshot: {shot}" if shot else ""))
             await page.wait_for_timeout(1500)
-            return await fn(page)
+            res = await fn(page)
+            await _let_queue_finish(page)
+            return res
         finally:
             _ACTIVE.update(loop=None, ctx=None)
             try:
                 await ctx.close()
             except Exception:
                 pass
+
+
+async def _let_queue_finish(page, max_s=90):
+    """Before closing the browser: if a message in the open chat still shows the clock, give it time to go —
+    closing now would leave it stuck until WhatsApp Web is next opened (that is what made messages arrive late)."""
+    try:
+        if await page.locator(SEL_PENDING).count():
+            WA.log("A message is still waiting to go — keeping WhatsApp open a little longer.", "warn")
+            await _wait_sent(page, max_s)
+    except Exception:
+        pass
 
 
 def _run(action, headless, fn):

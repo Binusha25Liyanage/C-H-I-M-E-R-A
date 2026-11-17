@@ -91,7 +91,7 @@ function renderAmChart() {
 function amLdRows() {
   const f = AM.ldFilter, rows = AM.data.loadings;
   if (f === "all") return rows;
-  if (f === "problem") return rows.filter(r => ["failed", "confirm_failed", "changed"].includes(r.state));
+  if (f === "problem") return rows.filter(r => ["failed", "confirm_failed", "changed", "add_unconfirmed"].includes(r.state));
   if (f === "added") return rows.filter(r => ["added", "dry_run"].includes(r.state));
   return rows.filter(r => r.state === f);
 }
