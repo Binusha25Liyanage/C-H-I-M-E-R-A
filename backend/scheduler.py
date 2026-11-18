@@ -121,6 +121,19 @@ def _run_job(job, slot, trigger):
                                           profile_ids=opts.get("profile_ids") or None, review=review,
                                           report_kinds=opts.get("report_kinds") or None)
         return r
+    if SS.JOB_TYPES.get(job["job_type"], {}).get("report"):
+        import sfa_automation
+        kind, ids, missing = SS.report_job_plan(job)
+        if missing or not ids:
+            import sfa_store
+            return {"ok": False, "status": "failed",
+                    "message": "No enabled download for: " + ", ".join(sfa_store.DATASET_LABELS[m] for m in missing)
+                               + " — turn it on in Report Downloads."}
+        day = date.today() - timedelta(days=1 if job["options"].get("report_day") == "yesterday" else 0)
+        opts = job["options"]
+        review = (slot in opts["review_times"]) if "review_times" in opts else None
+        return sfa_automation.run_automation(report_date=day.isoformat(), trigger=trigger, slot=slot,
+                                             profile_ids=ids, review=review, report_kinds=[kind])
     if job["job_type"] == "rep_attendance":
         import rep_attendance_automation
         review = slot in (job["options"].get("review_times") or [])
@@ -149,7 +162,7 @@ def run_due(trigger="scheduled", now=None):
             desktop_notify.event("started", "schedule", f"{job['name']} — {slot}",
                                  f"Scheduled time reached — {job.get('type_label') or 'job'} is starting now.",
                                  action={"sfa_downloads": "automation", "loadings": "loadings", "distributors": "loadings"}
-                                 .get(job["job_type"], "schedules"), tag=f"sched-{job['id']}-{today}-{slot}")
+                                 .get(job["job_type"], "automation" if job["job_type"].startswith("report_") else "schedules"), tag=f"sched-{job['id']}-{today}-{slot}")
         except Exception:
             pass
         try:

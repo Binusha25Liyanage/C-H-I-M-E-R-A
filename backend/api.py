@@ -664,12 +664,21 @@ class Api:
         job = schedule_store.get_job(int(job_id))
         if not job:
             return {"ok": False, "message": "That job no longer exists."}
-        if job["job_type"] != "sfa_downloads":
-            return {"ok": False, "message": f"{job['type_label']} isn't available yet."}
         import sfa_automation
         day = date.today() - timedelta(days=1 if job["options"].get("report_day") == "yesterday" else 0)
+        if schedule_store.JOB_TYPES.get(job["job_type"], {}).get("report"):
+            kind, ids, missing = schedule_store.report_job_plan(job)
+            if missing or not ids:
+                import sfa_store
+                return {"ok": False, "message": "No enabled download for: "
+                        + ", ".join(sfa_store.DATASET_LABELS[m] for m in missing) + " — turn it on in Report Downloads."}
+            return sfa_automation.start_background(report_date=day.isoformat(), trigger="manual",
+                                                   profile_ids=ids, report_kinds=[kind])
+        if job["job_type"] != "sfa_downloads":
+            return {"ok": False, "message": f"{job['type_label']} isn't available yet."}
         return sfa_automation.start_background(report_date=day.isoformat(), trigger="manual",
-                                               profile_ids=job["options"].get("profile_ids") or None)
+                                               profile_ids=job["options"].get("profile_ids") or None,
+                                               report_kinds=job["options"].get("report_kinds") or None)
 
     def add_holidays(self, text):
         n, problems = schedule_store.add_holidays(text or "")

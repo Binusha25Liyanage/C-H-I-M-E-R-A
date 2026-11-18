@@ -171,6 +171,37 @@ class ScheduleTest(unittest.TestCase):
             scheduler._run_job(SS.get_job(usual["id"]), "12:15", "scheduled")
             self.assertIsNone(ra.call_args.kwargs["report_kinds"])          # the usual list
 
+    def test_every_report_is_a_job_of_its_own(self):
+        """Every report Chimera builds can be scheduled by itself: it downloads only what that report needs."""
+        import report_pipeline
+        for kind in report_pipeline.REPORT_KINDS:
+            self.assertIn(f"report_{kind}", SS.JOB_TYPES, kind)
+            self.assertTrue(SS.JOB_TYPES[f"report_{kind}"]["available"])
+        j = job(name="Early bills", job_type="report_early", times="09:05",
+                options={"report_day": "today", "review_times": ["09:05"], "profile_ids": [1, 2]})
+        self.assertEqual(SS.get_job(j["id"])["options"], {"report_day": "today", "review_times": ["09:05"]})
+        feeds = {p["id"]: p["feeds_into"] for p in AS.list_profiles()}
+        import sfa_automation
+        with mock.patch.object(sfa_automation, "run_automation", return_value={"ok": True, "status": "success"}) as ra:
+            scheduler._run_job(SS.get_job(j["id"]), "09:05", "scheduled")
+            kw = ra.call_args.kwargs
+            self.assertEqual(kw["report_kinds"], ["early"])
+            self.assertEqual(sorted(feeds[i] for i in kw["profile_ids"]), ["invoices", "sales_orders"])
+            self.assertIs(kw["review"], True)
+        # a needed download switched off: the job says so instead of building a report from stale data
+        inv = next(p for p in AS.list_profiles() if p["feeds_into"] == "invoices")
+        conn = db.get_connection(); conn.execute("UPDATE sfa_profiles SET enabled=0 WHERE id=?", (inv["id"],)); conn.commit(); conn.close()
+        try:
+            with mock.patch.object(sfa_automation, "run_automation") as ra:
+                r = scheduler._run_job(SS.get_job(j["id"]), "09:05", "scheduled")
+                ra.assert_not_called()
+            self.assertFalse(r["ok"])
+            self.assertIn("Invoices", r["message"])
+        finally:
+            conn = db.get_connection(); conn.execute("UPDATE sfa_profiles SET enabled=1 WHERE id=?", (inv["id"],)); conn.commit(); conn.close()
+        self.assertTrue(SS.type_on(SS.get_job(j["id"]), {"auto_sfa_downloads": "1"}))
+        self.assertFalse(SS.type_on(SS.get_job(j["id"]), {"auto_sfa_downloads": "0"}))   # same switch as downloads
+
     def test_task_times_cover_all_jobs(self):
         job(name="Morning", frequency="monthly", month_days="1", times="06:00,07:30")
         job(name="Off", times="23:00", enabled=False)

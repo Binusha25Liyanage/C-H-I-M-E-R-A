@@ -35,6 +35,17 @@ FREQUENCIES = ("daily", "weekly", "monthly", "once")
 JOB_TYPES = {
     "sfa_downloads": {"label": "SFA report downloads", "available": True,
                       "hint": "Logs in to SFA, downloads the report profiles, imports them and builds the reports."},
+    # one job per report Chimera builds: downloads only that report's SFA inputs, then builds and sends it
+    "report_early": {"label": "Early Bills Report (bills before 9 AM)", "available": True, "report": "early",
+                     "hint": "Downloads only Invoices and Sales Orders from SFA and builds the Early Bills Report "
+                             "(Synchronized / Not synced yet) — sent to the WhatsApp chats that have it ticked."},
+    "report_sku": {"label": "SKU Report", "available": True, "report": "sku",
+                   "hint": "Downloads only the two Outlet Wise SKU reports from SFA and builds the SKU Report."},
+    "report_pivot": {"label": "Pivot Report", "available": True, "report": "pivot",
+                     "hint": "Downloads only Invoices and Sales Orders from SFA and builds the Pivot Report."},
+    "report_hourly": {"label": "Hourly BC & SV Report", "available": True, "report": "hourly",
+                      "hint": "Downloads Invoices, Sales Orders and Unproductive Visits from SFA and builds the "
+                              "Hourly Bill Count & Sale Value report."},
     "master_sync": {"label": "Master data sync", "available": False,
                     "hint": "Itinerary, Territories and Outlet Master from SFA (coming next)."},
     "visit_state": {"label": "Visit state update", "available": False, "hint": "Coming soon."},
@@ -52,9 +63,21 @@ JOB_TYPES = {
 }
 REPORT_DAYS = ("today", "yesterday")
 # Each job type has an on/off switch in automation_settings (Schedules > Automations).
-TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "master_sync": "auto_master_sync",
+TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "report_early": "auto_sfa_downloads",
+               "report_sku": "auto_sfa_downloads", "report_pivot": "auto_sfa_downloads", "report_hourly": "auto_sfa_downloads", "master_sync": "auto_master_sync",
                "visit_state": "auto_visit_state", "sequence": "auto_sequence", "loadings": "auto_loadings",
                "distributors": "auto_distributor_sync", "rep_attendance": "auto_rep_attendance"}
+
+
+def report_job_plan(job):
+    """For a report job: (report kind, the enabled SFA download profiles it needs, the inputs nobody downloads)."""
+    import automation_store as AS
+    import report_pipeline
+    kind = JOB_TYPES[job["job_type"]]["report"]
+    need = report_pipeline.REQUIRED_INPUTS[kind]
+    profs = [p for p in AS.list_profiles() if p["enabled"] and p["feeds_into"] in need]
+    missing = [d for d in need if d not in {p["feeds_into"] for p in profs}]
+    return kind, [p["id"] for p in profs], missing
 
 
 def type_on(job, settings):
@@ -241,6 +264,13 @@ def _clean_job(j):
         # which reports this job builds afterwards ([] = the default list in Report Downloads › After downloading)
         kinds = [k for k in (opts.get("report_kinds") or []) if k in ("early", "sku", "pivot", "hourly")]
         opts = {"report_day": rd, "profile_ids": ids, "review_times": review, "report_kinds": kinds}
+    elif JOB_TYPES[jt].get("report"):
+        rd = opts.get("report_day") or "today"
+        if rd not in REPORT_DAYS:
+            raise ValueError("Report date must be today or yesterday.")
+        times = out["times"].split(",")
+        review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})
+        opts = {"report_day": rd, "review_times": review}
     elif jt == "rep_attendance":
         times = out["times"].split(",")
         review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})

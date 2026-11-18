@@ -4,7 +4,7 @@
 
 const SC = { ov: null, week: 0, tab: "jobs", draft: null };
 const SC_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SC_TYPE_CLASS = { sfa_downloads: "wk-dl", master_sync: "wk-md", visit_state: "wk-vs", sequence: "wk-sq" };
+const SC_TYPE_CLASS = { sfa_downloads: "wk-dl", report_early: "wk-dl", report_sku: "wk-dl", report_pivot: "wk-dl", report_hourly: "wk-dl", master_sync: "wk-md", visit_state: "wk-vs", sequence: "wk-sq" };
 
 function scFmtDate(iso, opts) { return new Date(iso).toLocaleDateString("en-GB", opts || { weekday: "short", day: "2-digit", month: "short" }); }
 function scTime(iso) { return iso.slice(11, 16); }
@@ -113,7 +113,7 @@ function renderScJobs() {
       const ok = lf && /^(success|done)/.test(lf.outcome || "");
       return `<tr>
         <td><label class="switch2"><input type="checkbox" data-toggle="${j.id}" ${j.enabled ? "checked" : ""}><span></span></label></td>
-        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.options.report_kinds && j.options.report_kinds.length ? ` · builds ${j.options.report_kinds.map(k => ({ early: "Early Bills", sku: "SKU", pivot: "Pivot", hourly: "Hourly" })[k] || k).join(", ")}` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${["sfa_downloads", "rep_attendance"].includes(j.job_type) ? (Array.isArray(j.options.review_times)
+        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.options.report_kinds && j.options.report_kinds.length ? ` · builds ${j.options.report_kinds.map(k => ({ early: "Early Bills", sku: "SKU", pivot: "Pivot", hourly: "Hourly" })[k] || k).join(", ")}` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${(["sfa_downloads", "rep_attendance"].includes(j.job_type) || j.job_type.startsWith("report_")) ? (Array.isArray(j.options.review_times)
           ? (j.options.review_times.length ? ` · asks first at ${esc(j.options.review_times.join(", "))}` : " · sends automatically at every time")
           : " · approval: Daily Reports setting") : ""}</div></td>
         <td>${esc(j.summary)}</td>
@@ -219,7 +219,7 @@ function renderFreqBody() {
   }
 }
 function renderJeTimes() {
-  const d = SC.draft, ask = ["sfa_downloads", "rep_attendance"].includes(d.job_type);
+  const d = SC.draft, ask = ["sfa_downloads", "rep_attendance"].includes(d.job_type) || d.job_type.startsWith("report_");
   const rv = (d.options && d.options.review_times) || [];
   document.getElementById("je-times").innerHTML = d.times_list.map(t => `<span class="time-chip ${ask && rv.includes(t) ? "ask" : ""}">${esc(t)}
       ${ask ? `<button type="button" class="tc-ask" data-ask="${esc(t)}" title="Click to change">${rv.includes(t) ? "&#9995; Ask me first" : "&#10148; Sends automatically"}</button>` : ""}
@@ -230,6 +230,17 @@ function renderJeTimes() {
 }
 function renderJeOpts() {
   const d = SC.draft, el = document.getElementById("je-opts");
+  if (d.job_type.startsWith("report_")) {             // one report: its own downloads only, then that report
+    const t = SC.ov.job_types[d.job_type] || {};
+    el.innerHTML = `<div class="section-title">${esc(t.label || "Report")}</div>
+      <label class="field">Report date <select id="je-rday">
+        <option value="today" ${d.options.report_day !== "yesterday" ? "selected" : ""}>Today (the day it runs)</option>
+        <option value="yesterday" ${d.options.report_day === "yesterday" ? "selected" : ""}>Yesterday</option></select></label>
+      <p class="hint" style="margin-top:8px;">Only this report is built; the other reports aren't touched. Chats get it when this
+        report is ticked on their rule in WhatsApp.</p>`;
+    document.getElementById("je-rday").onchange = (e) => { d.options.report_day = e.target.value; };
+    return;
+  }
   if (d.job_type !== "sfa_downloads") { el.innerHTML = ""; return; }
   const all = !d.options.profile_ids.length;
   d.options.report_kinds = d.options.report_kinds || [];
