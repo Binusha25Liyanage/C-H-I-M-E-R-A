@@ -118,7 +118,8 @@ def _run_job(job, slot, trigger):
         # Approval is set per time on the job ("Ask me first"); jobs saved before that use Daily Reports' setting.
         review = (slot in opts["review_times"]) if "review_times" in opts else None
         r = sfa_automation.run_automation(report_date=day.isoformat(), trigger=trigger, slot=slot,
-                                          profile_ids=opts.get("profile_ids") or None, review=review)
+                                          profile_ids=opts.get("profile_ids") or None, review=review,
+                                          report_kinds=opts.get("report_kinds") or None)
         return r
     if job["job_type"] == "rep_attendance":
         import rep_attendance_automation

@@ -551,7 +551,7 @@ def save_automation_settings(values):
                 return False, "Page timeout must be between 15 and 600 seconds."
         elif k == "generate_kinds":
             items = v if isinstance(v, list) else [x for x in v.split(",") if x]
-            bad = [x for x in items if x not in ("sku", "pivot", "hourly")]
+            bad = [x for x in items if x not in ("early", "sku", "pivot", "hourly")]
             if bad:
                 return False, f"Unknown report(s): {', '.join(bad)}"
             v = ",".join(items)

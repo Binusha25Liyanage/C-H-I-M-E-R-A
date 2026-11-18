@@ -113,7 +113,7 @@ function renderScJobs() {
       const ok = lf && /^(success|done)/.test(lf.outcome || "");
       return `<tr>
         <td><label class="switch2"><input type="checkbox" data-toggle="${j.id}" ${j.enabled ? "checked" : ""}><span></span></label></td>
-        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${["sfa_downloads", "rep_attendance"].includes(j.job_type) ? (Array.isArray(j.options.review_times)
+        <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.options.report_kinds && j.options.report_kinds.length ? ` · builds ${j.options.report_kinds.map(k => ({ early: "Early Bills", sku: "SKU", pivot: "Pivot", hourly: "Hourly" })[k] || k).join(", ")}` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${["sfa_downloads", "rep_attendance"].includes(j.job_type) ? (Array.isArray(j.options.review_times)
           ? (j.options.review_times.length ? ` · asks first at ${esc(j.options.review_times.join(", "))}` : " · sends automatically at every time")
           : " · approval: Daily Reports setting") : ""}</div></td>
         <td>${esc(j.summary)}</td>
@@ -232,6 +232,8 @@ function renderJeOpts() {
   const d = SC.draft, el = document.getElementById("je-opts");
   if (d.job_type !== "sfa_downloads") { el.innerHTML = ""; return; }
   const all = !d.options.profile_ids.length;
+  d.options.report_kinds = d.options.report_kinds || [];
+  const kinds = d.options.report_kinds;
   el.innerHTML = `<div class="section-title">SFA downloads</div>
     <div class="grid-2">
       <label class="field">Report date <select id="je-rday">
@@ -241,13 +243,25 @@ function renderJeOpts() {
         <option value="pick" ${all ? "" : "selected"}>Only the ones I choose</option></select></label>
     </div>
     <div class="detect-list" id="je-profiles" style="margin-top:10px;${all ? "display:none;" : ""}">${SC.ov.profiles.map(p =>
-      `<label><input type="checkbox" class="je-p" value="${p.id}" ${d.options.profile_ids.includes(p.id) ? "checked" : ""}><b>${esc(p.name)}</b>${p.enabled ? "" : '<span class="muted">profile is off</span>'}</label>`).join("")}</div>`;
+      `<label><input type="checkbox" class="je-p" value="${p.id}" ${d.options.profile_ids.includes(p.id) ? "checked" : ""}><b>${esc(p.name)}</b>${p.enabled ? "" : '<span class="muted">profile is off</span>'}</label>`).join("")}</div>
+    <div class="section-title" style="margin-top:14px;">Then build</div>
+    <label class="field">Reports to build <select id="je-kmode"><option value="default" ${kinds.length ? "" : "selected"}>The usual ones (Report Downloads › After downloading, build)</option>
+      <option value="pick" ${kinds.length ? "selected" : ""}>Only the ones I choose</option></select></label>
+    <div class="detect-list" id="je-kinds" style="margin-top:8px;${kinds.length ? "" : "display:none;"}">${JE_KINDS.map(([k, label, needs]) =>
+      `<label><input type="checkbox" class="je-k" value="${k}" ${kinds.includes(k) ? "checked" : ""}><b>${label}</b><span class="muted">needs ${needs}</span></label>`).join("")}</div>
+    <p class="hint" style="margin-top:6px;">E.g. a 9:05 AM job that downloads only <b>Invoices</b> and <b>Sales Orders</b> and builds only the <b>Early Bills</b> report.</p>`;
   document.getElementById("je-rday").onchange = (e) => { d.options.report_day = e.target.value; };
   document.getElementById("je-pmode").onchange = (e) => {
     document.getElementById("je-profiles").style.display = e.target.value === "pick" ? "" : "none";
     if (e.target.value === "all") { d.options.profile_ids = []; document.querySelectorAll(".je-p").forEach(c => { c.checked = false; }); } };
   document.getElementById("je-profiles").onchange = () => { d.options.profile_ids = [...document.querySelectorAll(".je-p:checked")].map(c => Number(c.value)); };
+  document.getElementById("je-kmode").onchange = (e) => {
+    document.getElementById("je-kinds").style.display = e.target.value === "pick" ? "" : "none";
+    if (e.target.value === "default") { d.options.report_kinds = []; document.querySelectorAll(".je-k").forEach(c => { c.checked = false; }); } };
+  document.getElementById("je-kinds").onchange = () => { d.options.report_kinds = [...document.querySelectorAll(".je-k:checked")].map(c => c.value); };
 }
+const JE_KINDS = [["early", "Early Bills (before 9 AM)", "Invoices + Sales Orders"], ["sku", "SKU Report", "both Outlet Wise SKU"],
+  ["pivot", "Pivot Report", "Invoices + Sales Orders"], ["hourly", "Hourly BC &amp; SV", "Invoices + Sales Orders + Unproductive Visits"]];
 function jeError(msg) {   // shown at the TOP of the pop-up so it can't be missed below the fold
   document.getElementById("je-error").innerHTML = msg ? `<div class="problem-box">${esc(msg)}</div>` : "";
   if (msg) { const body = document.getElementById("modal-body"); if (body) body.scrollTop = 0; }
@@ -257,6 +271,9 @@ async function saveJobDraft() {
   jeError("");
   if (document.getElementById("je-pmode") && document.getElementById("je-pmode").value === "pick" && !d.options.profile_ids.length) {
     jeError("Choose at least one report, or pick “All enabled report profiles”."); return;
+  }
+  if (document.getElementById("je-kmode") && document.getElementById("je-kmode").value === "pick" && !(d.options.report_kinds || []).length) {
+    jeError("Choose at least one report to build, or pick “The usual ones”."); return;
   }
   // a time typed into "Add a time" but not added yet still counts
   const pending = document.getElementById("je-time-input").value;

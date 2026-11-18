@@ -177,34 +177,30 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(rows["Gamma"]["value"], -500)
         self.assertTrue(any("Gamma" in n for n in rep["notes"]))  # return flagged
 
-    # --- "Bills before 9:00 AM" page of the SKU report ---
-    def test_sku_report_has_bills_before_9_page(self):
-        rep = R.build_sku_report(D)
-        e = rep["early"]
-        self.assertIsNotNone(e)
+    # --- Early Bills Report (its own report: bills before 9:00 AM) ---
+    def test_early_bills_report(self):
+        e = P.build_report("early", D)
         rows = {r["territory"]: r for g in e["groups"] for r in g["rows"]}
         self.assertTrue(rows["Gamma"]["started"])                           # 07:45 bill -> Synchronized
         self.assertEqual((rows["Gamma"]["early"], rows["Gamma"]["first"]), (1, "07:45"))
         self.assertFalse(rows["Alpha"]["started"])                          # first bill 09:10 -> Not synced yet
         self.assertEqual(rows["Alpha"]["first"], "09:10")
         self.assertEqual(e["totals"]["territories"], e["totals"]["started"] + e["totals"]["not_started"])
-        # the cut-off follows the setting, and the page can be switched off
-        later = R.build_sku_report(D, {**sfa_store.get_settings(), "early_bill_time": "10:00"})["early"]
+        later = P.build_report("early", D, {**sfa_store.get_settings(), "early_bill_time": "10:00"})
         self.assertTrue({r["territory"]: r for g in later["groups"] for r in g["rows"]}["Alpha"]["started"])
-        self.assertIsNone(R.build_sku_report(D, {**sfa_store.get_settings(), "early_bills_page": "0"})["early"])
-        ok, _ = sfa_store.save_settings({"early_bill_time": "nine"})
-        self.assertFalse(ok)
+        self.assertFalse(sfa_store.save_settings({"early_bill_time": "nine"})[0])
+        self.assertNotIn("early", R.build_sku_report(D))                    # no longer part of the SKU report
 
-    def test_bills_before_9_page_in_both_pdf_styles_and_sent_to_every_group(self):
-        r = P.run_reports(D, output_root=tempfile.mkdtemp(), kinds=["sku"], style="both", images=False)
-        sku = r["reports"][0]
-        self.assertTrue(sku["ok"], sku)
-        import daily_reports_pdf as PDF
-        for style in PDF.STYLES:
-            names = [p["name"] for p in PDF.BUILDERS[("sku", style)][1](R.build_sku_report(D))]
-            self.assertEqual(names[-1], "Bills before 9:00 AM")
-        self.assertEqual(P._page_group("sku", "Bills before 9:00 AM"), "*")
-        self.assertEqual(P._page_group("sku", "SKU Report - Asela"), "Asela")
+    def test_early_bills_report_alone_in_both_styles_for_every_group(self):
+        r = P.run_reports(D, output_root=tempfile.mkdtemp(), kinds=["early"], style="both", images=False)
+        self.assertEqual([x["kind"] for x in r["reports"]], ["early"])
+        e = r["reports"][0]
+        self.assertTrue(e["ok"], e)
+        self.assertEqual(e["label"], "Early Bills Report")
+        self.assertEqual(len(e["outputs"]), 2)
+        self.assertTrue(all(os.path.basename(o["pdf"]).startswith("Early_Bills_Report_") for o in e["outputs"]))
+        self.assertEqual(P._page_group("early", "Bills before 9:00 AM"), "*")
+        self.assertEqual(P.REQUIRED_INPUTS["early"], ("invoices", "sales_orders"))
 
     # --- Pivot report ---
     def test_pivot_gaps_and_dedupe(self):
@@ -349,8 +345,7 @@ class PipelineTest(unittest.TestCase):
         self.assertTrue(ok)
         self.assertFalse(W.save_rule({"chat_name": "x", "kinds": []})[0])
         plan = {p["chat_name"]: p for p in W.plan_delivery(run)}
-        # the SKU report's "Bills before 9:00 AM" page covers every group, so each manager's chat gets it too
-        self.assertEqual(plan["Mgr1 team"]["pages"], ["SKU Report - Mgr1", "Bills before 9:00 AM", "Pivot Report - Mgr1"])
+        self.assertEqual(plan["Mgr1 team"]["pages"], ["SKU Report - Mgr1", "Pivot Report - Mgr1"])
         self.assertEqual(plan["Mgr1 team"]["caption"], f"SKU Report, Pivot Report {D}")
         # sent report by report (SKU first), each message with its own caption
         self.assertEqual([(b["kind"], b["caption"]) for b in plan["Mgr1 team"]["batches"]],

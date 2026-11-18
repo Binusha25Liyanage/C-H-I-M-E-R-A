@@ -202,7 +202,7 @@ def list_deliveries(limit=30):
     return [dict(zip(keys, r)) for r in rows]
 
 
-KIND_ORDER = ("sku", "pivot", "hourly")
+KIND_ORDER = ("early", "sku", "pivot", "hourly")
 
 
 def _landscape_copy(path):

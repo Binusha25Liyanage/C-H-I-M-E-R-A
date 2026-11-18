@@ -1038,7 +1038,7 @@ async def _run_async(cfg, items, report_date, opts):
 
 
 def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=None, headless=None,
-                   generate=True, import_data=True, test=False, style=None, review=None):
+                   generate=True, import_data=True, test=False, style=None, review=None, report_kinds=None):
     """
     Synchronous entry point (call it from a background thread for the UI).
     Returns a summary dict; live progress is in LIVE.snapshot().
@@ -1110,7 +1110,7 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
         if generate and not test and ok_lanes and not cancelled and not build_on:
             LIVE.log("Building reports is switched off (Schedules › Automations) — downloads only.")
         if generate and not test and ok_lanes and not cancelled and build_on:
-            kinds = settings["generate_list"]
+            kinds = [k for k in (report_kinds or []) if k] or settings["generate_list"]
             if kinds:
                 LIVE.set(phase="generating")
                 import sfa_store as _ss

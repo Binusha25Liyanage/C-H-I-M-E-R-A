@@ -238,7 +238,9 @@ def _clean_job(j):
                 raise ValueError("Some selected report profiles no longer exist — reopen the job and choose again.")
         times = out["times"].split(",")
         review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})
-        opts = {"report_day": rd, "profile_ids": ids, "review_times": review}
+        # which reports this job builds afterwards ([] = the default list in Report Downloads › After downloading)
+        kinds = [k for k in (opts.get("report_kinds") or []) if k in ("early", "sku", "pivot", "hourly")]
+        opts = {"report_day": rd, "profile_ids": ids, "review_times": review, "report_kinds": kinds}
     elif jt == "rep_attendance":
         times = out["times"].split(",")
         review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})

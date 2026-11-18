@@ -235,6 +235,7 @@
                 </div>
                 <h3 style="margin-top:16px;">After downloading, build</h3>
                 <div class="form-row">
+                  <label class="check"><input type="checkbox" class="au-gen" value="early"> Early Bills (before 9 AM)</label>
                   <label class="check"><input type="checkbox" class="au-gen" value="sku"> SKU Report</label>
                   <label class="check"><input type="checkbox" class="au-gen" value="pivot"> Pivot Report</label>
                   <label class="check"><input type="checkbox" class="au-gen" value="hourly"> Hourly BC &amp; SV</label>
@@ -325,6 +326,7 @@
           <div class="card">
             <h3>2 &middot; Generate</h3>
             <div class="form-row">
+              <label class="check"><input type="checkbox" class="dr-kind" value="early"> Early Bills (before 9 AM)</label>
               <label class="check"><input type="checkbox" class="dr-kind" value="sku" checked> SKU Report</label>
               <label class="check"><input type="checkbox" class="dr-kind" value="pivot" checked> Pivot Report</label>
               <label class="check"><input type="checkbox" class="dr-kind" value="hourly" checked> Hourly BC &amp; SV</label>
@@ -1075,10 +1077,7 @@
               <label>Focus product (SKU report) <input type="text" id="rs-focus_product"></label>
             </div>
             <div class="form-row">
-              <label>"Bills before" page in the SKU report
-                <select id="rs-early_bills_page"><option value="1">Add it (Synchronized / Not synced yet)</option><option value="0">Leave it out</option></select>
-              </label>
-              <label>Bills before (time) <input type="time" id="rs-early_bill_time"></label>
+              <label>Early Bills Report: bills before <input type="time" id="rs-early_bill_time"></label>
             </div>
             <div class="form-row">
               <label>Default output style

@@ -36,8 +36,7 @@ DEFAULT_SETTINGS = {
     "van_sv_target": "100000",      #   when BOTH bills and value targets are met)
     "pre_bc_target": "30",
     "pre_sv_target": "125000",
-    "early_bills_page": "1",        # SKU: add the "Bills before <time>" page (Synchronized / Not synced yet)
-    "early_bill_time": "09:00",     # SKU: that page's cut-off time
+    "early_bill_time": "09:00",     # Early Bills Report: bills created before this time (Synchronized / Not synced yet)
     "output_style": "classic",      # classic (SalesPulse look) | professional (Chimera) | both
     "delivery_mode": "save",        # save = save straight away | preview = hold for review before saving/sending
     "output_folder": "",            # where saved reports go ('' = Documents-like default under ~/Chimera/exports)
@@ -152,8 +151,6 @@ def save_settings(values):
             if not X.to_hhmm(v):
                 return False, f"Bills-before time '{v}' is not a valid time (use HH:MM)."
             v = X.to_hhmm(v)
-        elif k == "early_bills_page":
-            v = "1" if v in ("1", "true", "True", "on") else "0"
         elif k == "focus_product":
             if not v:
                 return False, "Focus product can't be empty."

@@ -23,9 +23,11 @@ import sfa_store
 import daily_reports
 import daily_reports_pdf
 
-REPORT_KINDS = ("sku", "pivot", "hourly")
-REPORT_LABELS = {"sku": "SKU Report", "pivot": "Pivot Report", "hourly": "Hourly BC & SV Report"}
+REPORT_KINDS = ("early", "sku", "pivot", "hourly")
+REPORT_LABELS = {"early": "Early Bills Report", "sku": "SKU Report", "pivot": "Pivot Report",
+                 "hourly": "Hourly BC & SV Report"}
 REQUIRED_INPUTS = {
+    "early": ("invoices", "sales_orders"),
     "sku": ("sku_van", "sku_pre"),
     "pivot": ("invoices", "sales_orders"),
     "hourly": ("invoices", "sales_orders", "unproductive"),
@@ -92,6 +94,8 @@ def get_runs(limit=30):
 
 
 def build_report(kind, date, settings=None):
+    if kind == "early":
+        return daily_reports.build_early_report(date, settings)
     if kind == "sku":
         return daily_reports.build_sku_report(date, settings)
     if kind == "pivot":
@@ -103,7 +107,7 @@ def build_report(kind, date, settings=None):
 
 def _page_group(kind, page_name):
     """'SKU Report - Asela' -> 'Asela'; the hourly report covers every group."""
-    if kind == "hourly" or page_name.lower().startswith("bills before"):
+    if kind in ("hourly", "early"):
         return "*"                   # covers every manager group
     return page_name.split(" - ", 1)[1] if " - " in page_name else page_name
 

@@ -172,28 +172,27 @@ def build_sku_report(date, settings=None):
     if neg:
         notes.append("Returns / negative bills present in: " + ", ".join(t for _, t in neg)
                      + " — values shown are net of the return.")
-    early = None
-    if str(s.get("early_bills_page", "1")) == "1":
-        conn = db.get_connection()
-        bill_inputs = {r[0] for r in conn.execute(
-            "SELECT dataset FROM sfa_datasets WHERE data_date=? AND dataset IN ('invoices','sales_orders')", (date,))}
-        has_bills = conn.execute("SELECT 1 FROM sfa_bills WHERE bill_date=? LIMIT 1", (date,)).fetchone() is not None
-        conn.close()
-        if bill_inputs or has_bills:
-            early = build_early_bills(date, s.get("early_bill_time") or "09:00")
-            if "invoices" not in bill_inputs or "sales_orders" not in bill_inputs:
-                miss = [sfa_store.DATASET_LABELS[d] for d in ("invoices", "sales_orders") if d not in bill_inputs]
-                early["notes"].append("Not loaded: " + ", ".join(miss) + " — bills from it aren't counted on this page.")
-        else:
-            notes.append("The 'Bills before " + (s.get("early_bill_time") or "09:00") + "' page was left out: "
-                         "Invoices and Sales Orders aren't loaded for this date.")
     return {"ok": True, "date": date, "small_n": small_n, "focus_label": s["focus_product"],
-            "groups": out_groups, "notes": notes, "inputs_loaded": sorted(loaded), "early": early}
+            "groups": out_groups, "notes": notes, "inputs_loaded": sorted(loaded)}
 
 
 # ---------------------------------------------------------------------------
-# Early bills (added to the SKU Report PDF): bills created before 9:00 AM
+# Early Bills Report (its own report, built early in the morning): bills created before 9:00 AM
 # ---------------------------------------------------------------------------
+def build_early_report(date, settings=None):
+    s = settings or sfa_store.get_settings()
+    rep = build_early_bills(date, s.get("early_bill_time") or "09:00")
+    conn = db.get_connection()
+    loaded = {r[0] for r in conn.execute(
+        "SELECT dataset FROM sfa_datasets WHERE data_date=? AND dataset IN ('invoices','sales_orders')", (date,))}
+    conn.close()
+    miss = [sfa_store.DATASET_LABELS[d] for d in ("invoices", "sales_orders") if d not in loaded]
+    if miss:
+        rep["notes"].append("Not loaded: " + ", ".join(miss) + " — bills from it aren't counted.")
+    rep["inputs_loaded"] = sorted(loaded)
+    return rep
+
+
 def build_early_bills(date, cutoff="09:00", bills=None):
     """
     Per manager group, every territory: how many bills it created before `cutoff` (from Invoices + Sales Orders,

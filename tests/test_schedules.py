@@ -158,6 +158,19 @@ class ScheduleTest(unittest.TestCase):
             scheduler._run_job(legacy, "15:00", "scheduled")
             self.assertIsNone(ra.call_args.kwargs["review"])         # older job: Daily Reports setting decides
 
+    def test_job_can_build_only_chosen_reports(self):
+        """A 9:05 job that builds only the Early Bills report; others keep the usual list."""
+        j = job(name="Morning sync", times="09:05", options={"report_day": "today", "profile_ids": [],
+                                                              "report_kinds": ["early", "bogus"]})
+        self.assertEqual(SS.get_job(j["id"])["options"]["report_kinds"], ["early"])
+        import sfa_automation
+        with mock.patch.object(sfa_automation, "run_automation", return_value={"ok": True, "status": "success"}) as ra:
+            scheduler._run_job(SS.get_job(j["id"]), "09:05", "scheduled")
+            self.assertEqual(ra.call_args.kwargs["report_kinds"], ["early"])
+            usual = job(name="Usual", times="12:15")
+            scheduler._run_job(SS.get_job(usual["id"]), "12:15", "scheduled")
+            self.assertIsNone(ra.call_args.kwargs["report_kinds"])          # the usual list
+
     def test_task_times_cover_all_jobs(self):
         job(name="Morning", frequency="monthly", month_days="1", times="06:00,07:30")
         job(name="Off", times="23:00", enabled=False)

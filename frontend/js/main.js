@@ -522,7 +522,7 @@ document.getElementById("dr-runs-refresh").addEventListener("click", loadRuns);
 // ---------------- Settings: report rules + manager groups ----------------
 const RS_KEYS = ["first_bill_time", "gap_red_minutes", "pivot_bill_count", "small_bill_lines", "focus_product",
   "hourly_start_hour", "hourly_end_hour", "separate_early_bucket",
-  "van_bc_target", "van_sv_target", "pre_bc_target", "pre_sv_target", "output_style", "early_bills_page", "early_bill_time"];
+  "van_bc_target", "van_sv_target", "pre_bc_target", "pre_sv_target", "output_style", "early_bill_time"];
 
 async function loadReportSettings() {
   try {

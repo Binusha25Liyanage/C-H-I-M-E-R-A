@@ -379,7 +379,7 @@ async function loadWhatsApp() {
   document.getElementById("wa-show").checked = w.settings.wa_show_browser === "1";
   document.getElementById("wa-style").value = w.settings.wa_style;
   document.getElementById("wa-send-latest").disabled = !w.last_saved_run || !w.rules.some(r => r.enabled);
-  const kindLabel = { sku: "SKU", pivot: "Pivot", hourly: "Hourly", att_nlo: "Attendance: not logged out", att_lo: "Attendance: logged out", att_mgr: w.att_mgr_title || "Field Force Attendance" };
+  const kindLabel = { early: "Early Bills", sku: "SKU", pivot: "Pivot", hourly: "Hourly", att_nlo: "Attendance: not logged out", att_lo: "Attendance: logged out", att_mgr: w.att_mgr_title || "Field Force Attendance" };
   document.getElementById("wa-rules").innerHTML = w.rules.length ? w.rules.map(r => `
     <div class="rule-card ${r.enabled ? "" : "off"}"><div>
       <div class="who">${esc(r.chat_name)} ${r.enabled ? "" : '<span class="chip chip-grey">off</span>'}</div>
@@ -441,7 +441,7 @@ document.getElementById("wa-rules").addEventListener("click", (e) => {
 document.getElementById("wa-add-rule").addEventListener("click", () => openRuleModal(null));
 
 const WR_KINDS = [
-  ["Daily reports", "sent after each SFA report run", [["sku", "SKU Report"], ["pivot", "Pivot Report"], ["hourly", "Hourly BC &amp; SV"]]],
+  ["Daily reports", "sent after each SFA report run", [["early", "Early Bills (before 9 AM)"], ["sku", "SKU Report"], ["pivot", "Pivot Report"], ["hourly", "Hourly BC &amp; SV"]]],
   ["Rep attendance", "sent when a Rep attendance run sends", [["att_nlo", "Not logged out yet"], ["att_lo", "Logged out"], ["att_mgr", "Field Force Attendance"]]],
 ];
 function openRuleModal(rule) {

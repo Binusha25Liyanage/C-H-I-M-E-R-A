@@ -67,7 +67,7 @@ MARGIN = 10 * mm
 
 SHORT_LABELS = {"invoices": "Invoices", "sales_orders": "Sales Orders", "sku_van": "SKU Van",
                 "sku_pre": "SKU Pre", "unproductive": "Unproductive Visits"}
-REPORT_INPUTS = {"sku": ("sku_van", "sku_pre"), "pivot": ("invoices", "sales_orders"),
+REPORT_INPUTS = {"sku": ("sku_van", "sku_pre"), "early": ("invoices", "sales_orders"), "pivot": ("invoices", "sales_orders"),
                  "hourly": ("invoices", "sales_orders", "unproductive")}
 
 
@@ -267,8 +267,6 @@ def _classic_sku(rep):
                 RoundedBox(summary, size=9, color=NAVY, stroke=NAVY)]
         flow += _classic_footnotes(notes)
         pages.append({"width": 240 * mm, "flow": flow, "name": f"SKU Report - {g['group']}"})
-    if rep.get("early"):
-        pages += _classic_early(rep["early"])
     return pages
 
 
@@ -461,7 +459,7 @@ def _pro_table_style(n_header_rows=1):
 
 
 def _pro_sku(rep):
-    pages, n_pages = [], len(rep["groups"]) + (1 if rep.get("early") else 0)
+    pages, n_pages = [], len(rep["groups"])
     flabel = rep["focus_label"]
     width = 196 * mm
     avail = width - 2 * MARGIN
@@ -503,8 +501,6 @@ def _pro_sku(rep):
                  Spacer(1, 10), table]
         flow += _pro_notes(notes, sum(cw)) + _pro_footer(pi, n_pages)
         pages.append({"width": width, "flow": flow, "name": f"SKU Report - {g['group']}"})
-    if rep.get("early"):
-        pages += _pro_early(rep["early"], n_pages, n_pages)
     return pages
 
 
@@ -712,7 +708,7 @@ def _pro_early(rep, page_no=1, pages_total=1):
     cw = [32 * mm, 40 * mm, 12 * mm, 22 * mm, 40 * mm, 30 * mm]
     flow = _pro_header("Morning sync", f"Bills before {cut}",
                        f"{T['territories']} territories &nbsp;&middot;&nbsp; {T['started']} synchronized &nbsp;&middot;&nbsp; "
-                       f"{T['not_started']} not synced yet", rep["date"], "pivot", avail)
+                       f"{T['not_started']} not synced yet", rep["date"], "early", avail)
     flow += [Spacer(1, 6), _pro_kpis([("Synchronized", f"{T['started']} / {T['territories']}"),
                                       ("Not synced yet", str(T["not_started"])),
                                       (f"Bills before {cut}", str(T["early_bills"]))], sum(cw)), Spacer(1, 10)]
@@ -757,6 +753,8 @@ def _pro_early(rep, page_no=1, pages_total=1):
 BUILDERS = {
     ("sku", "classic"): ("SKU_Report", _classic_sku), ("sku", "professional"): ("SKU_Report", _pro_sku),
     ("pivot", "classic"): ("Pivot_Report", _classic_pivot), ("pivot", "professional"): ("Pivot_Report", _pro_pivot),
+    ("early", "classic"): ("Early_Bills_Report", _classic_early),
+    ("early", "professional"): ("Early_Bills_Report", _pro_early),
     ("hourly", "classic"): ("Hourly_BC_SV_Report", _classic_hourly),
     ("hourly", "professional"): ("Hourly_BC_SV_Report", _pro_hourly),
 }
