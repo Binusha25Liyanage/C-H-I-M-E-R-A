@@ -45,6 +45,7 @@ DEFAULT_AUTOMATION = {
     "run_times": "10:00,12:00,15:00,17:30",
     "weekdays": "1111110",               # Mon..Sun
     "skip_date": "",                     # 'YYYY-MM-DD' = skip scheduled runs that day
+    "side_by_side": "1",                 # SFA jobs of different kinds (reports, loadings, attendance, outlets) run together
     "parallel_tabs": "5",
     "retries": "2",
     "headless": "1",                     # hide the browser during scheduled runs
@@ -107,6 +108,8 @@ DEFAULT_AUTOMATION = {
     "look_logo": "neon",                 # sidebar logo: neon (glitch to neon and back) | flash (quick glitch) | off
     "look_logo_freq": "rare",            #   rare (every 20–45 s) | often (every 8–15 s)
     "look_ecg": "live",                  # line under the logo: live (faster while busy) | calm | still | off
+    "look_icon": "open",                 # desktop shortcut glitch: open (while Chimera is open) | always | off
+    "look_icon_every": "30",             #   seconds between glitches, 10..600
     "look_custom": "[]",                 # soundtracks and video openings you added (appearance_media.py) (JSON list)
 }
 
@@ -123,6 +126,7 @@ LOOK_CHOICES = {
     "look_logo": ("neon", "flash", "off"),
     "look_logo_freq": ("rare", "often"),
     "look_ecg": ("live", "calm", "still", "off"),
+    "look_icon": ("open", "always", "off"),
 }
 
 LOCK_PATH = os.path.join(db.APP_DATA_DIR, "automation.lock")
@@ -472,7 +476,7 @@ def save_automation_settings(values):
                 return False, "WhatsApp style must be classic or professional."
         elif k in ("wa_chats_cache", "notif_seen_at", "clock_source", "clock_checked_at"):
             pass
-        elif k in ("paused", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
+        elif k in ("paused", "side_by_side", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
                    "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence",
                    "auto_loadings", "auto_outlet_updates", "auto_distributor_sync", "add_loading_dry_run",
                    "seq_need_approval", "seq_dry_run", "notify_desktop", "notify_started", "notify_approval",
@@ -492,6 +496,9 @@ def save_automation_settings(values):
         elif k == "look_volume":
             if not v.isdigit() or not 0 <= int(v) <= 100:
                 return False, "Volume must be from 0 to 100."
+        elif k == "look_icon_every":
+            if not v.isdigit() or not 10 <= int(v) <= 600:
+                return False, "The desktop icon glitch must be every 10 to 600 seconds."
         elif k == "att_style":
             if v not in ("classic", "professional", "nologo", "both"):
                 return False, "Rep attendance look must be classic, professional, professional without logo, or all."
@@ -641,18 +648,44 @@ def mark_interrupted_runs():
 # ---------------------------------------------------------------------------
 # Cross-process lock
 # ---------------------------------------------------------------------------
-def acquire_lock(owner):
-    """Returns True if this process now holds the automation lock."""
-    os.makedirs(os.path.dirname(LOCK_PATH), exist_ok=True)
+LANES = ("reports", "loadings", "attendance", "outlets")
+LANE_LABELS = {"reports": "report download", "loadings": "loadings", "attendance": "rep attendance",
+               "outlets": "outlet updates / itinerary"}
+
+
+def side_by_side():
+    return _setting("side_by_side", "1") == "1"
+
+
+def _setting(key, default=""):
+    try:
+        return get_automation_settings().get(key, default)
+    except Exception:
+        return default
+
+
+def _lock_path(lane=None):
+    """One lock per kind of SFA job, so different kinds can run side by side. With side by side off,
+    every kind shares the one lock (one SFA job at a time, as before)."""
+    lane = lane or "reports"
+    if lane != "reports" and not side_by_side():
+        lane = "reports"
+    return LOCK_PATH if lane == "reports" else LOCK_PATH.replace(".lock", f"-{lane}.lock")
+
+
+def acquire_lock(owner, lane=None):
+    """Returns True if this process now holds the lock for that kind of SFA job."""
+    path = _lock_path(lane)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     for _ in range(2):
         try:
-            fd = os.open(LOCK_PATH, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             with os.fdopen(fd, "w") as f:
-                json.dump({"owner": owner, "pid": os.getpid(), "since": time.time()}, f)
+                json.dump({"owner": owner, "pid": os.getpid(), "since": time.time(), "lane": lane or "reports"}, f)
             return True
         except FileExistsError:
             try:
-                with open(LOCK_PATH) as f:
+                with open(path) as f:
                     info = json.load(f)
                 stale = (time.time() - float(info.get("since", 0)) > LOCK_STALE_SECONDS
                          or not pid_alive(int(info.get("pid", 0))))     # Chimera was closed mid-run
@@ -661,7 +694,7 @@ def acquire_lock(owner):
             if not stale:
                 return False
             try:
-                os.remove(LOCK_PATH)
+                os.remove(path)
             except OSError:
                 return False
     return False
@@ -694,23 +727,48 @@ def pid_alive(pid):
         return True
 
 
-def lock_holder():
-    try:
-        with open(LOCK_PATH) as f:
-            return json.load(f)
-    except Exception:
-        return None
+def _all_lock_paths():
+    return [LOCK_PATH] + [LOCK_PATH.replace(".lock", f"-{l}.lock") for l in LANES if l != "reports"]
 
 
-def release_lock(only_if_mine=False):
-    if only_if_mine:
-        h = lock_holder()
-        if h and h.get("pid") != os.getpid():
-            return
-    try:
-        os.remove(LOCK_PATH)
-    except OSError:
-        pass
+def lock_holder(lane=None):
+    """Who holds that lane's lock. lane="*": the first holder of any lane."""
+    paths = _all_lock_paths() if lane == "*" else [_lock_path(lane)]
+    for p in paths:
+        try:
+            with open(p) as f:
+                return json.load(f)
+        except Exception:
+            continue
+    return None
+
+
+def lock_holders():
+    out = []
+    for p in _all_lock_paths():
+        try:
+            with open(p) as f:
+                out.append(json.load(f))
+        except Exception:
+            pass
+    return out
+
+
+def release_lock(only_if_mine=False, lane=None):
+    """Free that lane's lock (lane="*": every lane's)."""
+    for p in (_all_lock_paths() if lane == "*" else [_lock_path(lane)]):
+        if only_if_mine:
+            try:
+                with open(p) as f:
+                    h = json.load(f)
+                if h.get("pid") != os.getpid():
+                    continue
+            except Exception:
+                continue
+        try:
+            os.remove(p)
+        except OSError:
+            pass
 
 
 def data_usage_summary(today=None):

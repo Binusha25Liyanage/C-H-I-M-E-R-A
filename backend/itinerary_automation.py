@@ -135,6 +135,9 @@ _CAL_JS = r"""
 """
 
 
+
+LOCK_LANE = "outlets"          # lanes.py: which jobs may run side by side
+
 def parse_calendar(raw, year, month):
     """Checks one calendar reading and turns it into {'YYYY-MM-DD': (badge, route)}. Raises StepError."""
     want = calendar.monthrange(year, month)[1]
@@ -409,8 +412,8 @@ def run_read(territories=None, months=None, trigger="manual", headless=None):
         msg = "No working territories — switch some on in Outlet Updates › Working territories."
         LIVE.set(active=False, phase="done", result={"ok": False, "status": "failed", "message": msg})
         return {"ok": False, "message": msg}
-    if not AS.acquire_lock(f"itinerary ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"itinerary ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
         LIVE.reset(kind="itinerary", trigger=trigger)
         LIVE.set(active=False, phase="done", result={"ok": False, "status": "busy", "message": msg})
@@ -472,7 +475,7 @@ def _finish(rid, status, msg):
     OS.finish_run(rid, status, msg, log_text())
     LIVE.set(active=False, phase="done", result={"ok": status == "done", "status": status, "message": msg, "run_id": rid})
     LIVE.log(msg, level="info" if status == "done" else "warn")
-    AS.release_lock()
+    AS.release_lock(lane=LOCK_LANE)
     return {"ok": status == "done", "status": status, "message": msg, "run_id": rid}
 
 
@@ -495,9 +498,10 @@ def ensure_prepared(now=None, trigger="catch-up"):
 
 
 def start_background(**kw):
-    import loading_automation
-    if LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "Another SFA run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("outlets")
+    if busy:
+        return {"ok": False, "message": busy}
     LIVE.reset(kind="itinerary", trigger=kw.get("trigger", "manual"))
     threading.Thread(target=run_read, kwargs=kw, daemon=True, name="chimera-itinerary").start()
     return {"ok": True, "message": "Started."}

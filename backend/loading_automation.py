@@ -181,6 +181,9 @@ _POPUP_YES_JS = r"""
 """
 
 
+
+LOCK_LANE = "loadings"          # lanes.py: which jobs may run side by side
+
 def _num(v):
     try:
         return round(float(str(v).replace(",", "").strip() or 0), 3)
@@ -543,8 +546,8 @@ def _settings():
 
 
 def _begin(kind, trigger, lanes):
-    if not AS.acquire_lock(f"{kind} loadings ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"{kind} loadings ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         return None, f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
     LIVE.reset(kind=kind, trigger=trigger)
     LIVE.set(lanes=lanes, steps=PREPARE_STEPS if kind == "prepare" else CONFIRM_STEPS)
@@ -557,7 +560,7 @@ def _finish(rid, status, msg):
     LS.finish_run(rid, status, msg, log_text())
     LIVE.set(active=False, phase="done", result={"ok": status == "done", "status": status, "message": msg, "run_id": rid})
     LIVE.log(msg, level="info" if status == "done" else "warn")
-    AS.release_lock()
+    AS.release_lock(lane=LOCK_LANE)
 
 
 def run_prepare(distributor_ids=None, trigger="manual", headless=None):
@@ -799,8 +802,10 @@ def run_confirm(item_ids, trigger="manual", headless=None):
 # Background, stop, log
 # ---------------------------------------------------------------------------
 def start_background(fn, **kw):
-    if LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "Another SFA run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("loadings")
+    if busy:
+        return {"ok": False, "message": busy}
     LIVE.reset(kind="prepare" if fn is run_prepare else "confirm", trigger=kw.get("trigger", "manual"))
     threading.Thread(target=fn, kwargs=kw, daemon=True, name="chimera-loadings").start()
     return {"ok": True, "message": "Started."}

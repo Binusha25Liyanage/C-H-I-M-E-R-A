@@ -132,12 +132,14 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
     if review is None:
         mode = sfa_store.get_settings().get("delivery_mode")
         if mode == "preview_first":
-            if approved_on(date):
-                review, review_note = False, ("Reports for this day were already approved — saved and sent "
-                                              "without asking again (Preview the first run of each day).")
+            names = ", ".join(REPORT_LABELS.get(k, k) for k in kinds)
+            if approved_on(date, kinds):
+                review, review_note = False, (f"{names} for this day already approved — saved and sent without "
+                                              "asking again (Preview the first run of each report, each day).")
             else:
-                review, review_note = True, ("First run for this day — waiting for your approval. Later runs for "
-                                             "this day will save and send by themselves once you approve.")
+                review, review_note = True, (f"First {names} for this day — waiting for your approval. Later runs "
+                                             "of the same report(s) this day save and send by themselves once you "
+                                             "approve. Each report is previewed the first time it runs each day.")
         else:
             review = mode == "preview"
     run_id = _log_start(date, trigger)
@@ -204,7 +206,7 @@ def run_reports(date, kinds=REPORT_KINDS, files=None, output_root=None, images=T
         summary["final_status"] = state
         if review and oks:
             state = "pending_review"
-            _supersede_pending(date, run_id)
+            _supersede_pending(date, run_id, kinds)
         elif review and os.path.isdir(folder):
             shutil.rmtree(folder, ignore_errors=True)
         _log_finish(run_id, state, folder if oks else None, summary)
@@ -237,17 +239,35 @@ def _rewrite_paths(obj, old, new):
     return obj
 
 
-def approved_on(report_date):
-    """True once any previewed run for this report date has been approved (saved)."""
-    return any(r["report_date"] == report_date and r["status"] in ("success", "partial")
-               and (r.get("summary") or {}).get("review") for r in get_runs(200))
+def _run_kinds(run):
+    return {r.get("kind") for r in (run.get("summary") or {}).get("reports", []) if r.get("ok")}
 
 
-def _supersede_pending(report_date, keep_id):
-    """A newer preview for the same day replaces older unapproved ones — never approve stale reports."""
+def approved_on(report_date, kinds=None):
+    """
+    Preview the first run of each report, each day. kinds=None: True once any
+    previewed run for this day was approved. With kinds: True only when every
+    one of those reports was already approved this day — approving the SKU
+    report in the morning doesn't let a first Early Bills report go out unseen.
+    """
+    done = set()
+    for r in get_runs(200):
+        if r["report_date"] == report_date and r["status"] in ("success", "partial") \
+                and (r.get("summary") or {}).get("review"):
+            if kinds is None:
+                return True
+            done |= _run_kinds(r)
+    return kinds is not None and bool(kinds) and all(k in done for k in kinds)
+
+
+def _supersede_pending(report_date, keep_id, kinds=None):
+    """A newer preview of the same report(s) for the same day replaces older unapproved ones — never approve
+    stale reports. A waiting preview of other reports (e.g. SKU while Early Bills runs) is left alone."""
+    new = set(kinds) if kinds else None
     for r in list_pending():
         if r["report_date"] == report_date and r["id"] != keep_id:
-            discard_run(r["id"])
+            if new is None or _run_kinds(r) <= new:
+                discard_run(r["id"])
 
 
 def approve_run(run_id):

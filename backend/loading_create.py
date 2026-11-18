@@ -189,6 +189,9 @@ _TABLE_JS = r"""
 """
 
 
+
+LOCK_LANE = "loadings"          # lanes.py: which jobs may run side by side
+
 def _n(v):
     try:
         return float(str(v or "0").replace(",", "").strip() or 0)
@@ -420,14 +423,14 @@ async def _apply_quantities(page, tbl, want, log):
 
 
 def _run(fn):
-    if not AS.acquire_lock(f"add loading ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"add loading ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         return {"ok": False, "status": "busy",
                 "message": f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."}
     try:
         return fn()
     finally:
-        AS.release_lock()
+        AS.release_lock(lane=LOCK_LANE)
 
 
 def read_form(distributor_id, fields=None, headless=None):
@@ -606,6 +609,8 @@ def create(distributor_id, quantities, fields=None, dry_run=None, headless=None)
             r = await LA._open_and_search(lp, cfg, LA._settings()["url"], d, 0, st["timeout_ms"], lane_steps=False)
             rows = r.get("rows") or []
             seen = [x.get("number", "") for x in rows]
+            if r.get("no_table"):
+                log("View Loadings showed no results table after SEARCH (the same problem Prepare has).")
             verified = any((not number or x["number"] == number) for x in rows) if number else any(x["pending"] for x in rows)
             await lp.close()
         except Exception as e:

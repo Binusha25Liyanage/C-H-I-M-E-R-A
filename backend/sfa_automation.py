@@ -273,6 +273,9 @@ LIVE = LiveState("reports")
 _ACTIVE = {"loop": None, "browser": None}
 
 
+
+LOCK_LANE = "reports"          # lanes.py: which jobs may run side by side
+
 def force_stop(timeout=10):
     """Stop the SFA run / filter detection in this process immediately."""
     was = bool(LIVE.snapshot().get("active")) or _ACTIVE["browser"] is not None
@@ -324,7 +327,72 @@ async def _settle(page, timeout_ms=8000):
     await page.wait_for_timeout(400)
 
 
+SESSION_MAX_AGE_S = 20 * 60     # a shared SFA session is reused for this long after its login
+
+
+def _session_path():
+    import db
+    return os.path.join(db.APP_DATA_DIR, "sfa_session.json")
+
+
+def _shared_session():
+    """The SFA login another Chimera job made a moment ago (cookies + site storage), if recent."""
+    p = _session_path()
+    try:
+        if time.time() - os.path.getmtime(p) > SESSION_MAX_AGE_S:
+            return None
+        with open(p, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+async def _save_session(page):
+    """Keep this login so jobs running side by side use it instead of logging in again (SFA may not like the
+    same user logging in twice at once). Stays on this PC, in Chimera's own data folder."""
+    try:
+        p = _session_path()
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        await page.context.storage_state(path=p)
+    except Exception:
+        pass
+
+
+def forget_session():
+    try:
+        os.remove(_session_path())
+    except OSError:
+        pass
+
+
+async def _use_shared_session(page, cfg, timeout_ms):
+    """Try the session another job already has. -> True if this tab is now signed in."""
+    st = _shared_session()
+    if not st or not AS.side_by_side():
+        return False
+    try:
+        if st.get("cookies"):
+            await page.context.add_cookies(st["cookies"])
+        await page.goto(cfg["login_url"], wait_until="domcontentloaded", timeout=timeout_ms)
+        origin = await page.evaluate("location.origin")
+        items = next((o.get("localStorage") or [] for o in st.get("origins", []) if o.get("origin") == origin), [])
+        if items:
+            await page.evaluate("(items) => { for (const it of items) { try { localStorage.setItem(it.name, it.value); } "
+                                "catch (e) {} } }", items)
+            await page.goto(cfg["login_url"], wait_until="domcontentloaded", timeout=timeout_ms)
+        try:
+            await page.locator("input[type='password']").first.wait_for(state="visible", timeout=6000)
+            return False                                        # the login form: that session has ended
+        except Exception:
+            await _settle(page)
+            return await page.locator("input[type='password']").count() == 0
+    except Exception:
+        return False
+
+
 async def _login(page, cfg, timeout_ms):
+    if await _use_shared_session(page, cfg, timeout_ms):
+        return True, "Using the SFA session that's already open (no second login)."
     resp = await page.goto(cfg["login_url"], wait_until="domcontentloaded", timeout=timeout_ms)
     try:  # compare the PC clock with SFA's on every login (scheduled runs depend on it)
         if resp:
@@ -351,6 +419,7 @@ async def _login(page, cfg, timeout_ms):
         raise StepError("login", "Still on the login page after submitting — check the SFA username and "
                                  "password in Settings.", retry=False)
     await _settle(page)
+    await _save_session(page)
     return True, "Logged in."
 
 
@@ -1046,8 +1115,8 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
     report_date = report_date or date.today().isoformat()
     settings = AS.get_automation_settings()
     owner = f"{trigger} run ({datetime.now():%H:%M})"
-    if not AS.acquire_lock(owner):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=owner):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
         LIVE.set(active=False, phase="done", result={"ok": False, "message": msg})
         return {"ok": False, "status": "busy", "message": msg}
@@ -1199,7 +1268,7 @@ def run_automation(report_date=None, profile_ids=None, trigger="manual", slot=No
                 AS.save_run_log(run_id, log_text(LIVE.snapshot()))
             except Exception:
                 pass
-        AS.release_lock()
+        AS.release_lock(lane=LOCK_LANE)
 
 
 def log_text(s):
@@ -1229,8 +1298,10 @@ def log_text(s):
 
 def start_background(**kw):
     """Starts a run in a daemon thread. Returns immediately."""
-    if LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "A run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("reports")
+    if busy:
+        return {"ok": False, "message": busy}
     LIVE.reset(trigger=kw.get("trigger", "manual"), report_date=kw.get("report_date"))
     t = threading.Thread(target=run_automation, kwargs=kw, daemon=True, name="sfa-automation")
     t.start()

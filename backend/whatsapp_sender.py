@@ -353,7 +353,7 @@ class _State:
 
 
 WA = _State()
-_ACTIVE = {"loop": None, "ctx": None}
+_ACTIVE = {"loop": None, "ctx": None, "stopped": False}
 
 
 def force_stop(timeout=10):
@@ -361,6 +361,7 @@ def force_stop(timeout=10):
     loop, ctx = _ACTIVE["loop"], _ACTIVE["ctx"]
     if not (loop and ctx):
         return False
+    _ACTIVE["stopped"] = True
     WA.log("Stopped immediately by the user.", level="warn")
     try:
         asyncio.run_coroutine_threadsafe(ctx.close(), loop).result(timeout)
@@ -995,34 +996,54 @@ async def _session(action, headless, fn, link_timeout=180):
         _unlock_profile()
 
 
+def _closed_error(e):
+    return "has been closed" in str(e) or "Target closed" in str(e)
+
+
 async def _session_locked(action, headless, fn, link_timeout):
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
-        ctx = await _open(p, headless)
-        _ACTIVE.update(loop=asyncio.get_running_loop(), ctx=ctx)
-        try:
-            page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-            WA.log("Opening WhatsApp Web…")
-            await page.goto(WA_URL, wait_until="domcontentloaded", timeout=120000)
-            st = await _state(page, 150)                   # WhatsApp Web loads its chats slowly on a slow connection
-            if st == "qr":
-                if action != "link":
-                    raise WAError("WhatsApp isn't linked yet (or was logged out). Use 'Link WhatsApp' and scan the QR code.")
-                WA.log("Scan the QR code with WhatsApp on your phone: Settings → Linked devices → Link a device.")
-                st = await _state(page, link_timeout, ready_only=True)
-            if st != "ready":
-                shot = await _shot(page, "not_ready")
-                raise WAError("WhatsApp Web didn't finish loading." + (f" Screenshot: {shot}" if shot else ""))
-            await page.wait_for_timeout(1500)
-            res = await fn(page)
-            await _let_queue_finish(page)
-            return res
-        finally:
-            _ACTIVE.update(loop=None, ctx=None)
+        for attempt in (1, 2):
+            ctx = await _open(p, headless)
+            _ACTIVE.update(loop=asyncio.get_running_loop(), ctx=ctx, stopped=False)
+            opened = False
             try:
-                await ctx.close()
-            except Exception:
-                pass
+                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+                WA.log("Opening WhatsApp Web…" if attempt == 1 else "Opening WhatsApp Web again…")
+                await page.goto(WA_URL, wait_until="domcontentloaded", timeout=120000)
+                st = await _state(page, 150)               # WhatsApp Web loads its chats slowly on a slow connection
+                if st == "qr":
+                    if action != "link":
+                        raise WAError("WhatsApp isn't linked yet (or was logged out). Use 'Link WhatsApp' and scan "
+                                      "the QR code.")
+                    WA.log("Scan the QR code with WhatsApp on your phone: Settings → Linked devices → Link a device.")
+                    st = await _state(page, link_timeout, ready_only=True)
+                if st != "ready":
+                    shot = await _shot(page, "not_ready")
+                    raise WAError("WhatsApp Web didn't finish loading." + (f" Screenshot: {shot}" if shot else ""))
+                opened = True
+                await page.wait_for_timeout(1500)
+                res = await fn(page)
+                await _let_queue_finish(page)
+                return res
+            except Exception as e:
+                # The WhatsApp window closed by itself while it was still loading (nothing sent yet): open it
+                # once more instead of failing the whole send. Not when the user pressed Stop.
+                if attempt == 1 and not opened and _closed_error(e) and not _ACTIVE.get("stopped"):
+                    WA.log("The WhatsApp window closed while it was loading (nothing was sent) — opening it again.",
+                           "warn")
+                    continue
+                if _closed_error(e) and not _ACTIVE.get("stopped"):
+                    raise WAError("The WhatsApp window closed by itself" + (" while loading" if not opened else "")
+                                  + ". If you closed it, that's expected; otherwise try again — Chimera won't "
+                                  "re-send messages that already went.") from e
+                raise
+            finally:
+                _ACTIVE.update(loop=None, ctx=None)
+                try:
+                    await ctx.close()
+                except Exception:
+                    pass
 
 
 async def _let_queue_finish(page, max_s=90):

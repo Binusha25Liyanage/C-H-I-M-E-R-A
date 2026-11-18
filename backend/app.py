@@ -241,6 +241,11 @@ def set_window_icon(window, icon_path=None):
 def main():
     # Windows Task Scheduler launches "Chimera.exe --scheduled": run the due
     # SFA automation headless and exit, without opening a window.
+    # The always-on desktop icon helper (Settings › Customize Appearance › Desktop icon: "Always").
+    if "--icon-helper" in sys.argv:
+        import desktop_icon
+        sys.exit(desktop_icon.helper_main())
+
     if "--scheduled" in sys.argv or "--run-now" in sys.argv:
         import run_scheduled
         sys.exit(run_scheduled.main(["--now"] if "--run-now" in sys.argv else []))
@@ -302,6 +307,13 @@ def main():
     api._scheduler = scheduler.InAppScheduler()
     api._scheduler.start()
 
+    # The desktop shortcut glitches now and then (Settings › Customize Appearance › Desktop icon)
+    try:
+        import desktop_icon
+        desktop_icon.start_in_app()
+    except Exception as e:
+        logging.info("Desktop icon glitch not started: %s", e)
+
     # Open in the middle of the screen (and never taller than the space above the taskbar)
     if hasattr(window.events, "before_show"):
         window.events.before_show += lambda: center_window(window)
@@ -309,6 +321,7 @@ def main():
     # Closing the window stops Chimera's own runs and frees the run lock, so the
     # next run doesn't report "Another SFA run is already in progress".
     window.events.closing += lambda: api._on_window_closing()
+    window.events.closing += lambda: __import__("desktop_icon").stop_in_app()
 
     # While the window closes, an answer the screen was still waiting for (a live-progress poll, the splash, the
     # Overview boxes) can arrive after the window is gone. pywebview then prints a long "Cannot access a

@@ -502,6 +502,14 @@ def record_fire(job_id, day, slot, trigger):
         conn.close()
 
 
+def queued_fires():
+    """Fires still marked as waiting in a lane's queue (their Chimera may be gone)."""
+    conn = db.get_connection()
+    rows = conn.execute("SELECT job_id, day, slot, outcome FROM schedule_fires WHERE outcome LIKE 'queued:%'").fetchall()
+    conn.close()
+    return [{"job_id": r[0], "day": r[1], "slot": r[2], "outcome": r[3]} for r in rows]
+
+
 def set_fire_outcome(job_id, day, slot, outcome):
     conn = db.get_connection()
     conn.execute("UPDATE schedule_fires SET outcome=? WHERE job_id=? AND day=? AND slot=?",

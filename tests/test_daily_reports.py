@@ -378,6 +378,31 @@ class PipelineTest(unittest.TestCase):
         finally:
             sfa_store.save_settings({"delivery_mode": "save"})
 
+    def test_preview_first_is_per_report(self):
+        """Approving the SKU report doesn't let the day's first Early Bills report go out unseen."""
+        conn = db.get_connection()
+        conn.execute("DELETE FROM report_runs")
+        conn.commit()
+        conn.close()
+        self.assertTrue(sfa_store.save_settings({"delivery_mode": "preview_first"})[0])
+        try:
+            out = tempfile.mkdtemp()
+            sku = P.run_reports(D, output_root=out, kinds=["sku"], images=False)
+            self.assertTrue(P.approve_run(sku["run_id"])["ok"])
+            early = P.run_reports(D, output_root=out, kinds=["early"], images=False,
+                                  allow_missing_inputs=True)
+            self.assertEqual(early["status"], "pending_review")                      # first Early Bills: preview
+            self.assertTrue(P.approved_on(D, ["sku"]))
+            self.assertFalse(P.approved_on(D, ["early"]))
+            self.assertFalse(P.approved_on(D, ["sku", "early"]))
+            sku2 = P.run_reports(D, output_root=out, kinds=["sku"], images=False)    # SKU still goes straight out
+            self.assertEqual(sku2["status"], "success")
+            self.assertEqual(P.get_run(early["run_id"])["status"], "pending_review")  # waiting Early preview kept
+            self.assertTrue(P.approve_run(early["run_id"])["ok"])
+            self.assertTrue(P.approved_on(D, ["sku", "early"]))
+        finally:
+            sfa_store.save_settings({"delivery_mode": "save"})
+
     def test_classic_focus_label(self):
         import daily_reports_pdf as PDF
         self.assertEqual(PDF._focus_short("Lakposha 200g"), "Lakposha200")

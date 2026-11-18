@@ -221,3 +221,37 @@ class ScheduleTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RunNowEveryJobTypeTest(unittest.TestCase):
+    """Run now works for every job type, not only report downloads."""
+
+    def test_rep_attendance_loadings_and_distributors_start(self):
+        import types
+        from unittest import mock
+        try:
+            import webview  # noqa: F401
+        except ImportError:
+            sys.modules["webview"] = types.SimpleNamespace(OPEN_DIALOG=0, windows=[])
+        import api
+        import rep_attendance_automation as RA
+        import distributor_sync
+        import loading_automation as LA
+        a = api.Api()
+        made = {}
+        for jt in ("rep_attendance", "distributors", "loadings"):
+            ok, msg, job = SS.save_job({"name": f"t {jt}", "job_type": jt, "frequency": "daily", "times": "09:00",
+                                        "options": {}})
+            self.assertTrue(ok, msg)
+            made[jt] = job["id"]
+        with mock.patch.object(RA, "start_background", return_value={"ok": True}) as ra, \
+                mock.patch.object(distributor_sync, "start_background", return_value={"ok": True}) as ds, \
+                mock.patch.object(LA, "start_background", return_value={"ok": True}) as la:
+            self.assertTrue(a.run_schedule_job_now(made["rep_attendance"])["ok"])
+            self.assertTrue(ra.call_args.kwargs["send"])
+            self.assertEqual(a.run_schedule_job_now(made["distributors"])["open"], "loadings")
+            self.assertTrue(a.run_schedule_job_now(made["loadings"])["ok"])
+            self.assertIs(la.call_args.args[0], LA.run_prepare)
+            ds.assert_called_once()
+        for i in made.values():
+            SS.delete_job(i)

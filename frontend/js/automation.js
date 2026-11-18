@@ -41,8 +41,11 @@ function minimiseModal() {
   document.getElementById("modal-backdrop").style.display = "none";
   let dock = document.getElementById("mini-dock");
   if (!dock) { dock = document.createElement("div"); dock.id = "mini-dock"; document.body.appendChild(dock); }
-  dock.innerHTML = `<button class="mini-open" title="Open it again">&#128196; ${esc(MINI.saved.label)}</button>
-                    <button class="mini-x" title="Close it">&times;</button>`;
+  // A tiny Chimera icon on the right edge of the window; hover shows what it is, click brings it back.
+  dock.innerHTML = `<div class="mini-tip"><span class="mini-label">${esc(MINI.saved.label)}</span>
+                      <button class="mini-x" title="Close it">&times;</button></div>
+                    <button class="mini-open" title="${esc(MINI.saved.label)} — click to open it again">
+                      <img src="assets/chimera-logo-round.png" alt="Chimera"></button>`;
   dock.style.display = "flex";
   dock.querySelector(".mini-open").onclick = restoreModal;
   dock.querySelector(".mini-x").onclick = () => { const cb = MINI.saved && MINI.saved.onClose; MINI.saved = null;
@@ -398,7 +401,7 @@ function logHtml(log) {
 async function openRunNowModal() {
   const en = AU.ov.profiles;
   let defStyle = "classic", defReview = false;
-  try { const rs = await API().get_report_settings(); defStyle = rs.output_style || "classic"; defReview = rs.delivery_mode === "preview" || (rs.delivery_mode === "preview_first" && !rs.approved_today); } catch (e) {}
+  try { const rs = await API().get_report_settings(); defStyle = rs.output_style || "classic"; defReview = rs.delivery_mode === "preview" || (rs.delivery_mode === "preview_first" && !(AU.ov.settings.generate_list || []).every(k => (rs.approved_kinds_today || []).includes(k))); } catch (e) {}
   openModal({ title: "Run SFA downloads now", body: `
       <div class="grid-2">
         <label class="field">Report date <input type="date" id="rn-date" value="${localToday()}"></label>

@@ -52,6 +52,9 @@ class SyncError(Exception):
 # ---------------------------------------------------------------------------
 # Reading the export
 # ---------------------------------------------------------------------------
+
+LOCK_LANE = "loadings"          # lanes.py: which jobs may run side by side
+
 def read_users_excel(path, status=""):
     """Rows of a User Profile export (header row found by 'USER CODE' + 'NAME'); only User Type DISTRIBUTOR."""
     import openpyxl
@@ -238,8 +241,8 @@ def run_sync(trigger="manual", headless=None):
     cfg = sfa_config.load_config()
     lanes = [{"name": f"{label} distributors", "status": "queued", "message": "", "steps": {s: "pending" for s in STEPS},
               "started": None, "elapsed": 0} for _s, label in PASSES]
-    if not AS.acquire_lock(f"distributor list ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"distributor list ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
         LA.LIVE.reset(kind="sync", trigger=trigger)
         LA.LIVE.set(active=False, phase="done", result={"ok": False, "status": "busy", "message": msg})
@@ -254,7 +257,7 @@ def run_sync(trigger="manual", headless=None):
         LA.LIVE.set(active=False, phase="done",
                     result={"ok": status == "done", "status": status, "message": msg, "run_id": rid})
         LA.LIVE.log(msg, level="info" if status == "done" else "warn")
-        AS.release_lock()
+        AS.release_lock(lane=LOCK_LANE)
         return {"ok": status == "done", "status": status, "message": msg, "run_id": rid}
 
     try:
@@ -297,10 +300,10 @@ def run_sync(trigger="manual", headless=None):
 
 
 def start_background(**kw):
-    import itinerary_automation
-    if LA.LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active") \
-            or itinerary_automation.LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "Another SFA run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("loadings")
+    if busy:
+        return {"ok": False, "message": busy}
     LA.LIVE.reset(kind="sync", trigger=kw.get("trigger", "manual"))
     threading.Thread(target=run_sync, kwargs=kw, daemon=True, name="chimera-distributor-sync").start()
     return {"ok": True, "message": "Started."}

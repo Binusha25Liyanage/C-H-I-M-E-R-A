@@ -8,7 +8,7 @@
   const API = () => window.pywebview.api;
   const reduce = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const r = (a, b) => a + Math.random() * (b - a);
-  const DEFAULT = { look_splash: "displacement", look_sound: "c", look_volume: "70", look_logo: "neon", look_logo_freq: "rare", look_ecg: "live" };
+  const DEFAULT = { look_splash: "displacement", look_sound: "c", look_volume: "70", look_logo: "neon", look_logo_freq: "rare", look_ecg: "live", look_icon: "open", look_icon_every: "30" };
   let LOOK = { ...DEFAULT };
 
   const brand = document.querySelector(".sidebar-brand");
@@ -279,10 +279,11 @@
   }
   function paint() {
     paintSplashes();
-    [["lk-logo", "look_logo"], ["lk-logo-freq", "look_logo_freq"], ["lk-ecg", "look_ecg"]].forEach(([id, k]) =>
+    [["lk-logo", "look_logo"], ["lk-logo-freq", "look_logo_freq"], ["lk-ecg", "look_ecg"], ["lk-icon", "look_icon"], ["lk-icon-every", "look_icon_every"]].forEach(([id, k]) =>
       document.querySelectorAll(`#${id} button`).forEach(b => b.classList.toggle("on", b.dataset.v === LOOK[k])));
     $("lk-logo-freq").classList.toggle("lk-dis", LOOK.look_logo === "off");
     $("lk-logo-try").disabled = LOOK.look_logo === "off";
+    if ($("lk-icon-every")) $("lk-icon-every").classList.toggle("lk-dis", LOOK.look_icon === "off");
     $("lk-volume").value = LOOK.look_volume; $("lk-volume-v").textContent = LOOK.look_volume + "%";
     paintSounds();
   }
@@ -366,12 +367,18 @@
       const inp = e.target.closest(".lk-rename");
       if (inp && editing.id === inp.dataset.rename) rename(inp.dataset.rename, inp.value);
     });
-    [["lk-logo", "look_logo"], ["lk-logo-freq", "look_logo_freq"], ["lk-ecg", "look_ecg"]].forEach(([id, k]) =>
+    [["lk-logo", "look_logo"], ["lk-logo-freq", "look_logo_freq"], ["lk-ecg", "look_ecg"], ["lk-icon", "look_icon"], ["lk-icon-every", "look_icon_every"]].forEach(([id, k]) =>
       $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) save({ [k]: b.dataset.v }); }));
     $("lk-volume").addEventListener("input", (e) => { $("lk-volume-v").textContent = e.target.value + "%"; if (pv.audio) pv.audio.volume = Math.max(0.05, e.target.value / 100); });
     $("lk-volume").addEventListener("change", (e) => save({ look_volume: e.target.value }));
     $("lk-play").addEventListener("click", () => { stopPreview(); if (window.chimeraSplashPreview) window.chimeraSplashPreview({ ...LOOK, custom }); });
     $("lk-logo-try").addEventListener("click", () => { clearTimeout(LG.timer); glitch(logoSchedule); });
+    $("lk-icon-try").addEventListener("click", async () => {
+      if (typeof API().try_desktop_icon !== "function") { needNew(); return; }
+      const b = $("lk-icon-try"); b.disabled = true; msg("Glitching the desktop shortcut…");
+      try { const r = await API().try_desktop_icon(); msg(r.message, !r.ok); } catch (e) { msg("Couldn't: " + e, true); }
+      b.disabled = false;
+    });
   }
 
   window.addEventListener("pywebviewready", async () => {

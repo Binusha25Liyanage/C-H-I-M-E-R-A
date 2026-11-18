@@ -140,11 +140,25 @@ def just_ended(limit=8):
         return []
 
 
+def queued():
+    """Scheduled jobs waiting for their kind of job to finish (this Chimera or the background one)."""
+    import schedule_store as SS
+    jobs = {j["id"]: j for j in SS.list_jobs()}
+    out = []
+    for f in SS.queued_fires():
+        j = jobs.get(f["job_id"])
+        why = f["outcome"].split(":", 1)[1].rsplit("[pid", 1)[0].strip(" —") if ":" in f["outcome"] else ""
+        out.append({"job": j["name"] if j else f"Job {f['job_id']}", "slot": f["slot"], "day": f["day"],
+                    "why": why.replace("waiting — ", "")})
+    return out
+
+
 def overview():
     s = AS.get_automation_settings()
     procs = running()
     return {"now": datetime.now().isoformat(timespec="seconds"), "paused": s.get("paused") == "1",
             "running": procs, "active_count": sum(1 for p in procs if p["active"]),
+            "queued": queued(),
             "coming_up": coming_up(), "just_ended": just_ended()}
 
 

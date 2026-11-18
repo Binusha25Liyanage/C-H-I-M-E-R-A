@@ -38,6 +38,9 @@ class StepError(Exception):
         self.step, self.message = step, message
 
 
+
+LOCK_LANE = "attendance"          # lanes.py: which jobs may run side by side
+
 def settings():
     s = AS.get_automation_settings()
     try:
@@ -299,9 +302,18 @@ def send(rid, wait=True, skip=None):
 
     def finish(res):
         sent, total = state["sent"], len(st["chats"])
+        # keep WhatsApp's own log with the run, so Copy log shows what happened while sending
+        try:
+            wa = W.WA.snapshot().get("log") or []
+            part = "\n".join(f"{x['t']} {x['level'].upper():5} {x['msg']}" for x in wa)
+            head = f"WhatsApp — {datetime.now():%Y-%m-%d %H:%M} — {(res or {}).get('message', '')}"
+            old = R.get_run_log(rid)
+            log = (old + "\n\n" if old else log_text_for_send(run)) + head + ("\n" + part if part else "")
+        except Exception:
+            log = None
         R.set_run(rid, state="sent" if sent == total else "partly_sent" if sent else "send_failed",
                   sent_at=datetime.now().isoformat(timespec="seconds") if sent else None,
-                  message=(res or {}).get("message", ""))
+                  message=(res or {}).get("message", ""), **({"log": log} if log else {}))
         try:
             import desktop_notify
             desktop_notify.event("finished" if sent == total else "failed", "attendance",
@@ -322,6 +334,10 @@ def send(rid, wait=True, skip=None):
         return go()
     threading.Thread(target=go, daemon=True, name="wa-attendance").start()
     return {"ok": True, "message": "Sending…"}
+
+
+def log_text_for_send(run):
+    return f"Chimera Rep Attendance — run #{run['id']} · {run.get('trigger', '')} · {run['day']}\n\n"
 
 
 # ---------------------------------------------------------------------------
@@ -348,8 +364,8 @@ def run(day=None, trigger="manual", slot="", review=False, send=False, headless=
     if headless is not None:
         st["headless"] = headless
     cfg = sfa_config.load_config()
-    if not AS.acquire_lock(f"rep attendance ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"rep attendance ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
         LIVE.reset(kind="attendance", trigger=trigger, slot=slot)
         LIVE.set(active=False, phase="done", result={"ok": False, "status": "busy", "message": msg})
@@ -359,7 +375,7 @@ def run(day=None, trigger="manual", slot="", review=False, send=False, headless=
     def unlock():
         if locked[0]:
             locked[0] = False
-            AS.release_lock()
+            AS.release_lock(lane=LOCK_LANE)
 
     rid = None
     try:
@@ -414,8 +430,8 @@ def backfill(days=None, headless=None):
         res = {"ok": False, "status": "failed", "message": "SFA login isn't set up — Settings › SFA Connection."}
         LIVE.set(active=False, phase="done", result=res)
         return res
-    if not AS.acquire_lock(f"rep attendance history ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"rep attendance history ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         res = {"ok": False, "status": "busy", "message": f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."}
         LIVE.set(active=False, phase="done", result=res)
         return res
@@ -456,7 +472,7 @@ def backfill(days=None, headless=None):
         if not LIVE.cancelled():
             LIVE.log(f"Unexpected error: {type(e).__name__}: {e}", "error")
     finally:
-        AS.release_lock()
+        AS.release_lock(lane=LOCK_LANE)
     if LIVE.cancelled():
         res = {"ok": False, "status": "cancelled", "message": f"Stopped by you — {len(done)} day(s) read."}
     else:
@@ -470,10 +486,10 @@ def backfill(days=None, headless=None):
 
 
 def start_backfill(headless=None):
-    import itinerary_automation, loading_automation, sequence_automation
-    if LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active") \
-            or itinerary_automation.LIVE.snapshot().get("active") or sequence_automation.LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "Another SFA run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("attendance")
+    if busy:
+        return {"ok": False, "message": busy}
     todo = missing_days()
     if not todo:
         return {"ok": False, "message": "Chimera already has every day of the window — nothing to read."}
@@ -555,10 +571,10 @@ def import_file(path):
 
 
 def start_background(**kw):
-    import itinerary_automation, loading_automation, sequence_automation
-    if LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active") \
-            or itinerary_automation.LIVE.snapshot().get("active") or sequence_automation.LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "Another SFA run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("attendance")
+    if busy:
+        return {"ok": False, "message": busy}
     LIVE.reset(kind="attendance", trigger=kw.get("trigger", "manual"))
 
     def guarded():

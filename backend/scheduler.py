@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from datetime import date, datetime, timedelta
@@ -147,31 +148,164 @@ def _run_job(job, slot, trigger):
     return {"ok": False, "status": "skipped", "message": f"{job['type_label']} isn't available yet."}
 
 
-def run_due(trigger="scheduled", now=None):
-    """Fire every job that is due. Used by the in-app thread and by Task Scheduler."""
+# ---------------------------------------------------------------------------
+# Lanes: different kinds of job run side by side; the same kind queues instead of being missed
+# ---------------------------------------------------------------------------
+QUEUE_MAX_WAIT_S = 4 * 60 * 60        # a queued job that still can't start after this is given up (Missed)
+_QUEUES = {}                           # worker lane -> {"q": deque, "thread": Thread|None}
+_QLOCK = threading.Lock()
+
+
+def _worker_lane(job):
+    import lanes
+    return lanes.job_lane(job["job_type"]) if AS.side_by_side() else "sfa"
+
+
+def _notify_started(job, slot, today):
+    try:
+        import desktop_notify
+        desktop_notify.event("started", "schedule", f"{job['name']} — {slot}",
+                             f"Scheduled time reached — {job.get('type_label') or 'job'} is starting now.",
+                             action={"sfa_downloads": "automation", "loadings": "loadings", "distributors": "loadings",
+                                     "rep_attendance": "rep-attendance"}
+                             .get(job["job_type"], "automation" if job["job_type"].startswith("report_") else "schedules"),
+                             tag=f"sched-{job['id']}-{today}-{slot}")
+    except Exception:
+        pass
+
+
+def _notify_missed(job, slot, today, why):
+    try:
+        import desktop_notify
+        desktop_notify.event("failed", "schedule", f"Missed: {job['name']} — {slot}", why + " Use Run now in Schedules.",
+                             action="schedules", tag=f"missed-{job['id']}-{today}-{slot}")
+    except Exception:
+        pass
+
+
+def _run_queued(job, slot, trigger, today):
+    """Wait until this kind of job may start (a manual run of the same kind, or — side by side off — any SFA job),
+    then run it. Never dropped because something else was busy; given up only after QUEUE_MAX_WAIT_S."""
+    import lanes
+    lane = lanes.job_lane(job["job_type"])
+    t0, told = time.time(), False
+    for attempt in (1, 2):
+        while True:
+            busy = lanes.busy_message(lane)
+            if not busy:
+                break
+            if not told:
+                SS.set_fire_outcome(job["id"], today, slot, f"queued: waiting — {busy} [pid {os.getpid()}]")
+                told = True
+            if time.time() - t0 > QUEUE_MAX_WAIT_S:
+                why = f"Waited {QUEUE_MAX_WAIT_S // 3600} hours for the other job to finish."
+                SS.set_fire_outcome(job["id"], today, slot, f"missed: {why}")
+                _notify_missed(job, slot, today, why)
+                return {"ok": False, "status": "missed", "message": why}
+            time.sleep(QUEUE_POLL_S)
+        _notify_started(job, slot, today)
+        try:
+            r = _run_job(job, slot, trigger)
+        except Exception as e:          # recorded, and the next job still runs
+            r = {"ok": False, "status": "failed", "message": str(e)}
+        if r.get("status") != "busy" or attempt == 2:
+            break                       # (busy = something grabbed SFA between our check and the start: wait again)
+    SS.set_fire_outcome(job["id"], today, slot, f"{r.get('status', '')}: {r.get('message', '')}")
+    return r
+
+
+QUEUE_POLL_S = 5
+
+
+def _drain(lane, results):
+    while True:
+        with _QLOCK:
+            e = _QUEUES[lane]
+            if not e["q"]:
+                e["thread"] = None
+                return
+            job, slot, trigger, today = e["q"].popleft()
+        r = _run_queued(job, slot, trigger, today)
+        results.append({"job": job["name"], "slot": slot, "result": r})
+
+
+def _enqueue(job, slot, trigger, today, results):
+    from collections import deque
+    lane = _worker_lane(job)
+    with _QLOCK:
+        e = _QUEUES.setdefault(lane, {"q": deque(), "thread": None})
+        e["q"].append((job, slot, trigger, today))
+        if e["thread"] is None or not e["thread"].is_alive():
+            e["thread"] = threading.Thread(target=_drain, args=(lane, results), daemon=True, name=f"chimera-lane-{lane}")
+            e["thread"].start()
+        return e["thread"]
+
+
+def queue_snapshot():
+    """What's waiting, per lane (for the screen)."""
+    with _QLOCK:
+        return {lane: [{"job": j["name"], "slot": s} for j, s, _t, _d in e["q"]] for lane, e in _QUEUES.items() if e["q"]}
+
+
+def run_due(trigger="scheduled", now=None, wait=True):
+    """Fire every job that is due: each kind of job in its own lane (side by side), the same kind one after the
+    other. wait=True (Task Scheduler, tests): return when they've all finished. The in-app thread doesn't wait."""
     due, reason = due_jobs(now)
     if not due:
         return {"ran": False, "reason": reason, "results": []}
-    results = []
+    results, threads = [], []
     today = (now or datetime.now()).date().isoformat()
     for job, slot in due:
         if not SS.record_fire(job["id"], today, slot, trigger):
             continue        # the other trigger got there first
+        SS.set_fire_outcome(job["id"], today, slot, f"queued: about to start [pid {os.getpid()}]")
+        threads.append(_enqueue(job, slot, trigger, today, results))
+    if wait:
+        for t in {id(t): t for t in threads}.values():
+            t.join()
+    return {"ran": bool(threads), "reason": reason, "results": results}
+
+
+# ---------------------------------------------------------------------------
+# Missed runs: shown in Schedules (with Run now) and as a notification
+# ---------------------------------------------------------------------------
+def mark_missed(now=None):
+    """Slots whose time + grace has passed today without running (PC off, Chimera closed and no Task Scheduler,
+    or Chimera closed while the job was waiting in its queue)."""
+    now = now or datetime.now()
+    today = now.date().isoformat()
+    marked = []
+    # waiting in a queue of a Chimera that's gone
+    for f in SS.queued_fires():
+        pid = 0
         try:
-            import desktop_notify
-            desktop_notify.event("started", "schedule", f"{job['name']} — {slot}",
-                                 f"Scheduled time reached — {job.get('type_label') or 'job'} is starting now.",
-                                 action={"sfa_downloads": "automation", "loadings": "loadings", "distributors": "loadings"}
-                                 .get(job["job_type"], "automation" if job["job_type"].startswith("report_") else "schedules"), tag=f"sched-{job['id']}-{today}-{slot}")
-        except Exception:
+            pid = int(f["outcome"].rsplit("[pid ", 1)[1].rstrip("]"))
+        except (IndexError, ValueError):
             pass
-        try:
-            r = _run_job(job, slot, trigger)
-        except Exception as e:  # recorded, and the next job still runs
-            r = {"ok": False, "status": "failed", "message": str(e)}
-        SS.set_fire_outcome(job["id"], today, slot, f"{r.get('status', '')}: {r.get('message', '')}")
-        results.append({"job": job["name"], "slot": slot, "result": r})
-    return {"ran": bool(results), "reason": reason, "results": results}
+        if pid != os.getpid() and not AS.pid_alive(pid):
+            SS.set_fire_outcome(f["job_id"], f["day"], f["slot"], "missed: Chimera was closed before it could run.")
+            marked.append((f["job_id"], f["slot"]))
+    s = AS.get_automation_settings()
+    if _global_block(now.date(), s):
+        return marked
+    hol = SS.holiday_set()
+    for j in SS.list_jobs():
+        if not SS.type_on(j, s) or not SS.runs_on(j, now.date(), hol):
+            continue
+        since = max(j.get("created_at") or "", j.get("updated_at") or "")
+        for t in j["times_list"]:
+            h, m = (int(x) for x in t.split(":"))
+            slot_dt = now.replace(hour=h, minute=m, second=0, microsecond=0)
+            if slot_dt + timedelta(minutes=GRACE_MINUTES) > now or (since and slot_dt.isoformat() < since):
+                continue
+            if SS.already_fired(j["id"], today, t):
+                continue
+            if SS.record_fire(j["id"], today, t, "missed"):
+                why = "Chimera wasn't running at that time (and Task Scheduler didn't start it)."
+                SS.set_fire_outcome(j["id"], today, t, f"missed: {why}")
+                _notify_missed(j, t, today, why)
+                marked.append((j["id"], t))
+    return marked
 
 
 class InAppScheduler:
@@ -197,16 +331,13 @@ class InAppScheduler:
             except Exception:
                 pass
             try:
-                import sfa_automation
-                import loading_automation
-                import itinerary_automation
-                if sfa_automation.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active") \
-                        or itinerary_automation.LIVE.snapshot().get("active"):
-                    continue    # still due later in the grace window
-                run_due("scheduled")
+                run_due("scheduled", wait=False)       # each kind of job in its own lane; same kind queues
+                mark_missed()
                 # Outlet Updates: read the itinerary for the day being prepared (23:59 onwards = tomorrow) —
-                # and if Chimera wasn't running then, now.
-                if not (sfa_automation.LIVE.snapshot().get("active") or loading_automation.LIVE.snapshot().get("active")):
+                # and if Chimera wasn't running then, now. It has its own lane.
+                import lanes
+                import itinerary_automation
+                if not lanes.busy_message("outlets"):
                     itinerary_automation.ensure_prepared()
             except Exception:
                 pass  # never let the scheduler thread die; the run itself records its errors

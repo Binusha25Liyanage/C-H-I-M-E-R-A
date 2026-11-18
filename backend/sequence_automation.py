@@ -64,6 +64,9 @@ class Cancelled(Exception):
     pass
 
 
+
+LOCK_LANE = "outlets"          # lanes.py: which jobs may run side by side
+
 def normalize_phone(raw):
     """'763810506' -> '0763810506'; '+94763810506' -> '0763810506'; '076 381-0506' -> '0763810506';
     empty or anything else -> '0000000000' (SFA needs exactly 10 characters)."""
@@ -528,8 +531,8 @@ def run(sheet_ids=None, trigger="manual", headless=None):
         if LIVE.snapshot().get("active"):
             LIVE.set(active=False, phase="done", result=res)
         return res
-    if not AS.acquire_lock(f"outlet updates ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"outlet updates ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
         LIVE.reset(kind="sequence", trigger=trigger)
         LIVE.set(active=False, phase="done", result={"ok": False, "status": "busy", "message": msg})
@@ -683,7 +686,7 @@ def _finish(rid, status, msg):
     SS.finish_run(rid, status, msg, log_text())
     LIVE.set(active=False, phase="done", result={"ok": status == "done", "status": status, "message": msg, "run_id": rid})
     LIVE.log(msg, level="info" if status == "done" else "warn")
-    AS.release_lock()
+    AS.release_lock(lane=LOCK_LANE)
     return {"ok": status == "done", "status": status, "message": msg, "run_id": rid}
 
 
@@ -734,8 +737,8 @@ def run_routes(trigger="manual", headless=None):
         st["headless"] = headless
     cfg = sfa_config.load_config()
     steps = ["login", "open", "filters", "search", "export", "read"]
-    if not AS.acquire_lock(f"route list ({datetime.now():%H:%M})"):
-        holder = AS.lock_holder() or {}
+    if not AS.acquire_lock(lane=LOCK_LANE, owner=f"route list ({datetime.now():%H:%M})"):
+        holder = AS.lock_holder(LOCK_LANE) or {}
         msg = f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."
         LIVE.reset(kind="routes", trigger=trigger)
         LIVE.set(active=False, phase="done", result={"ok": False, "status": "busy", "message": msg})
@@ -822,10 +825,10 @@ def add_files(paths, source="upload", sender=""):
 
 
 def start_background(target="run", **kw):
-    import itinerary_automation, loading_automation
-    if LIVE.snapshot().get("active") or SA.LIVE.snapshot().get("active") or \
-            loading_automation.LIVE.snapshot().get("active") or itinerary_automation.LIVE.snapshot().get("active"):
-        return {"ok": False, "message": "Another SFA run is already in progress."}
+    import lanes
+    busy = lanes.busy_message("outlets")
+    if busy:
+        return {"ok": False, "message": busy}
     fn = run_routes if target == "routes" else run
     if target != "routes":
         ids = kw.get("sheet_ids")
@@ -841,9 +844,9 @@ def start_background(target="run", **kw):
             res = fn(**kw)
         except Exception as e:
             res = {"ok": False, "status": "failed", "message": f"Unexpected error: {type(e).__name__}: {e}"}
-            holder = AS.lock_holder() or {}
+            holder = AS.lock_holder(LOCK_LANE) or {}
             if str(holder.get("owner", "")).startswith(("outlet updates", "route list")):
-                AS.release_lock()
+                AS.release_lock(lane=LOCK_LANE)
         if LIVE.snapshot().get("active"):
             LIVE.set(active=False, phase="done", result=res if isinstance(res, dict) else
                      {"ok": False, "status": "failed", "message": "The run ended without a result."})

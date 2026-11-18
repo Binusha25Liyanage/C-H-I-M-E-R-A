@@ -344,7 +344,7 @@
             <div class="radio-row">
               <span class="hint" style="margin:0;">After generating:</span>
               <label class="radio"><input type="radio" name="dr-mode" value="save"> Save straight away</label>
-              <label class="radio"><input type="radio" name="dr-mode" value="preview_first"> Preview the first run of each day, then send automatically</label>
+              <label class="radio"><input type="radio" name="dr-mode" value="preview_first"> Preview the first run of each report each day, then send automatically</label>
               <label class="radio"><input type="radio" name="dr-mode" value="preview"> Preview every run</label>
               <span class="hint" style="margin:0;" id="dr-mode-hint"></span>
             </div>
@@ -821,6 +821,7 @@
           <div id="rn-paused"></div>
           <div class="section-title">Running</div>
           <div id="rn-running"></div>
+          <div id="rn-queued"></div>
           <div class="two-col">
             <div class="card card-flush"><div class="am-card-head"><h3>Coming up</h3><span class="hint">next 6 hours</span></div><div id="rn-coming"></div></div>
             <div class="card card-flush"><div class="am-card-head"><h3>Just finished</h3><button class="link-btn" id="rn-to-activity">Activity Monitor &rarr;</button></div><div id="rn-ended"></div></div>
@@ -903,6 +904,15 @@
             <div class="card card-flush">
               <div class="card-header-row" style="padding:16px 18px 0;"><h3>Scheduled jobs</h3><button class="btn-primary btn-small" id="sc-add">+ Add job</button></div>
               <div id="sc-jobs"><p class="hint" style="padding:18px;">Loading&hellip;</p></div>
+            </div>
+            <div class="card">
+              <div class="toggle-row">
+                <div><b>Run SFA jobs side by side</b>
+                  <p class="hint">Different kinds of job run at the same time — a report download, loadings, rep attendance and outlet updates
+                    each in their own browser, sharing one SFA login. Two jobs of the same kind wait in a queue instead of being missed.
+                    Turn off to run one SFA job at a time (as before) — they still queue.</p></div>
+                <label class="switch2"><input type="checkbox" id="sc-sbs-switch"><span></span></label>
+              </div>
             </div>
             <div class="card">
               <div class="toggle-row">
@@ -994,6 +1004,23 @@
               <div class="lk-seg lk-seg-small" id="lk-logo-freq" style="margin-top:10px;">
                 <button data-v="rare"><b>Now and then</b><span>every 20–45 s</span></button>
                 <button data-v="often"><b>Often</b><span>every 8–15 s</span></button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header-row"><h3>Desktop icon</h3>
+                <button class="btn-outline btn-small" id="lk-icon-try">&#9654; Try it now</button></div>
+              <p class="hint" style="margin:-4px 0 14px;">The Chimera shortcut on your Desktop glitches through its three looks now and then — normal, neon red, white on dark — and back.
+                Windows redraws desktop icons slowly, so it's a few quick flickers rather than smooth.</p>
+              <div class="lk-seg" id="lk-icon">
+                <button data-v="open"><b>While Chimera is open</b><span>Stops when you close Chimera</span></button>
+                <button data-v="always"><b>Always</b><span>A tiny helper starts with Windows</span></button>
+                <button data-v="off"><b>Off</b><span>The icon stays still</span></button>
+              </div>
+              <div class="lk-seg lk-seg-small" id="lk-icon-every" style="margin-top:10px;">
+                <button data-v="15"><b>Every 15 s</b><span>often</span></button>
+                <button data-v="30"><b>Every 30 s</b><span>default</span></button>
+                <button data-v="60"><b>Every minute</b><span>now and then</span></button>
+                <button data-v="120"><b>Every 2 minutes</b><span>rarely</span></button>
               </div>
             </div>
             <div class="card">
@@ -1238,6 +1265,7 @@
   <script src="js/running.js"></script>
   <script src="js/reminders.js"></script>
   <script src="js/rep_attendance.js"></script>
+  <script src="js/about.js"></script>
   <script src="js/shell.js"></script>
   <script src="js/appearance.js"></script>
 </body>

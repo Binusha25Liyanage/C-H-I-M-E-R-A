@@ -55,6 +55,8 @@ function renderScTop() {
   document.getElementById("sc-clock-warning").innerHTML = ["warn", "bad"].includes(o.clock.level)
     ? `<div class="${o.clock.level === "bad" ? "problem-box" : "warn-box"}">${esc(o.clock.message)}</div>` : "";
 
+  const sbs = document.getElementById("sc-sbs-switch");
+  if (sbs) sbs.checked = (c.side_by_side ?? "1") === "1";
   const ts = document.getElementById("sc-task-switch");
   ts.checked = c.use_task_scheduler === "1"; ts.disabled = !o.is_windows;
   document.getElementById("sc-task-times").textContent = o.is_windows
@@ -71,6 +73,7 @@ async function scSave(values) {
 document.getElementById("sc-paused-switch").addEventListener("change", (e) => scSave({ paused: e.target.checked ? "1" : "0" }));
 document.getElementById("sc-skip-btn").addEventListener("click", () => scSave({ skip_date: SC.ov.controls.skip_date === SC.ov.today ? "" : SC.ov.today }));
 document.getElementById("sc-task-switch").addEventListener("change", (e) => scSave({ use_task_scheduler: e.target.checked ? "1" : "0" }));
+document.getElementById("sc-sbs-switch")?.addEventListener("change", (e) => scSave({ side_by_side: e.target.checked ? "1" : "0" }));
 document.getElementById("sc-clock-btn").addEventListener("click", async (e) => {
   const b = e.target; b.disabled = true; b.textContent = "Checking…";
   const r = await API().check_clock();
@@ -111,6 +114,10 @@ function renderScJobs() {
       <th style="width:70px">On</th><th>Job</th><th>When</th><th>Next run</th><th>Last fired</th><th style="width:250px"></th></tr></thead><tbody>${jobs.map(j => {
       const lf = j.last_fire;
       const ok = lf && /^(success|done)/.test(lf.outcome || "");
+      const oc = (lf && lf.outcome) || "";
+      const fireChip = /^missed/.test(oc) ? '<span class="chip chip-missing">Missed</span> '
+        : /^queued/.test(oc) ? '<span class="chip chip-warn">Waiting in queue</span> ' : "";
+      const fireText = oc.replace(/^(missed|queued):\s*/, "").replace(/\s*\[pid \d+\]$/, "");
       return `<tr>
         <td><label class="switch2"><input type="checkbox" data-toggle="${j.id}" ${j.enabled ? "checked" : ""}><span></span></label></td>
         <td><b>${esc(j.name)}</b><div class="hint" style="font-size:12px;">${esc(j.type_label)}${j.options.report_day === "yesterday" ? " · for yesterday" : ""}${j.options.profile_ids && j.options.profile_ids.length ? ` · ${j.options.profile_ids.length} report(s)` : ""}${j.options.report_kinds && j.options.report_kinds.length ? ` · builds ${j.options.report_kinds.map(k => ({ early: "Early Bills", sku: "SKU", pivot: "Pivot", hourly: "Hourly" })[k] || k).join(", ")}` : ""}${j.skip_holidays ? "" : " · runs on holidays"}${(["sfa_downloads", "rep_attendance"].includes(j.job_type) || j.job_type.startsWith("report_")) ? (Array.isArray(j.options.review_times)
@@ -118,7 +125,7 @@ function renderScJobs() {
           : " · approval: Daily Reports setting") : ""}</div></td>
         <td>${esc(j.summary)}</td>
         <td>${j.enabled ? esc(j.next_label || "—") : '<span class="hint">off</span>'}</td>
-        <td style="font-size:12px;">${lf ? `${esc(lf.day)} ${esc(lf.slot)}<div class="${ok ? "hint" : "error"}">${esc((lf.outcome || "started").slice(0, 70))}</div>` : '<span class="hint">never</span>'}</td>
+        <td style="font-size:12px;">${lf ? `${esc(lf.day)} ${esc(lf.slot)}<div class="${ok || /^queued/.test(oc) ? "hint" : "error"}">${fireChip}${esc((fireText || "started").slice(0, 90))}</div>` : '<span class="hint">never</span>'}</td>
         <td style="text-align:right;white-space:nowrap;"><button class="icon-action" data-run="${j.id}">Run now</button>
           <button class="icon-action" data-edit="${j.id}">Edit</button><button class="icon-action danger" data-del="${j.id}">Delete</button></td></tr>`; }).join("")}</tbody></table>`
     : `<p class="hint" style="padding:18px;">No scheduled jobs. Add one to run SFA downloads automatically.</p>`;
@@ -134,6 +141,12 @@ document.getElementById("sc-jobs").addEventListener("click", async (e) => {
     const j = SC.ov.jobs.find(x => String(x.id) === t.dataset.run);
     const r = await API().run_schedule_job_now(j.id);
     if (!r.ok) { confirmModal("Couldn't start", esc(r.message), "OK", async () => {}); return; }
+    if (r.open === "loadings" && window.openLdMonitor) { switchView("loadings"); openLdMonitor(r.title || "Distributor loadings"); return; }
+    if (r.open === "rep-attendance") {                  // its screen shows the run's progress and the result
+      switchView("rep-attendance");
+      if (typeof AT !== "undefined") { AT.wasActive = true; if (typeof atStartPoll === "function") atStartPoll(); }
+      return;
+    }
     if (typeof openMonitor === "function") openMonitor();
   }
 });
@@ -373,7 +386,7 @@ function renderScFires() {
   const f = SC.ov.fires, names = Object.fromEntries(SC.ov.jobs.map(j => [j.id, j.name]));
   document.getElementById("sc-fires").innerHTML = f.length ? `<table class="report-table"><thead><tr><th>Started</th><th>Job</th><th>Slot</th><th>By</th><th>Outcome</th></tr></thead><tbody>${f.map(x => `
     <tr><td>${esc(x.fired_at.replace("T", " "))}</td><td>${esc(names[x.job_id] || `Job #${x.job_id} (deleted)`)}</td><td>${esc(x.day)} ${esc(x.slot)}</td>
-      <td>${x.trigger === "scheduled" ? "Schedule" : esc(x.trigger)}</td><td style="font-size:12px;">${esc(x.outcome || "running…")}</td></tr>`).join("")}</tbody></table>`
+      <td>${x.trigger === "scheduled" ? "Schedule" : esc(x.trigger)}</td><td style="font-size:12px;">${/^missed/.test(x.outcome || "") ? '<span class="chip chip-missing">Missed</span> ' : /^queued/.test(x.outcome || "") ? '<span class="chip chip-warn">Waiting in queue</span> ' : ""}${esc((x.outcome || "running…").replace(/^(missed|queued):\s*/, "").replace(/\s*\[pid \d+\]$/, ""))}</td></tr>`).join("")}</tbody></table>`
     : `<p class="hint" style="padding:18px;">Nothing has run on a schedule yet. Each scheduled start is listed here, with its result.</p>`;
 }
 

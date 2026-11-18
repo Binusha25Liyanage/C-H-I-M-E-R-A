@@ -90,7 +90,18 @@ class Api:
     def save_appearance(self, values):
         vals = {k: v for k, v in (values or {}).items() if str(k).startswith("look_") and k != "look_custom"}
         ok, message = automation_store.save_automation_settings(vals)
+        if ok and "look_icon" in vals:                 # start-with-Windows helper on/off straight away
+            try:
+                import desktop_icon
+                desktop_icon.apply_mode()
+            except Exception:
+                pass
         return {"ok": ok, "message": message, "look": automation_store.get_appearance()}
+
+    def try_desktop_icon(self):
+        """Customize Appearance › Desktop icon › Try it now: one glitch on the Chimera desktop shortcut."""
+        import desktop_icon
+        return desktop_icon.try_now()
 
     def add_look_media(self, kind):
         """Customize Appearance › + Add soundtrack / + Add video opening: pick a file, Chimera keeps a copy."""
@@ -301,6 +312,8 @@ class Api:
 
     def save_sfa_config(self, login_url, username, password, browser):
         sfa_config.save_config(login_url, username, password, browser)
+        import sfa_automation
+        sfa_automation.forget_session()       # a new login / user: don't reuse the old shared SFA session
         return {"ok": True}
 
     def test_sfa_connection(self):
@@ -443,7 +456,9 @@ class Api:
     def get_report_settings(self):
         s = dict(sfa_store.get_settings())
         from datetime import date as _d
-        s["approved_today"] = report_pipeline.approved_on(_d.today().isoformat())
+        today = _d.today().isoformat()
+        s["approved_today"] = report_pipeline.approved_on(today)
+        s["approved_kinds_today"] = [k for k in report_pipeline.REPORT_KINDS if report_pipeline.approved_on(today, [k])]
         return s
 
     def save_report_settings(self, values):
@@ -631,7 +646,7 @@ class Api:
             "now": datetime.now().isoformat(timespec="seconds"),
             "next": {"job": nxt["job"]["name"], "at": nxt["at"].isoformat(), "label": self._fmt_dt(nxt["at"])}
                     if nxt else None,
-            "controls": {k: settings[k] for k in ("paused", "skip_date", "use_task_scheduler")},
+            "controls": {k: settings[k] for k in ("paused", "skip_date", "use_task_scheduler", "side_by_side")},
             "switches": {k: settings.get(k, "1") for k in ("auto_sfa_downloads", "auto_build_reports", "wa_auto_send",
                                                            "auto_loadings", "auto_outlet_updates", "auto_distributor_sync",
                                                            "auto_master_sync")},
@@ -674,8 +689,21 @@ class Api:
                         + ", ".join(sfa_store.DATASET_LABELS[m] for m in missing) + " — turn it on in Report Downloads."}
             return sfa_automation.start_background(report_date=day.isoformat(), trigger="manual",
                                                    profile_ids=ids, report_kinds=[kind])
+        if job["job_type"] == "rep_attendance":          # same as its schedule: download, build, send
+            import rep_attendance_automation as RA
+            ask = bool(job["options"].get("review_times"))  # a job that asks first at any time asks first here too
+            r = RA.start_background(trigger="manual", review=ask, send=True)
+            return {**r, "open": "rep-attendance"}
+        if job["job_type"] == "distributors":
+            import distributor_sync
+            return {**distributor_sync.start_background(trigger="manual"), "open": "loadings",
+                    "title": "Updating the distributor list from SFA"}
+        if job["job_type"] == "loadings":
+            import loading_automation as LA
+            return {**LA.start_background(LA.run_prepare, trigger="manual"), "open": "loadings",
+                    "title": "Preparing loadings (read only)"}
         if job["job_type"] != "sfa_downloads":
-            return {"ok": False, "message": f"{job['type_label']} isn't available yet."}
+            return {"ok": False, "message": f"{job['type_label']} can't be run from here yet."}
         return sfa_automation.start_background(report_date=day.isoformat(), trigger="manual",
                                                profile_ids=job["options"].get("profile_ids") or None,
                                                report_kinds=job["options"].get("report_kinds") or None)
@@ -728,22 +756,26 @@ class Api:
             done.append("Stopped the rep attendance run.")
         if whatsapp_sender.force_stop():
             done.append("Closed the WhatsApp sending window.")
-        holder = automation_store.lock_holder()
-        if holder:
+        import lanes as _lanes
+        cleared = False
+        for holder in automation_store.lock_holders():        # one per kind of SFA job (side by side)
             pid = int(holder.get("pid") or 0)
+            lane = holder.get("lane") or "reports"
             if pid and pid != os.getpid() and automation_store.pid_alive(pid):
                 killed = self._kill_process_tree(pid)
                 done.append(f"Stopped the background Chimera run ({holder.get('owner', 'scheduled')})." if killed
                             else f"Couldn't stop the background run (process {pid}) — close it in Task Manager.")
                 if killed:
-                    automation_store.release_lock()
+                    automation_store.release_lock(lane="*")
                     automation_store.mark_interrupted_runs()
-            elif not sfa_automation.LIVE.snapshot().get("active") and not loading_automation.LIVE.snapshot().get("active") \
-                    and not itinerary_automation.LIVE.snapshot().get("active") \
-                    and not sequence_automation.LIVE.snapshot().get("active"):
-                automation_store.release_lock()
+            elif not _lanes.lane_active(lane) and not (lane == "reports" and _lanes.active_lanes()
+                                                       and not automation_store.side_by_side()):
+                automation_store.release_lock(lane=lane)
+                cleared = True
+        if cleared:
+            if not _lanes.lane_active("reports"):      # only report runs live in that history table
                 automation_store.mark_interrupted_runs()
-                done.append("Cleared a run that was left unfinished when Chimera was closed.")
+            done.append("Cleared a run that was left unfinished when Chimera was closed.")
         if pause:
             automation_store.save_automation_settings({"paused": "1"})
             self._sync_tasks_if_used()
@@ -780,7 +812,7 @@ class Api:
             sequence_automation.force_stop(timeout=5)
         except Exception:
             pass
-        automation_store.release_lock(only_if_mine=True)
+        automation_store.release_lock(only_if_mine=True, lane="*")
 
     # ------------------------------------------------------------
     # Outlet Updates — working territories, itineraries, routes board

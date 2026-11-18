@@ -77,6 +77,10 @@ function rnRender() {
     + `<div class="rn-idles">${idle.map(idleRow).join("")}</div>`;
   // keep open logs scrolled to the end
   document.querySelectorAll(".rn-log").forEach(b => b.scrollTop = b.scrollHeight);
+  const q = d.queued || [];             // side by side: jobs of a kind that's busy wait here instead of being missed
+  document.getElementById("rn-queued").innerHTML = q.length ? `<div class="card card-flush"><div class="am-card-head"><h3>Waiting in queue</h3>
+      <span class="hint">they start as soon as the job of the same kind finishes</span></div><table class="report-table am-table"><tbody>${q.map(x => `
+      <tr><td class="rn-time"><b>${esc(x.slot)}</b></td><td><b>${esc(x.job)}</b><div class="am-note">${esc(x.why || "waiting")}</div></td></tr>`).join("")}</tbody></table></div>` : "";
   const kindIcon = { job: "▶", reminder: "💬", itinerary: "🗓" };
   document.getElementById("rn-coming").innerHTML = d.coming_up.length ? `<table class="report-table am-table"><tbody>${d.coming_up.map(c => `
       <tr class="${c.skip ? "rn-skip" : ""}"><td class="rn-time"><b>${esc(rnHM(c.at))}</b><div class="hint">${esc(rnIn(c.in_seconds))}</div></td>
