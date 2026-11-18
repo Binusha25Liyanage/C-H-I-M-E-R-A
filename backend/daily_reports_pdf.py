@@ -267,6 +267,8 @@ def _classic_sku(rep):
                 RoundedBox(summary, size=9, color=NAVY, stroke=NAVY)]
         flow += _classic_footnotes(notes)
         pages.append({"width": 240 * mm, "flow": flow, "name": f"SKU Report - {g['group']}"})
+    if rep.get("early"):
+        pages += _classic_early(rep["early"])
     return pages
 
 
@@ -459,7 +461,7 @@ def _pro_table_style(n_header_rows=1):
 
 
 def _pro_sku(rep):
-    pages, n_pages = [], len(rep["groups"])
+    pages, n_pages = [], len(rep["groups"]) + (1 if rep.get("early") else 0)
     flabel = rep["focus_label"]
     width = 196 * mm
     avail = width - 2 * MARGIN
@@ -501,6 +503,8 @@ def _pro_sku(rep):
                  Spacer(1, 10), table]
         flow += _pro_notes(notes, sum(cw)) + _pro_footer(pi, n_pages)
         pages.append({"width": width, "flow": flow, "name": f"SKU Report - {g['group']}"})
+    if rep.get("early"):
+        pages += _pro_early(rep["early"], n_pages, n_pages)
     return pages
 
 
@@ -628,6 +632,128 @@ def _pro_hourly(rep):
 # ============================================================================
 # Public entry points
 # ============================================================================
+# ============================================================================
+# Early bills page (bills before 9:00 AM) — the last page of the SKU Report
+# ============================================================================
+def _ampm_cut(cutoff):
+    h, m = (int(x) for x in cutoff.split(":"))
+    return f"{(h - 1) % 12 + 1}:{m:02d} {'AM' if h < 12 else 'PM'}"
+
+
+def _early_first(r, cut):
+    if r["started"]:
+        return _ampm(r["first"])
+    if r["first"]:
+        return f"{_ampm(r['first'])} (after {cut})"
+    return "No bills yet"
+
+
+EARLY_OK, EARLY_NOT = "Synchronized", "Not synced yet"
+EARLY_REMINDER = ("If the highlighted territories have still not synced their devices, please sync them now — and remember "
+                  "to sync every assigned device at least once an hour.")
+
+
+def _classic_early(rep):
+    cut = _ampm_cut(rep["cutoff"])
+    T = rep["totals"]
+    flow = [Paragraph(f"Bills Before {cut} - All Territories", _CL_TITLE), Spacer(1, 4),
+            Paragraph(f"Date: {rep['date']} | Territories: {T['territories']} | Synchronized before {cut}: {T['started']} | "
+                      f"Not synced yet: {T['not_started']} | Bills before {cut}: {T['early_bills']}", _CL_SUB),
+            Spacer(1, 12)]
+    head = ["Manager", "Territory", "Type", f"Bills before {cut}", "First Bill", "Status"]
+    data = [[Paragraph(h, _CL_HDR) for h in head]]
+    style = [("BACKGROUND", (0, 0), (-1, 0), NAVY), ("GRID", (0, 0), (-1, -1), 0.6, NAVY),
+             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+             ("ALIGN", (1, 1), (1, -1), "LEFT"), ("FONTNAME", (1, 1), (1, -1), "Helvetica-Bold"),
+             ("FONTNAME", (2, 1), (-1, -1), "Helvetica"), ("FONTSIZE", (0, 1), (-1, -1), 10),
+             ("TEXTCOLOR", (0, 1), (-1, -1), NAVY),
+             ("TOPPADDING", (0, 0), (-1, -1), 3.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5)]
+    for g in rep["groups"]:
+        first_row = len(data)
+        for r in g["rows"]:
+            data.append(["", r["territory"], r["model"] if r["model"] in ("Van", "Pre") else "–",
+                         r["early"], _early_first(r, cut), EARLY_OK if r["started"] else EARLY_NOT.upper()])
+            i = len(data) - 1
+            if not r["started"]:
+                style += [("BACKGROUND", (1, i), (-1, i), C_LATE_BG), ("TEXTCOLOR", (1, i), (-1, i), C_LATE_TX),
+                          ("FONTNAME", (5, i), (5, i), "Helvetica-Bold")]
+        last = len(data) - 1
+        data[first_row][0] = Paragraph(f"<b>{_esc(g['group'])}</b><br/><font size=8>{g['started']} of "
+                                       f"{len(g['rows'])} synchronized<br/>{g['early_bills']} bills</font>",
+                                       _ps("cl_mgr", fontSize=10, leading=12, textColor=NAVY, alignment=1))
+        style += [("SPAN", (0, first_row), (0, last)), ("BACKGROUND", (0, first_row), (0, last), C_BADGE_BG),
+                  ("LINEBELOW", (0, last), (-1, last), 1.6, NAVY)]
+    table = Table(data, colWidths=[36 * mm, 46 * mm, 14 * mm, 27 * mm, 42 * mm, 44 * mm], repeatRows=1)
+    table.setStyle(TableStyle(style))
+    missing = [f"{g['group']}: " + ", ".join(r["territory"] for r in g["rows"] if not r["started"])
+               for g in rep["groups"] if g["not_started"]]
+    def boxed(html, color, bg):
+        b = Table([[Paragraph(html, _ps("cl_box", fontSize=10, leading=13.5, textColor=color, alignment=1))]],
+                  colWidths=[sum(table._colWidths)])
+        b.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 1, color), ("BACKGROUND", (0, 0), (-1, -1), bg),
+                               ("TOPPADDING", (0, 0), (-1, -1), 7), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                               ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10)]))
+        return b
+    flow += [table, Spacer(1, 14),
+             boxed(f"<b>Not synced yet before {cut}</b> — " + (_esc(" | ".join(missing)) if missing else "none, every territory synchronized"),
+                   C_LATE_TX, colors.white)]
+    if missing:
+        flow += [Spacer(1, 8), boxed("<b>Reminder:</b> " + _esc(EARLY_REMINDER), NAVY, C_BADGE_BG)]
+    flow += _classic_footnotes(rep["notes"] + [f"Bills = invoices + sales orders created before {cut} "
+                                               "(a sales order already invoiced is counted once)."])
+    return [{"width": 240 * mm, "flow": flow, "name": f"Bills before {cut}"}]
+
+
+def _pro_early(rep, page_no=1, pages_total=1):
+    cut = _ampm_cut(rep["cutoff"])
+    T = rep["totals"]
+    width = 196 * mm
+    avail = width - 2 * MARGIN
+    cw = [32 * mm, 40 * mm, 12 * mm, 22 * mm, 40 * mm, 30 * mm]
+    flow = _pro_header("Morning sync", f"Bills before {cut}",
+                       f"{T['territories']} territories &nbsp;&middot;&nbsp; {T['started']} synchronized &nbsp;&middot;&nbsp; "
+                       f"{T['not_started']} not synced yet", rep["date"], "pivot", avail)
+    flow += [Spacer(1, 6), _pro_kpis([("Synchronized", f"{T['started']} / {T['territories']}"),
+                                      ("Not synced yet", str(T["not_started"])),
+                                      (f"Bills before {cut}", str(T["early_bills"]))], sum(cw)), Spacer(1, 10)]
+    head = ["Manager", "Territory", "Type", f"Bills before {cut}", "First bill", "Status"]
+    data = [[Paragraph(h, _PR_HDR) for h in head]]
+    style = _pro_table_style()
+    for g in rep["groups"]:
+        first_row = len(data)
+        for r in g["rows"]:
+            data.append(["", r["territory"], r["model"] if r["model"] in ("Van", "Pre") else "–",
+                         r["early"] if r["started"] else "0", _early_first(r, cut), EARLY_OK if r["started"] else EARLY_NOT])
+            i = len(data) - 1
+            if not r["started"]:
+                style += [("BACKGROUND", (1, i), (-1, i), LATE_BG), ("TEXTCOLOR", (1, i), (-1, i), CHERRY),
+                          ("FONTNAME", (5, i), (5, i), "Helvetica-Bold")]
+            else:
+                style.append(("TEXTCOLOR", (5, i), (5, i), colors.HexColor("#1E7B3A")))
+        last = len(data) - 1
+        data[first_row][0] = Paragraph(f"<b>{_esc(g['group'])}</b><br/><font size=7.5 color='#6E6F71'>{g['started']} of "
+                                       f"{len(g['rows'])} synchronized &middot; {g['early_bills']} bills</font>",
+                                       _ps("pr_mgr", fontSize=9, leading=11, textColor=INK))
+        style += [("SPAN", (0, first_row), (0, last)), ("VALIGN", (0, first_row), (0, last), "TOP"),
+                  ("BACKGROUND", (0, first_row), (0, last), PANEL), ("LINEBELOW", (0, last), (-1, last), 1.2, INK)]
+    style += [("ALIGN", (1, 1), (1, -1), "LEFT"), ("FONTNAME", (1, 1), (1, -1), "Helvetica-Bold")]
+    table = Table(data, colWidths=cw, repeatRows=1)
+    table.setStyle(TableStyle(style))
+    table.hAlign = "LEFT"
+    flow.append(table)
+    if T["not_started"]:
+        box = Table([[Paragraph("<b>REMINDER</b>", _PR_KPI_L)], [Paragraph(_esc(EARLY_REMINDER), _ps("pr_rem", fontSize=9.5,
+                     leading=13, textColor=CHERRY))]], colWidths=[sum(cw)])
+        box.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), LATE_BG), ("LINEBEFORE", (0, 0), (0, -1), 3, CHERRY),
+                                 ("LEFTPADDING", (0, 0), (-1, -1), 10), ("TOPPADDING", (0, 0), (-1, -1), 4),
+                                 ("BOTTOMPADDING", (0, -1), (-1, -1), 8), ("TOPPADDING", (0, 0), (0, 0), 8)]))
+        box.hAlign = "LEFT"
+        flow += [Spacer(1, 10), box]
+    flow += _pro_notes(rep["notes"] + [f"Bills = invoices + sales orders created before {cut}; a sales order already "
+                                       "invoiced is counted once."], sum(cw)) + _pro_footer(page_no, pages_total)
+    return [{"width": width, "flow": flow, "name": f"Bills before {cut}"}]
+
+
 BUILDERS = {
     ("sku", "classic"): ("SKU_Report", _classic_sku), ("sku", "professional"): ("SKU_Report", _pro_sku),
     ("pivot", "classic"): ("Pivot_Report", _classic_pivot), ("pivot", "professional"): ("Pivot_Report", _pro_pivot),

@@ -103,8 +103,8 @@ def build_report(kind, date, settings=None):
 
 def _page_group(kind, page_name):
     """'SKU Report - Asela' -> 'Asela'; the hourly report covers every group."""
-    if kind == "hourly":
-        return "*"
+    if kind == "hourly" or page_name.lower().startswith("bills before"):
+        return "*"                   # covers every manager group
     return page_name.split(" - ", 1)[1] if " - " in page_name else page_name
 
 

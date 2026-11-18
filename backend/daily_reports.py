@@ -172,8 +172,73 @@ def build_sku_report(date, settings=None):
     if neg:
         notes.append("Returns / negative bills present in: " + ", ".join(t for _, t in neg)
                      + " — values shown are net of the return.")
+    early = None
+    if str(s.get("early_bills_page", "1")) == "1":
+        conn = db.get_connection()
+        bill_inputs = {r[0] for r in conn.execute(
+            "SELECT dataset FROM sfa_datasets WHERE data_date=? AND dataset IN ('invoices','sales_orders')", (date,))}
+        has_bills = conn.execute("SELECT 1 FROM sfa_bills WHERE bill_date=? LIMIT 1", (date,)).fetchone() is not None
+        conn.close()
+        if bill_inputs or has_bills:
+            early = build_early_bills(date, s.get("early_bill_time") or "09:00")
+            if "invoices" not in bill_inputs or "sales_orders" not in bill_inputs:
+                miss = [sfa_store.DATASET_LABELS[d] for d in ("invoices", "sales_orders") if d not in bill_inputs]
+                early["notes"].append("Not loaded: " + ", ".join(miss) + " — bills from it aren't counted on this page.")
+        else:
+            notes.append("The 'Bills before " + (s.get("early_bill_time") or "09:00") + "' page was left out: "
+                         "Invoices and Sales Orders aren't loaded for this date.")
     return {"ok": True, "date": date, "small_n": small_n, "focus_label": s["focus_product"],
-            "groups": out_groups, "notes": notes, "inputs_loaded": sorted(loaded)}
+            "groups": out_groups, "notes": notes, "inputs_loaded": sorted(loaded), "early": early}
+
+
+# ---------------------------------------------------------------------------
+# Early bills (added to the SKU Report PDF): bills created before 9:00 AM
+# ---------------------------------------------------------------------------
+def build_early_bills(date, cutoff="09:00", bills=None):
+    """
+    Per manager group, every territory: how many bills it created before `cutoff` (from Invoices + Sales Orders,
+    a sales order already invoiced counted once) and its first bill time. Territories with none before the cutoff
+    are listed too — with their first bill of the day if it came later, or "no bills yet".
+    """
+    hh, mm_ = (int(x) for x in cutoff.split(":"))
+    limit = hh * 60 + mm_
+    if bills is None:
+        bills, notes = get_bills(date)
+    else:
+        notes = []
+    per = defaultdict(lambda: {"early": 0, "first": None, "all": 0})
+    for b in bills:
+        t = per[b["territory"] or ""]
+        t["all"] += 1
+        m = b["minutes"]
+        if m is None:
+            continue
+        if t["first"] is None or m < t["first"]:
+            t["first"] = m
+        if m < limit:
+            t["early"] += 1
+    groups, index = _group_index()
+    groups, unassigned, _blank = _with_unassigned(groups, {t for t in per if t}, index)
+    out = []
+    for g, terrs in groups.items():
+        rows = []
+        for t, model in terrs:
+            d = per.get(t, {"early": 0, "first": None, "all": 0})
+            rows.append({"territory": t, "model": model, "early": d["early"],
+                         "first": _fmt_time(d["first"]) if d["first"] is not None else "",
+                         "bills_today": d["all"], "started": d["early"] > 0})
+        rows.sort(key=lambda r: (not r["started"], -r["early"], r["first"] or "99:99", r["territory"]))
+        out.append({"group": g, "rows": rows,
+                    "started": sum(1 for r in rows if r["started"]),
+                    "not_started": sum(1 for r in rows if not r["started"]),
+                    "early_bills": sum(r["early"] for r in rows)})
+    if unassigned:
+        notes.append("Territories with bills but no manager group (shown under Unassigned): " + ", ".join(unassigned))
+    total_terr = sum(len(g["rows"]) for g in out)
+    return {"ok": True, "date": date, "cutoff": cutoff, "groups": out, "notes": notes,
+            "totals": {"territories": total_terr, "started": sum(g["started"] for g in out),
+                       "not_started": sum(g["not_started"] for g in out),
+                       "early_bills": sum(g["early_bills"] for g in out)}}
 
 
 # ---------------------------------------------------------------------------
