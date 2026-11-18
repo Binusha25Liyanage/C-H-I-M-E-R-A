@@ -1187,6 +1187,15 @@ class Api:
         import running_now
         return running_now.stop(pid)
 
+    def pause_process(self, pid):
+        """Pauses one running process at its next safe point."""
+        import running_now
+        return running_now.pause(pid)
+
+    def resume_process(self, pid):
+        import running_now
+        return running_now.resume(pid)
+
     # ------------------------------------------------------------
     # WhatsApp reminders
     # ------------------------------------------------------------

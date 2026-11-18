@@ -423,7 +423,7 @@ def backfill(days=None, headless=None):
 
     async def body(page):
         for i, day in enumerate(todo, 1):
-            if LIVE.cancelled():
+            if await LIVE.checkpoint():
                 break
             LIVE.log(f"[{i}/{len(todo)}] {day}: reading SFA's Rep Attendance Report…")
             for s in STEPS:

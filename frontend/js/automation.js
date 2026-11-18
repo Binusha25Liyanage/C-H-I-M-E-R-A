@@ -15,7 +15,7 @@ const chip = (status) => { const c = STATUS_CHIP[status] || ["chip-grey", status
 const esc = (s) => escapeHtml(s == null ? "" : s);
 
 // ---------------------------------------------------------------- pop-ups
-function openModal({ title, body, footer = "", size = "", onClose = null }) {
+function openModal({ title, body, footer = "", size = "", onClose = null, minimise = "" }) {
   const m = document.getElementById("modal");
   m.className = "modal " + size;
   document.getElementById("modal-title").textContent = title;
@@ -23,7 +23,45 @@ function openModal({ title, body, footer = "", size = "", onClose = null }) {
   document.getElementById("modal-footer").innerHTML = footer;
   document.getElementById("modal-backdrop").style.display = "flex";
   AU.onClose = onClose;
+  AU.minLabel = minimise || "";
+  const mb = document.getElementById("modal-min"); if (mb) mb.style.display = minimise ? "" : "none";
 }
+
+// ---- Minimise a preview popup to a bar at the bottom right, and bring it back exactly as it was ----
+// The popup's contents (and everything wired to its buttons) are moved aside, not rebuilt — so nothing is
+// regenerated. One preview at a time: minimising another replaces the bar.
+const MINI = { saved: null };
+function minimiseModal() {
+  if (!AU.minLabel) return;
+  const keep = (id) => { const f = document.createDocumentFragment(); const el = document.getElementById(id);
+                         while (el.firstChild) f.appendChild(el.firstChild); return f; };
+  MINI.saved = { title: document.getElementById("modal-title").textContent, cls: document.getElementById("modal").className,
+                 body: keep("modal-body"), footer: keep("modal-footer"), onClose: AU.onClose, label: AU.minLabel };
+  AU.onClose = null;                              // minimising isn't closing
+  document.getElementById("modal-backdrop").style.display = "none";
+  let dock = document.getElementById("mini-dock");
+  if (!dock) { dock = document.createElement("div"); dock.id = "mini-dock"; document.body.appendChild(dock); }
+  dock.innerHTML = `<button class="mini-open" title="Open it again">&#128196; ${esc(MINI.saved.label)}</button>
+                    <button class="mini-x" title="Close it">&times;</button>`;
+  dock.style.display = "flex";
+  dock.querySelector(".mini-open").onclick = restoreModal;
+  dock.querySelector(".mini-x").onclick = () => { const cb = MINI.saved && MINI.saved.onClose; MINI.saved = null;
+                                                  dock.style.display = "none"; if (cb) cb(); };
+}
+function restoreModal() {
+  const s = MINI.saved; if (!s) return;
+  if (document.getElementById("modal-backdrop").style.display === "flex") closeModal(true);
+  MINI.saved = null;
+  document.getElementById("mini-dock").style.display = "none";
+  const m = document.getElementById("modal"); m.className = s.cls;
+  document.getElementById("modal-title").textContent = s.title;
+  const b = document.getElementById("modal-body"), f = document.getElementById("modal-footer");
+  b.innerHTML = ""; f.innerHTML = ""; b.appendChild(s.body); f.appendChild(s.footer);
+  AU.onClose = s.onClose; AU.minLabel = s.label;
+  document.getElementById("modal-min").style.display = "";
+  document.getElementById("modal-backdrop").style.display = "flex";
+}
+window.minimiseModal = minimiseModal; window.restoreModal = restoreModal;
 function closeModal(force = false) {
   if (AU.busyModal && !force) return;
   document.getElementById("modal-backdrop").style.display = "none";
@@ -31,6 +69,7 @@ function closeModal(force = false) {
   if (cb) cb();
 }
 document.getElementById("modal-x").addEventListener("click", () => closeModal());
+document.getElementById("modal-min").addEventListener("click", () => minimiseModal());
 document.getElementById("modal-backdrop").addEventListener("mousedown", (e) => { if (e.target.id === "modal-backdrop") closeModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.getElementById("modal-backdrop").style.display === "flex") closeModal(); });
 function confirmModal(title, text, okLabel, onOk, danger = false) {
@@ -403,8 +442,8 @@ document.getElementById("au-live-open").addEventListener("click", openMonitor);
 
 function openMonitor() {
   AU.monitorOpen = true;
-  openModal({ title: "Live run", size: "xl", body: `<div id="mon-body"><span class="spinner"></span> Starting…</div>`,
-    footer: `<button class="btn-stop left" id="mon-cancel">&#9632; Stop now</button><button class="btn-outline" id="mon-min">Minimise</button>`,
+  openModal({ title: "Live run", size: "xl", body: `<div id="pause-note-reports"></div><div id="mon-body"><span class="spinner"></span> Starting…</div>`,
+    footer: `<button class="btn-stop left" id="mon-cancel">&#9632; Stop now</button>${pauseBtnHtml("reports", "")}<button class="btn-outline" id="mon-min">Minimise</button>`,
     onClose: () => { AU.monitorOpen = false; } });
   document.getElementById("mon-min").onclick = () => closeModal();
   document.getElementById("mon-cancel").onclick = () => openStopNow();
@@ -436,6 +475,7 @@ function renderMonitor(s) {
   const lg = document.getElementById("mon-log"); lg.scrollTop = lg.scrollHeight;
   const c = document.getElementById("mon-cancel"); if (c) c.style.display = s.active ? "" : "none";
   const m = document.getElementById("mon-min"); if (m) m.textContent = s.active ? "Minimise" : "Close";
+  syncPauseBtn("reports", s);
 }
 
 function startPolling() {

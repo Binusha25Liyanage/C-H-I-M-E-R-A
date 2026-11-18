@@ -1144,3 +1144,20 @@ html.is-scrolling { scrollbar-color: rgba(60, 60, 67, .45) transparent; }
 .lk-add b { color: #333; } .lk-add .lk-plus { font-size: 30px; line-height: 1; color: var(--color-primary); }
 .lk-snd .lk-ed { margin-left: auto; display: flex; gap: 2px; }
 .lk-snd.lk-add { min-height: 0; justify-content: flex-start; }
+
+/* ---------- Pause / Resume ---------- */
+.btn-outline.btn-resume { border-color: #1E7B3A; color: #1E7B3A; font-weight: 700; }
+.btn-outline.btn-resume:hover { background: #1E7B3A; color: #fff; }
+.pause-banner { margin: 0 0 12px; padding: 10px 14px; border-radius: 8px; background: var(--color-warn-bg, #FFF4D6);
+  color: var(--color-warn-text, #7A5200); font-size: 13.5px; line-height: 1.45; }
+
+/* ---------- Minimised preview bar ---------- */
+.modal-header .modal-min { margin-left: auto; margin-right: 4px; font-weight: 700; }
+#mini-dock { position: fixed; right: 22px; bottom: 22px; z-index: 9000; display: none; align-items: stretch;
+  background: #1C1C1E; color: #fff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: hidden; }
+#mini-dock button { background: none; border: 0; color: #fff; font: inherit; cursor: pointer; }
+#mini-dock .mini-open { padding: 11px 16px; font-size: 14px; font-weight: 600; max-width: 380px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+#mini-dock .mini-open:hover { background: #B5121B; }
+#mini-dock .mini-x { padding: 0 14px; border-left: 1px solid rgba(255,255,255,.18); font-size: 20px; }
+#mini-dock .mini-x:hover { background: rgba(255,255,255,.12); }

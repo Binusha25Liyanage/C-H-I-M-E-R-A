@@ -151,11 +151,13 @@ class LiveState:
         self._lock = threading.Lock()
         self._s = {"active": False, "run_id": None, "lanes": [], "log": [], "phase": "idle"}
         self._cancel = threading.Event()
+        self._pause = threading.Event()
         self.source = source            # reports | loadings | itinerary | outlets — for Windows notifications
 
     def reset(self, **kw):
         with self._lock:
             self._cancel.clear()
+            self._pause.clear()
             self._s = {"active": True, "run_id": None, "lanes": [], "log": [], "phase": "starting",
                        "started_at": datetime.now().isoformat(timespec="seconds"), "result": None, **kw}
 
@@ -204,10 +206,63 @@ class LiveState:
         return s
 
     def cancel(self):
+        self._pause.clear()
         self._cancel.set()
         self.log("Cancel requested — stopping after the current step.", level="warn")
 
     def cancelled(self):
+        return self._cancel.is_set()
+
+    # ---- Pause / Resume -----------------------------------------------------------------------------
+    # Pause takes effect at the next safe point (await LIVE.checkpoint()): between reports, distributors,
+    # territories, sheets, days or chats — never in the middle of a save in SFA or a message in WhatsApp.
+    PAUSE_LIMIT_S = 30 * 60
+
+    def pause(self):
+        if not self.snapshot_flag("active") or self._pause.is_set():
+            return False
+        self._pause.set()
+        with self._lock:
+            self._s["pause"] = "pausing"
+        self.log("Pause requested — pausing after the current step.", level="warn")
+        return True
+
+    def resume(self):
+        if not self._pause.is_set():
+            return False
+        self._pause.clear()
+        with self._lock:
+            self._s["pause"] = ""
+        self.log("Resumed.")
+        return True
+
+    def snapshot_flag(self, key):
+        with self._lock:
+            return self._s.get(key)
+
+    async def checkpoint(self):
+        """A safe point: waits here while paused. Returns True if the run was stopped (same as cancelled())."""
+        if not self._pause.is_set():
+            return self._cancel.is_set()
+        import asyncio as _aio
+        with self._lock:
+            first = self._s.get("pause") != "paused"
+            self._s["pause"] = "paused"
+            self._s.setdefault("paused_at", time.time())
+            since = self._s["paused_at"]
+        if first:
+            self.log("Paused. Press Resume to continue (the run stops by itself after 30 minutes paused).", level="warn")
+        while self._pause.is_set() and not self._cancel.is_set():
+            if time.time() - since > self.PAUSE_LIMIT_S:
+                self._pause.clear()
+                self.cancel()
+                self.log("Paused for 30 minutes — stopped the run. Whatever finished is kept.", level="warn")
+                break
+            await _aio.sleep(0.5)
+        with self._lock:
+            self._s.pop("paused_at", None)
+            if self._s.get("pause") == "paused" and not self._pause.is_set():
+                self._s["pause"] = ""
         return self._cancel.is_set()
 
 
@@ -734,7 +789,7 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
     LIVE.lane(idx, max_attempts=retries + 1)
     async with sem:
         for attempt in range(1, retries + 2):
-            if LIVE.cancelled():
+            if await LIVE.checkpoint():
                 LIVE.lane(idx, status="cancelled", message="Cancelled before starting.")
                 return
             LIVE.lane(idx, status="running", attempt=attempt, started=time.time(), message="")
@@ -773,7 +828,7 @@ async def _run_lane(context, cfg, profile, idx, report_date, opts, sem):
                 current = "filters"
                 LIVE.step(idx, "filters", "active")
                 for f in profile["filters"]:
-                    if LIVE.cancelled():
+                    if await LIVE.checkpoint():
                         raise Cancelled()
                     v = await fill_filter(page, f, report_date)
                     LIVE.log(f"{f['label']} = {v if not isinstance(v, list) else ', '.join(v)}",

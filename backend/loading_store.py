@@ -119,8 +119,49 @@ def _drow(r):
     except ValueError:
         d["add_fields"] = {}
     d["blocked"] = d.get("sfa_status") == "inactive" or d.get("in_sfa") == 0
+    d["view_territory"] = territory_of(d)
     d["problems"] = distributor_problems(d)
     return d
+
+
+def territory_of(d):
+    """The SFA territory to use on View Loadings: a Territory filter set by hand, else the territory that worked on
+    Add Loading, else the territory from SFA's users list."""
+    for f in d.get("filters") or []:
+        if f.get("label", "").strip().lower() == "territory" and f.get("value"):
+            return f["value"] if isinstance(f["value"], str) else (f["value"] or [""])[0]
+    return ((d.get("add_fields") or {}).get("territory") or d.get("territory") or "").strip()
+
+
+def view_filters(d, day=None):
+    """Filters Chimera sets on View Loadings, in SFA's order: Territory (required), then Date From and Date To set to
+    the loading's day (SFA refuses to search without both dates: "Please select from and to dates!"), then any other
+    filter set by hand except Distributor (not needed — the territory narrows it down)."""
+    from datetime import date as _date
+    day = day or _date.today().isoformat()
+    terr = territory_of(d)
+    if not terr:
+        return []
+    out = [{"label": "Territory", "type": "dropdown", "value": terr, "options": []}]
+    for f in d.get("filters") or []:
+        lab = f.get("label", "").strip().lower()
+        if lab in ("territory", "distributor", "date from", "date to") or not (f.get("value") or f.get("date_mode")):
+            continue
+        out.append(f)
+    out += [{"label": "Date From", "type": "date", "date_mode": "fixed", "value": day},
+            {"label": "Date To", "type": "date", "date_mode": "fixed", "value": day}]
+    return out
+
+
+def loading_day(text):
+    """'Nov 17, 2026' / '2026-11-17' / '11/17/2026' -> '2026-11-17' (None if it can't be read)."""
+    from datetime import datetime as _dt
+    for fmt in ("%b %d, %Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y"):
+        try:
+            return _dt.strptime((text or "").strip(), fmt).date().isoformat()
+        except ValueError:
+            continue
+    return None
 
 
 def distributor_problems(d):
@@ -129,10 +170,8 @@ def distributor_problems(d):
         p.append("Inactive in SFA — loadings can't be prepared or confirmed.")
     if d.get("in_sfa") == 0:
         p.append("Not in SFA's distributor list any more.")
-    if not d["filters"]:
-        p.append("No filters yet — open Edit and use Detect filters.")
-    elif not any(f["label"].lower() == "distributor" and f.get("value") for f in d["filters"]):
-        p.append("The 'Distributor' filter isn't set — Chimera wouldn't know whose loading to open.")
+    if not territory_of(d):
+        p.append("No territory known — open Edit and add a Territory filter (SFA's View Loadings needs it).")
     return p
 
 

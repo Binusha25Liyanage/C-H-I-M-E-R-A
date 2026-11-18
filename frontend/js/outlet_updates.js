@@ -301,8 +301,8 @@ async function startOuRead(territories, month) {
 
 function openOuMonitor() {
   OU.monOpen = true;
-  openModal({ title: "Reading itineraries from SFA", size: "xl", body: `<div id="oum-body"><span class="spinner"></span> Starting…</div>`,
-    footer: `<button class="btn-stop left" id="oum-stop">&#9632; Stop now</button><button class="btn-outline" id="oum-min">Minimise</button>`,
+  openModal({ title: "Reading itineraries from SFA", size: "xl", body: `<div id="pause-note-itinerary"></div><div id="oum-body"><span class="spinner"></span> Starting…</div>`,
+    footer: `<button class="btn-stop left" id="oum-stop">&#9632; Stop now</button>${pauseBtnHtml("itinerary", "")}<button class="btn-outline" id="oum-min">Minimise</button>`,
     onClose: () => { OU.monOpen = false; } });
   document.getElementById("oum-min").onclick = () => closeModal();
   document.getElementById("oum-stop").onclick = () => openStopNow();
@@ -333,6 +333,7 @@ function renderOuMonitor(s) {
     <div class="log-box">${(s.log || []).slice(-150).map(x => `<div class="lv-${x.level}">${esc(x.t)} ${x.lane ? `<span class="who">[${esc(x.lane)}]</span> ` : ""}${esc(x.msg)}</div>`).join("")}</div>`;
   const stop = document.getElementById("oum-stop"); if (stop) stop.style.display = s.active ? "" : "none";
   const min = document.getElementById("oum-min"); if (min) min.textContent = s.active ? "Minimise" : "Close";
+  syncPauseBtn("itinerary", s);
   const cp = document.getElementById("oum-copy"); if (cp) cp.onclick = async (e) => copyText(await API().get_itinerary_log_text(null), e.target);
 }
 

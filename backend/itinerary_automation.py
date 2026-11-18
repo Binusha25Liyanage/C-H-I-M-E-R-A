@@ -194,7 +194,7 @@ async def _search(page, cfg, url, territory, year, month, idx, timeout_ms):
                {"label": "Month", "type": "dropdown", "value": OS.MONTHS[month - 1]},
                {"label": "Territory", "type": "dropdown", "value": territory}]
     for f in filters:
-        if LIVE.cancelled():
+        if await LIVE.checkpoint():
             raise Cancelled()
         if f["label"] == "Year":
             ctrl, _k = await SA._find_field(page, "Year")
@@ -296,7 +296,7 @@ async def _lane(browser, state, cfg, url, job, idx, opts, sem, seen):
     SFA keeps search filters in the browser, so tabs sharing one context could swap each other's results."""
     async with sem:
         territory, months = job["territory"], job["months"]
-        if LIVE.cancelled():
+        if await LIVE.checkpoint():
             LIVE.lane(idx, status="cancelled", message="Stopped before it started.")
             return
         LIVE.lane(idx, status="running", started=time.time(), steps={s: ("done" if s == "login" else "pending") for s in STEPS})

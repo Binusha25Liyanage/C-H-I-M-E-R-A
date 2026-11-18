@@ -202,7 +202,7 @@ async def _run_async(cfg, url, opts):
             LA.LIVE.set(phase="syncing")
             files = {}
             for i, (status, label) in enumerate(PASSES):      # one after the other: same page, same filters
-                if LA.LIVE.cancelled():
+                if await LA.LIVE.checkpoint():
                     break
                 LA.LIVE.lane(i, status="running", started=time.time())
                 try:

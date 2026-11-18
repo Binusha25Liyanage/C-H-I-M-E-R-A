@@ -53,8 +53,9 @@ function rnRender() {
         <div class="rn-ico">${rnIcon(p.id)}</div>
         <div class="rn-what"><b>${esc(p.title)}</b>
           <div class="hint">${esc(p.label)}${p.trigger ? " · " + esc(String(p.trigger).replace("scheduled", "scheduled")) : ""}${p.slot ? " " + esc(p.slot) : ""}${p.run_id ? ` · run #${p.run_id}` : ""}${p.dry_run ? ` · <b>DRY RUN</b>` : ""}</div></div>
-        <div class="rn-meta"><span class="rn-pulse"></span> ${esc({ logging_in: "Logging in", working: "Working", starting: "Starting", building: "Building reports", importing: "Importing" }[p.phase] || "Running")}
+        <div class="rn-meta">${p.pause === "paused" ? `<span class="chip chip-warn">Paused</span>` : p.pause === "pausing" ? `<span class="chip chip-warn">Pausing…</span>` : ""} <span class="rn-pulse"></span> ${esc({ logging_in: "Logging in", working: "Working", starting: "Starting", building: "Building reports", importing: "Importing" }[p.phase] || "Running")}
           <div class="hint">${esc(rnDur(p.elapsed))}${p.total ? ` · ${p.done}/${p.total}` : ""}</div></div>
+        ${pauseBtnHtml(p.id, p.pause, true)}
         <button class="btn-stop btn-small" data-rn-stop="${p.id}">&#9632; Stop</button>
       </div>
       <div class="progress ${pct == null ? "indeterminate" : ""}"><div style="width:${pct == null ? 35 : Math.max(3, pct)}%"></div></div>
@@ -112,3 +113,38 @@ window.onRunningView = onRunningView;
   RN.badgeTimer = setInterval(() => { if (!RN.open) rnLoad(); }, 4000);
   window.addEventListener("pywebviewready", () => setTimeout(rnLoad, 1500));
 })();
+
+
+// ---------------------------------------------------------------- Pause / Resume (shared by every progress popup)
+// The process pauses at its next safe point — between reports, distributors, territories, sheets or chats —
+// never in the middle of a save in SFA or a WhatsApp message. Resume carries on from there.
+function pauseBtnHtml(pid, state, small) {
+  const st = state || "";
+  const label = st === "paused" ? "&#9654; Resume" : st === "pausing" ? "Pausing…" : "&#10074;&#10074; Pause";
+  return `<button class="btn-outline ${small ? "btn-small" : ""} ${st === "paused" ? "btn-resume" : ""}" data-pause-pid="${pid}"
+            data-state="${st}" ${st === "pausing" ? "disabled" : ""}
+            title="${st === "paused" ? "Carry on from where it paused" : "Pause after the current step (never in the middle of a save)"}">${label}</button>`;
+}
+function syncPauseBtn(pid, s) {
+  const b = document.querySelector(`#modal-footer [data-pause-pid="${pid}"], .modal [data-pause-pid="${pid}"]`);
+  if (!b) return;
+  b.style.display = s && s.active ? "" : "none";
+  const st = (s && s.pause) || "";
+  if (b.dataset.busy && st === b.dataset.want) delete b.dataset.busy;
+  if (b.dataset.busy) return;                       // waiting for the server to catch up with the click
+  b.outerHTML = pauseBtnHtml(pid, st);
+  const note = document.getElementById("pause-note-" + pid);
+  if (note) note.innerHTML = st === "paused" ? `<div class="pause-banner">&#10074;&#10074; <b>Paused.</b> Nothing new starts until you press
+      <b>Resume</b>. The browser stays open; if it stays paused for 30 minutes the run stops by itself (what finished is kept).</div>`
+    : st === "pausing" ? `<div class="pause-banner">Pausing after the current step…</div>` : "";
+}
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-pause-pid]"); if (!b || b.disabled) return;
+  const pid = b.dataset.pausePid, resume = b.dataset.state === "paused";
+  b.disabled = true; b.innerHTML = resume ? "Resuming…" : "Pausing…";
+  b.dataset.busy = "1"; b.dataset.want = resume ? "" : "pausing";
+  let r; try { r = await (resume ? API().resume_process(pid) : API().pause_process(pid)); } catch (err) { r = { ok: false, message: String(err) }; }
+  if (!r.ok) { delete b.dataset.busy; b.disabled = false; b.outerHTML = pauseBtnHtml(pid, b.dataset.state); if (window.showToast) showToast(r.message); }
+  else setTimeout(() => { delete b.dataset.busy; }, 4000);
+  if (typeof rnLoad === "function") rnLoad();
+});

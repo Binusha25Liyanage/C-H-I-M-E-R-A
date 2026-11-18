@@ -412,6 +412,7 @@ def send_items(items, wait=True, test=False, claimed=False):
             text = render(it["text"], it["report_time"], it["at"] if not test else datetime.now())
             results = []
             for chat in it["chats"]:
+                await W.WA.checkpoint()
                 try:
                     for attempt in (1, 2):
                         try:

@@ -207,8 +207,8 @@ async function rsRoutesView() {
 // ---------------------------------------------------------------- live monitor
 function openRsMonitor() {
   RS.monOpen = true;
-  openModal({ title: "Outlet updates in SFA", size: "xl", body: `<div id="rsm-body"><span class="spinner"></span> Starting…</div>`,
-    footer: `<button class="btn-stop left" id="rsm-stop">&#9632; Stop now</button><button class="btn-outline" id="rsm-min">Minimise</button>`,
+  openModal({ title: "Outlet updates in SFA", size: "xl", body: `<div id="pause-note-outlets"></div><div id="rsm-body"><span class="spinner"></span> Starting…</div>`,
+    footer: `<button class="btn-stop left" id="rsm-stop">&#9632; Stop now</button>${pauseBtnHtml("outlets", "")}<button class="btn-outline" id="rsm-min">Minimise</button>`,
     onClose: () => { RS.monOpen = false; } });
   document.getElementById("rsm-min").onclick = () => closeModal();
   document.getElementById("rsm-stop").onclick = () => openStopNow();
@@ -237,6 +237,7 @@ function renderRsMonitor(s) {
     <div class="log-box">${(s.log || []).slice(-200).map(x => `<div class="lv-${x.level}">${esc(x.t)} ${x.lane ? `<span class="who">[${esc(x.lane)}]</span> ` : ""}${esc(x.msg)}</div>`).join("")}</div>`;
   const stop = document.getElementById("rsm-stop"); if (stop) stop.style.display = s.active ? "" : "none";
   const min = document.getElementById("rsm-min"); if (min) min.textContent = s.active ? "Minimise" : "Close";
+  syncPauseBtn("outlets", s);
   const cp = document.getElementById("rsm-copy"); if (cp) cp.onclick = async (e) => copyText(await API().get_rep_sheets_log_text(null), e.target);
 }
 

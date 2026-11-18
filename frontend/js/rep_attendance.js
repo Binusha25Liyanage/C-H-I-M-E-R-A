@@ -155,7 +155,7 @@ async function atUseLook(look, build) {
 }
 
 function atZoom(src) {
-  openModal({ title: "Rep attendance", size: "xl", body: `<div style="text-align:center;"><img src="${src}" style="max-width:100%;border:1px solid #eee;"></div>`,
+  openModal({ title: "Rep attendance", size: "xl", minimise: "Rep attendance image", body: `<div style="text-align:center;"><img src="${src}" style="max-width:100%;border:1px solid #eee;"></div>`,
     footer: `<button class="btn-primary" onclick="closeModal()">Close</button>` });
 }
 
@@ -193,7 +193,7 @@ async function atSend(runId) {
   const sec = (g, title) => { const rs = rv.rows.filter(r => r.group === g); return rs.length ? `<tr class="att-rv-sep"><td colspan="5">${title} (${rs.length})</td></tr>`
       + rs.map(r => `<tr class="${r.keep ? "" : "off"}"><td><input type="checkbox" class="att-rv-keep" value="${esc(r.territory)}" ${r.keep ? "checked" : ""}></td>
         <td><b>${esc(r.territory)}</b></td><td>${esc(atShortRep(r.rep))}</td><td class="mono">${esc(r.in_time)}</td><td class="mono">${esc(r.out_time || "–")}</td></tr>`).join("") : ""; };
-  openModal({ title: `Send rep attendance — ${atLong(run.day)}`, size: "lg", body: `
+  openModal({ title: `Send rep attendance — ${atLong(run.day)}`, size: "lg", minimise: `Send rep attendance — ${atLong(run.day)}`, body: `
       <p class="hint" style="margin-top:0;">Look: <b>${esc(AT_LOOK[run.style] || run.style)}</b>. Untick anyone you don't want on the images — they're built again without them before sending
         (Chimera's data isn't changed).</p>
       <div class="section-title">Goes to</div>

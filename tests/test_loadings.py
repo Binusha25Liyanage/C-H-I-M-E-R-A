@@ -27,7 +27,8 @@ import loading_automation as LA  # noqa: E402
 
 
 def dist(name, freq="daily", value=None):
-    filters = [{"label": "Distributor", "type": "dropdown", "value": value if value is not None else name},
+    filters = [{"label": "Territory", "type": "dropdown", "value": f"{name} TERRITORY"},
+               {"label": "Distributor", "type": "dropdown", "value": value if value is not None else name},
                {"label": "Date From", "type": "date", "date_mode": "today", "value": ""}]
     ok, msg, d = LS.save_distributor({"name": name, "frequency": freq, "filters": filters})
     assert ok, msg
@@ -61,7 +62,23 @@ class LoadingsTest(unittest.TestCase):
         self.assertFalse(ok)                       # duplicate name (any case)
         ok, msg, e = LS.save_distributor({"name": "No filters", "frequency": "daily", "filters": []})
         self.assertTrue(ok)
-        self.assertTrue(e["problems"])             # no Distributor filter -> flagged
+        self.assertTrue(e["problems"])             # no territory known -> flagged
+
+    def test_view_loadings_filters_put_territory_first_and_drop_distributor(self):
+        d = dist("Dist T")
+        # Territory, then both dates set to the loading's day (SFA: "Please select from and to dates!"); no Distributor
+        self.assertEqual([(f["label"], f["value"]) for f in LS.view_filters(d, "2026-11-18")],
+                         [("Territory", "Dist T TERRITORY"), ("Date From", "2026-11-18"), ("Date To", "2026-11-18")])
+        import datetime as _d
+        self.assertEqual(LS.view_filters(d)[1]["value"], _d.date.today().isoformat())
+        self.assertEqual(LS.loading_day("Nov 17, 2026"), "2026-11-17")
+        self.assertEqual(LS.loading_day("11/17/2026"), "2026-11-17")
+        self.assertIsNone(LS.loading_day(""))
+        # no Territory filter: the territory that worked on Add Loading, then SFA's users list
+        e = {"filters": [{"label": "Distributor", "value": "X"}], "add_fields": {"territory": "Lakmee TERRITORY"}, "territory": "Old"}
+        self.assertEqual(LS.territory_of(e), "Lakmee TERRITORY")
+        self.assertEqual(LS.territory_of({"filters": [], "add_fields": {}, "territory": "From Users"}), "From Users")
+        self.assertEqual(LS.view_filters({"filters": [], "add_fields": {}, "territory": ""}), [])
         ok, msg, _ = LS.save_distributor({"name": "Bad", "frequency": "weekly", "filters": []})
         self.assertFalse(ok)
 
@@ -83,7 +100,7 @@ class LoadingsTest(unittest.TestCase):
         ok2, _, c2 = LS.duplicate_distributor(a["id"])
         self.assertTrue(ok and ok2)
         self.assertEqual((c1["name"], c2["name"]), ("A (copy)", "A (copy 2)"))
-        self.assertEqual(c1["filters"][0]["value"], "A")
+        self.assertEqual(c1["filters"][1]["value"], "A")
 
     def test_one_pending_per_distributor(self):
         a = dist("A")
@@ -296,6 +313,35 @@ class DistributorSyncTest(unittest.TestCase):
             self.assertEqual(r["rows"][0]["status"], "Pending")
             self.assertFalse(r["rows"][1]["pending"])
         self.assertEqual((c["table"], c["rows"], c["pending"]), (True, [], -1))
+
+    def test_sfa_error_after_search_is_reported(self):
+        """SFA's 'Error! Please select from and to dates!' pop-up is read, not waited on for a minute."""
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError:
+            self.skipTest("Playwright isn't installed")
+        import asyncio
+        html = """<div class="swal2-container" style="position:fixed;inset:0"><div class="swal2-popup" role="dialog">
+          <h2 class="swal2-title">Error!</h2><div class="swal2-html-container">Please select from and to dates!</div>
+          <button class="swal2-confirm">OK</button></div></div>"""
+
+        async def go():
+            async with async_playwright() as p:
+                try:
+                    b = await p.chromium.launch()
+                except Exception as e:
+                    self.skipTest(f"No browser for Playwright here: {e}")
+                page = await b.new_page()
+                await page.set_content(html)
+                said = await page.evaluate(LA._SFA_ERROR_JS)
+                await page.set_content("<button>SEARCH</button><table></table>")
+                none = await page.evaluate(LA._SFA_ERROR_JS)
+                await b.close()
+                return said, none
+
+        said, none = asyncio.run(go())
+        self.assertEqual(said, "Error! Please select from and to dates!")
+        self.assertEqual(none, "")
 
     def test_confirm_page_is_read_and_confirmed_with_yes(self):
         """Made-up copy of SFA's CONFIRM LOADING page: read it, press the green Confirm, answer 'Yes, confirm it!'."""

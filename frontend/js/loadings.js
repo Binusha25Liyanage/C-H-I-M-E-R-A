@@ -63,7 +63,9 @@ function ldTags(d) {
 }
 
 function ldFilterSummary(d) {
-  const shown = d.filters.filter(f => f.type !== "date").map(f => `${f.label}: ${Array.isArray(f.value) ? f.value.join(", ") : f.value || "—"}`);
+  // what View Loadings uses: Territory first (SFA needs it), other filters set by hand; Distributor isn't needed
+  const terr = d.view_territory ? [`Territory: ${d.view_territory}`] : [];
+  const shown = terr.concat(d.filters.filter(f => f.type !== "date" && !/^(territory|distributor)$/i.test(f.label)).map(f => `${f.label}: ${Array.isArray(f.value) ? f.value.join(", ") : f.value || "—"}`));
   const dates = d.filters.filter(f => f.type === "date").map(f => `${f.label}: ${f.date_mode === "fixed" ? f.value : (f.date_mode || "today").replace("_", " ")}`);
   return shown.concat(dates).join(" · ") || "No filters yet";
 }
@@ -437,8 +439,8 @@ async function startLdPrepare(ids) {
 
 function openLdMonitor(title) {
   LD.monOpen = true;
-  openModal({ title, size: "xl", body: `<div id="ldm-body"><span class="spinner"></span> Starting…</div>`,
-    footer: `<button class="btn-stop left" id="ldm-stop">&#9632; Stop now</button><button class="btn-outline" id="ldm-min">Minimise</button>`,
+  openModal({ title, size: "xl", body: `<div id="pause-note-loadings"></div><div id="ldm-body"><span class="spinner"></span> Starting…</div>`,
+    footer: `<button class="btn-stop left" id="ldm-stop">&#9632; Stop now</button>${pauseBtnHtml("loadings", "")}<button class="btn-outline" id="ldm-min">Minimise</button>`,
     onClose: () => { LD.monOpen = false; } });
   document.getElementById("ldm-min").onclick = () => closeModal();
   document.getElementById("ldm-stop").onclick = () => openStopNow();
@@ -475,6 +477,7 @@ function renderLdMonitor(s) {
     <div class="log-box">${(s.log || []).slice(-150).map(x => `<div class="lv-${x.level}">${esc(x.t)} ${x.lane ? `<span class="who">[${esc(x.lane)}]</span> ` : ""}${esc(x.msg)}</div>`).join("")}</div>`;
   const stop = document.getElementById("ldm-stop"); if (stop) stop.style.display = s.active ? "" : "none";
   const min = document.getElementById("ldm-min"); if (min) min.textContent = s.active ? "Minimise" : "Close";
+  syncPauseBtn("loadings", s);
   const cp = document.getElementById("ldm-copy"); if (cp) cp.onclick = async (e) => copyText(await API().get_loading_log_text(null), e.target);
 }
 

@@ -273,6 +273,7 @@ async function openPreview(runId) {
   const keys = Object.keys(groups);
   const pending = r.run.status === "pending_review";
   openModal({ title: `${pending ? "Review" : "View"} reports — ${r.run.report_date}`, size: "xl",
+    minimise: `${pending ? "Review" : "View"} reports — ${r.run.report_date}`,
     body: `
       ${pending ? `<div class="ok-box" style="background:#fff6e5;color:#9a6a00;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
           <span>These reports aren't saved yet. Check every page, then save or discard.</span>

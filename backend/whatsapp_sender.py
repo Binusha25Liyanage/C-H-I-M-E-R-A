@@ -285,17 +285,57 @@ def plan_delivery(run, rules=None):
 # Live state for the UI
 # ===========================================================================
 class _State:
+    PAUSE_LIMIT_S = 30 * 60
+
     def __init__(self):
         self.lock = threading.Lock()
         self.s = {"active": False, "action": None, "log": [], "result": None}
+        self._pause = threading.Event()
 
     def start(self, action):
         with self.lock:
             if self.s["active"]:
                 return False
+            self._pause.clear()
             self.s = {"active": True, "action": action, "log": [], "result": None,
                       "started_at": datetime.now().isoformat(timespec="seconds")}
             return True
+
+    # Pause / Resume: takes effect before the next chat — a message already being sent always finishes.
+    def pause(self):
+        with self.lock:
+            if not self.s.get("active") or self._pause.is_set():
+                return False
+            self._pause.set()
+            self.s["pause"] = "pausing"
+        self.log("Pause requested — pausing before the next chat.", "warn")
+        return True
+
+    def resume(self):
+        if not self._pause.is_set():
+            return False
+        self._pause.clear()
+        with self.lock:
+            self.s["pause"] = ""
+        self.log("Resumed.")
+        return True
+
+    async def checkpoint(self):
+        if not self._pause.is_set():
+            return False
+        with self.lock:
+            self.s["pause"] = "paused"
+        self.log("Paused. Press Resume to continue (WhatsApp stays open; stops by itself after 30 minutes).", "warn")
+        start = time.time()
+        while self._pause.is_set():
+            if time.time() - start > self.PAUSE_LIMIT_S:
+                self._pause.clear()
+                self.log("Paused for 30 minutes — continuing so WhatsApp isn't left open.", "warn")
+                break
+            await asyncio.sleep(0.5)
+        with self.lock:
+            self.s["pause"] = ""
+        return False
 
     def log(self, msg, level="info"):
         with self.lock:
@@ -1192,6 +1232,7 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
             WA.log(f"Sending the {used} reports (built: {', '.join(styles_built) or 'none'}"
                    + ("; choose which in WhatsApp › Sending options" if len(styles_built) > 1 else "") + ").")
             for item in plan:
+                await WA.checkpoint()
                 pdfs = item.get("pdfs") or []
                 if not item["files"] and not pdfs:
                     _log_delivery(report_run_id, item["chat_name"], 0, "skipped", "No matching report pages.")

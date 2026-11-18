@@ -550,7 +550,7 @@ def run(sheet_ids=None, trigger="manual", headless=None):
     async def body(page):
         LIVE.set(phase="working")
         for idx, s in enumerate(todo):
-            if LIVE.cancelled():
+            if await LIVE.checkpoint():
                 break
             LIVE.step(idx, "login", "done")
             LIVE.lane(idx, status="running", started=time.time())

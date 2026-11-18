@@ -224,8 +224,21 @@ async def _shot(page, run_id, name, full=False):
         return None
 
 
-async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_steps=True):
-    """View Loadings -> filters -> SEARCH. Returns the results-table reading."""
+# SFA's error pop-up after SEARCH, e.g. "Error! Please select from and to dates!"
+_SFA_ERROR_JS = r"""
+() => {
+  const vis = el => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+                      return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  const box = [...document.querySelectorAll('.swal2-popup, .swal-modal, .sweet-alert, [role=dialog], [role=alertdialog]')].filter(vis).pop();
+  if (!box) return '';
+  const t = (box.innerText || '').replace(/\s+/g, ' ').trim();
+  return /error|please|select|invalid|required/i.test(t) ? t.replace(/\s*OK\s*$/i, '') : '';
+}
+"""
+
+
+async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_steps=True, day=None):
+    """View Loadings -> Territory, Date From/To (= day, default today) -> SEARCH. Returns the results-table reading."""
     if lane_steps:
         LIVE.step(idx, "open", "active")
     await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
@@ -234,7 +247,10 @@ async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_st
         LIVE.log("Session had expired in this tab — logged in again.", lane=distributor["name"])
         await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
         await SA._settle(page)
-    first = next((f["label"] for f in distributor["filters"]), None)
+    vfilters = LS.view_filters(distributor, day)
+    if not vfilters:
+        raise StepError("filters", "No territory known for this distributor — open Edit and add a Territory filter.")
+    first = vfilters[0]["label"]
     if first:
         deadline = time.time() + timeout_ms / 1000
         while (await SA._find_field(page, first))[0] is None:
@@ -248,8 +264,8 @@ async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_st
         LIVE.step(idx, "open", "done")
         LIVE.step(idx, "filters", "active")
     today = date.today().isoformat()
-    for f in distributor["filters"]:
-        if LIVE.cancelled():
+    for f in vfilters:
+        if await LIVE.checkpoint():
             raise Cancelled()
         try:
             v = await SA.fill_filter(page, f, today)
@@ -280,6 +296,14 @@ async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_st
             continue   # page still navigating
         if res["table"] or res.get("empty"):
             break
+        said = await page.evaluate(_SFA_ERROR_JS)
+        if said:
+            try:
+                await page.evaluate("""() => { const b = document.querySelector('.swal2-confirm, .swal-button, .confirm');
+                                               if (b) b.click(); }""")
+            except Exception:
+                pass
+            raise StepError("search", f"SFA said: {said}")
         if LIVE.cancelled():
             raise Cancelled()
         if presses < 3 and time.time() - pressed_at > 10:
@@ -306,6 +330,26 @@ async def _open_and_search(page, cfg, url, distributor, idx, timeout_ms, lane_st
     if lane_steps:
         LIVE.step(idx, "search", "done")
     return res or {"table": False, "rows": [], "pending": -1}
+
+
+async def _mark_pending(page, res, k):
+    """Several pending rows: re-mark the ✓ of row k (the one belonging to this distributor's rep)."""
+    token = uuid.uuid4().hex[:8]
+    ok = await page.evaluate("""([k, token]) => {
+        document.querySelectorAll('[data-chimera-pending]').forEach(e => e.removeAttribute('data-chimera-pending'));
+        for (const t of document.querySelectorAll('table')) {
+          const heads = [...t.querySelectorAll('thead th, thead td')].map(h => (h.textContent || '').trim().toLowerCase());
+          const iC = heads.findIndex(h => /^confirm$/.test(h)); if (iC < 0) continue;
+          let rowsT = t; if (!t.querySelector('tbody tr td')) {
+            const w = t.closest('.dataTables_wrapper, .dataTables_scroll, .table-responsive') || t.parentElement;
+            rowsT = [...(w ? w.querySelectorAll('table') : [])].find(x => x !== t && x.querySelector('tbody tr td')) || t; }
+          const r = [...rowsT.querySelectorAll('tbody tr')].filter(r => r.children.length > iC)[k]; if (!r) return false;
+          const c = r.children[iC].querySelector('a, button, [role=button], i, svg, img, span[class*=check], [onclick]'); if (!c) return false;
+          (c.closest('a, button, [role=button]') || c).setAttribute('data-chimera-pending', token); return true; }
+        return false; }""", [k, token])
+    if ok:
+        res = dict(res, pending=k, pending_count=1)
+    return res
 
 
 async def _read_confirm_page(page, timeout_ms):
@@ -340,7 +384,7 @@ def _lane(d, steps):
 
 async def _prepare_lane(context, cfg, url, d, idx, opts, sem):
     async with sem:
-        if LIVE.cancelled():
+        if await LIVE.checkpoint():
             LIVE.lane(idx, status="cancelled", message="Stopped before it started.")
             return
         LIVE.lane(idx, status="running", started=time.time())
@@ -363,6 +407,13 @@ async def _prepare_lane(context, cfg, url, d, idx, opts, sem):
                 LIVE.lane(idx, status="nothing", message=msg, item_id=iid)
                 LIVE.log(msg, lane=d["name"])
                 return
+            if res.get("pending_count", 1) > 1:
+                rep = ((d.get("add_fields") or {}).get("sales_rep") or "").strip().lower()
+                mine = [k for k, r in enumerate(res["rows"]) if r["pending"] and rep and r["rep"].strip().lower() == rep]
+                if len(mine) == 1:
+                    LIVE.log(f"{res['pending_count']} pending loadings in this territory — using {res['rows'][mine[0]]['number']} "
+                             f"(sales rep {res['rows'][mine[0]]['rep']}).", lane=d["name"])
+                    res = await _mark_pending(page, res, mine[0])
             if res.get("pending_count", 1) > 1:
                 nums = ", ".join(r["number"] or "?" for r in res["rows"] if r["pending"])
                 raise StepError("find", f"{res['pending_count']} pending loadings match these filters ({nums}) — Chimera "
@@ -604,7 +655,7 @@ async def _press_confirm(page, run_id, idx, name):
 
 async def _confirm_lane(context, cfg, url, item, d, idx, opts, sem):
     async with sem:
-        if LIVE.cancelled():
+        if await LIVE.checkpoint():
             LS.update_item(item["id"], state="pending_approval", message="Not confirmed (stopped before it started).")
             LIVE.lane(idx, status="cancelled", message="Stopped before it started — still waiting for approval.")
             return
@@ -637,14 +688,15 @@ async def _confirm_lane(context, cfg, url, item, d, idx, opts, sem):
                 LIVE.log(msg, lane=d["name"], level="warn")
                 return
             LIVE.step(idx, "check", "done")
-            if LIVE.cancelled():
+            if await LIVE.checkpoint():
                 raise Cancelled()
             LIVE.step(idx, "confirm", "active")
             pressed = True
             await _press_confirm(page, opts["run_id"], idx, d["name"])
             LIVE.step(idx, "confirm", "done")
             LIVE.step(idx, "verify", "active")
-            res = await _open_and_search(page, cfg, url, d, idx, opts["timeout_ms"], lane_steps=False)
+            res = await _open_and_search(page, cfg, url, d, idx, opts["timeout_ms"], lane_steps=False,
+                                         day=LS.loading_day(item.get("loading_date")) or (item.get("prepared_at") or "")[:10] or None)
             row = next((r for r in res["rows"] if r["number"] and r["number"] == item["loading_number"]), None)
             shot = await _shot(page, opts["run_id"], f"{idx + 1:02d} {d['name']} - after confirm")
             if row and not row["pending"]:

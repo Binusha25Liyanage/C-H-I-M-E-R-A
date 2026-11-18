@@ -65,6 +65,7 @@ def _snapshot(pid, label, modname):
     title = KIND_WORDS.get(pid, {}).get(kind) or (label if pid != "reports" else
                                                  f"SFA reports{(' for ' + s['report_date']) if s.get('report_date') else ''}")
     return {"id": pid, "label": label, "title": title, "kind": kind, "active": bool(s.get("active")),
+            "pause": (s.get("pause") or "") if s.get("active") else "",
             "phase": s.get("phase") or "", "trigger": s.get("trigger") or "", "slot": s.get("slot") or "",
             "started_at": s.get("started_at"), "elapsed": _secs(s.get("started_at")) if s.get("active") else None,
             "run_id": s.get("run_id"), "dry_run": bool(s.get("dry_run")),
@@ -145,6 +146,32 @@ def overview():
     return {"now": datetime.now().isoformat(timespec="seconds"), "paused": s.get("paused") == "1",
             "running": procs, "active_count": sum(1 for p in procs if p["active"]),
             "coming_up": coming_up(), "just_ended": just_ended()}
+
+
+def _state_of(pid):
+    for p, label, mod in PROCESSES:
+        if p == pid:
+            m = _mod(mod)
+            return label, (m.WA if pid == "whatsapp" else m.LIVE)
+    return None, None
+
+
+def pause(pid):
+    """Pauses a process at its next safe point (between reports, distributors, chats…)."""
+    label, st = _state_of(pid)
+    if st is None:
+        return {"ok": False, "message": "Unknown process."}
+    if not st.pause():
+        return {"ok": False, "message": f"{label} isn't running (or is already pausing)."}
+    return {"ok": True, "message": f"{label}: pausing after the current step."}
+
+
+def resume(pid):
+    label, st = _state_of(pid)
+    if st is None:
+        return {"ok": False, "message": "Unknown process."}
+    return {"ok": True, "message": f"{label}: resumed."} if st.resume() else \
+        {"ok": False, "message": f"{label} isn't paused."}
 
 
 def stop(pid):
