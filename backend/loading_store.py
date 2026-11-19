@@ -96,6 +96,23 @@ def init_schema():
             confirm_run_id   INTEGER
         )""")
     cur.execute("CREATE INDEX IF NOT EXISTS ix_loading_items_state ON loading_items(state)")
+    # Auto add loadings: territories SFA suggested nothing for — paused until you say "load the whole stock"
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS loading_holds (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            day              TEXT NOT NULL,
+            created_at       TEXT NOT NULL,
+            job_name         TEXT NOT NULL DEFAULT '',
+            distributor_id   INTEGER NOT NULL,
+            distributor_name TEXT NOT NULL,
+            territory        TEXT NOT NULL DEFAULT '',
+            after            TEXT NOT NULL DEFAULT 'ask',      -- auto | ask | none (what to do once added)
+            stock_lines      INTEGER NOT NULL DEFAULT 0,
+            stock_total      REAL NOT NULL DEFAULT 0,
+            state            TEXT NOT NULL DEFAULT 'waiting', -- waiting | approved | skipped | added | failed
+            message          TEXT NOT NULL DEFAULT '',
+            decided_at       TEXT
+        )""")
     have = {r[1] for r in cur.execute("PRAGMA table_info(distributors)")}
     for col, decl in SFA_COLUMNS:
         if col not in have:
@@ -553,3 +570,45 @@ def today_summary(day=None):
                            OR substr(confirmed_at, 1, 10)=? GROUP BY state""", (day, day)).fetchall()
     conn.close()
     return dict(rows)
+
+
+# ---------------------------------------------------------------------------
+# Auto add loadings — paused territories (SFA suggested nothing)
+# ---------------------------------------------------------------------------
+_HCOLS = ["id", "day", "created_at", "job_name", "distributor_id", "distributor_name", "territory", "after",
+          "stock_lines", "stock_total", "state", "message", "decided_at"]
+
+
+def add_hold(day, job_name, d, after, stock_lines, stock_total):
+    conn = db.get_connection()
+    conn.execute("UPDATE loading_holds SET state='skipped', message='Replaced by a newer pause.', decided_at=? "
+                 "WHERE distributor_id=? AND state='waiting'", (_now(), d["id"]))
+    cur = conn.execute("INSERT INTO loading_holds (day, created_at, job_name, distributor_id, distributor_name, territory, "
+                       "after, stock_lines, stock_total) VALUES (?,?,?,?,?,?,?,?,?)",
+                       (day, _now(), job_name, d["id"], d["name"], territory_of(d) or "", after, stock_lines, stock_total))
+    conn.commit()
+    hid = cur.lastrowid
+    conn.close()
+    return hid
+
+
+def list_holds(states=("waiting",)):
+    conn = db.get_connection()
+    q = ",".join("?" * len(states))
+    rows = conn.execute(f"SELECT {', '.join(_HCOLS)} FROM loading_holds WHERE state IN ({q}) ORDER BY id", states).fetchall()
+    conn.close()
+    return [dict(zip(_HCOLS, r)) for r in rows]
+
+
+def get_hold(hid):
+    conn = db.get_connection()
+    r = conn.execute(f"SELECT {', '.join(_HCOLS)} FROM loading_holds WHERE id=?", (hid,)).fetchone()
+    conn.close()
+    return dict(zip(_HCOLS, r)) if r else None
+
+
+def set_hold(hid, state, message=""):
+    conn = db.get_connection()
+    conn.execute("UPDATE loading_holds SET state=?, message=?, decided_at=? WHERE id=?", (state, message, _now(), hid))
+    conn.commit()
+    conn.close()

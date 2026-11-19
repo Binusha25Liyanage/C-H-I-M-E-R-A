@@ -142,6 +142,11 @@ def _run_job(job, slot, trigger):
     if job["job_type"] == "distributors":
         import distributor_sync
         return distributor_sync.run_sync(trigger=trigger)
+    if job["job_type"] == "auto_loadings":
+        import loading_auto
+        o = job["options"]
+        return loading_auto.add_all(o.get("distributor_ids") or [], o.get("quantities", "suggested"), o.get("after", "ask"),
+                                    trigger="scheduled", job_name=job["name"])
     if job["job_type"] == "loadings":
         import loading_automation
         return loading_automation.run_prepare(trigger=trigger)
@@ -166,7 +171,7 @@ def _notify_started(job, slot, today):
         import desktop_notify
         desktop_notify.event("started", "schedule", f"{job['name']} — {slot}",
                              f"Scheduled time reached — {job.get('type_label') or 'job'} is starting now.",
-                             action={"sfa_downloads": "automation", "loadings": "loadings", "distributors": "loadings",
+                             action={"sfa_downloads": "automation", "loadings": "loadings", "distributors": "loadings", "auto_loadings": "loadings",
                                      "rep_attendance": "rep-attendance"}
                              .get(job["job_type"], "automation" if job["job_type"].startswith("report_") else "schedules"),
                              tag=f"sched-{job['id']}-{today}-{slot}")
@@ -333,6 +338,11 @@ class InAppScheduler:
             try:
                 run_due("scheduled", wait=False)       # each kind of job in its own lane; same kind queues
                 mark_missed()
+                try:                                   # Auto add loadings: unanswered questions end with the day
+                    import loading_auto
+                    loading_auto.expire_old()
+                except Exception:
+                    pass
                 # Outlet Updates: read the itinerary for the day being prepared (23:59 onwards = tomorrow) —
                 # and if Chimera wasn't running then, now. It has its own lane.
                 import lanes

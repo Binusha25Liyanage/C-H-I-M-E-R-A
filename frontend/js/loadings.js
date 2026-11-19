@@ -18,7 +18,39 @@ const ldNum = (v) => { const n = Number(String(v || "").replace(/,/g, "")); retu
 const ldFmt = (n) => Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ---------------------------------------------------------------- load + list
+// Auto add loadings: territories SFA suggested nothing for wait here — load the whole stock, or skip
+async function ldRenderHolds() {
+  const el = document.getElementById("ld-holds");
+  if (!el || typeof API().list_loading_holds !== "function") return;
+  const hs = await API().list_loading_holds();
+  if (!hs.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="ld-holds"><h3>SFA suggested nothing — load the whole stock?</h3>
+    <p class="hint">Auto add loadings paused these ${hs.length} territor${hs.length === 1 ? "y" : "ies"}. Tick the ones to load with their whole stock;
+      they're then confirmed / left for your approval as their job says. Not answered today = skipped.</p>
+    ${hs.map(h => `<label><input type="checkbox" class="ld-hold" value="${h.id}" checked>
+      <span><b>${esc(h.distributor_name)}</b> <span class="muted">${esc(h.territory || "")} · ${h.stock_lines} product(s), ${Number(h.stock_total).toLocaleString()} in stock
+      · ${esc(h.job_name || "")} · after: ${({ auto: "confirm automatically", ask: "ask me first", none: "don't confirm" })[h.after] || h.after}</span></span></label>`).join("")}
+    <div class="btn-row" style="margin-top:10px;"><button class="btn-primary" id="ld-hold-load">Load whole stock</button>
+      <button class="btn-outline" id="ld-hold-skip">Skip</button><span class="hint" id="ld-hold-msg"></span></div></div>`;
+  const picked = () => [...el.querySelectorAll(".ld-hold:checked")].map(c => Number(c.value));
+  document.getElementById("ld-hold-load").onclick = async () => {
+    const ids = picked(); if (!ids.length) { document.getElementById("ld-hold-msg").textContent = "Tick at least one."; return; }
+    confirmModal("Load the whole stock?", `Chimera adds a loading with the <b>whole available stock</b> for ${ids.length} territor${ids.length === 1 ? "y" : "ies"}
+      (or a dry run, if Add loading is on Dry run).`, "Load whole stock", async () => {
+      const r = await API().approve_loading_holds(ids);
+      document.getElementById("ld-hold-msg").textContent = r.message || "";
+      if (r.ok && window.openLdMonitor) openLdMonitor("Loading the whole stock");
+      ldRenderHolds();
+    });
+  };
+  document.getElementById("ld-hold-skip").onclick = async () => {
+    const ids = picked(); if (!ids.length) return;
+    await API().skip_loading_holds(ids); ldRenderHolds();
+  };
+}
+
 async function loadLoadings() {
+  ldRenderHolds().catch(() => {});
   try {
     if (typeof API().get_loadings_overview !== "function") throw new Error("OUTDATED");
     LD.ov = await API().get_loadings_overview();

@@ -1212,3 +1212,13 @@ html.is-scrolling { scrollbar-color: rgba(60, 60, 67, .45) transparent; }
 @keyframes miniPop { from { transform: scale(.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @keyframes miniGlow { 0%, 100% { box-shadow: 0 6px 18px rgba(0,0,0,.32), 0 0 0 2px #B5121B; }
   50% { box-shadow: 0 6px 18px rgba(0,0,0,.32), 0 0 0 2px #B5121B, 0 0 14px 3px rgba(181,18,27,.55); } }
+
+/* Schedules › job editor: radio choices with an explanation (Auto add loadings) */
+.je-radio { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--border, #e6e2dc); border-radius: 8px; margin-bottom: 6px; cursor: pointer; }
+.je-radio input { margin-top: 3px; }
+.je-radio .hint { display: block; margin-top: 2px; }
+.je-radio:has(input:checked) { border-color: #B5121B; background: rgba(181,18,27,.04); }
+.wk-item.wk-ld { border-left-color: #2e7d32; }
+.ld-holds { border: 1px solid #f0c36d; background: #fff9ec; border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.ld-holds h3 { margin: 0 0 6px; }
+.ld-holds label { display: flex; gap: 10px; align-items: center; padding: 5px 0; }

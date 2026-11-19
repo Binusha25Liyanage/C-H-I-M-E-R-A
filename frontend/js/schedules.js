@@ -4,7 +4,7 @@
 
 const SC = { ov: null, week: 0, tab: "jobs", draft: null };
 const SC_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SC_TYPE_CLASS = { sfa_downloads: "wk-dl", report_early: "wk-dl", report_sku: "wk-dl", report_pivot: "wk-dl", report_hourly: "wk-dl", master_sync: "wk-md", visit_state: "wk-vs", sequence: "wk-sq" };
+const SC_TYPE_CLASS = { auto_loadings: "wk-ld", sfa_downloads: "wk-dl", report_early: "wk-dl", report_sku: "wk-dl", report_pivot: "wk-dl", report_hourly: "wk-dl", master_sync: "wk-md", visit_state: "wk-vs", sequence: "wk-sq" };
 
 function scFmtDate(iso, opts) { return new Date(iso).toLocaleDateString("en-GB", opts || { weekday: "short", day: "2-digit", month: "short" }); }
 function scTime(iso) { return iso.slice(11, 16); }
@@ -88,6 +88,7 @@ const SC_SWITCHES = [
   ["auto_sfa_downloads", "SFA report downloads", "Scheduled download jobs run at their times."],
   ["auto_build_reports", "Build reports after downloading", "SKU, Pivot and Hourly are built when a download finishes."],
   ["wa_auto_send", "Send to WhatsApp automatically", "Reports go to the chats in your delivery rules once saved or approved."],
+  ["auto_add_loadings", "Auto add loadings", "Adds loadings in SFA for the chosen territories on schedule (follows Add loading's dry-run switch)."],
   ["auto_loadings", "Distributor loadings", "Daily distributors' pending loadings are read on schedule. Confirming always waits for you."],
   ["auto_master_sync", "Master data sync", "Itinerary, Territories and Outlet Master from SFA.", true],
   ["auto_distributor_sync", "Distributor list update", "Scheduled updates of the Loadings distributor list from SFA's Users page."],
@@ -254,6 +255,7 @@ function renderJeOpts() {
     document.getElementById("je-rday").onchange = (e) => { d.options.report_day = e.target.value; };
     return;
   }
+  if (d.job_type === "auto_loadings") { renderJeAutoLoadings(d, el); return; }
   if (d.job_type !== "sfa_downloads") { el.innerHTML = ""; return; }
   const all = !d.options.profile_ids.length;
   d.options.report_kinds = d.options.report_kinds || [];
@@ -284,6 +286,31 @@ function renderJeOpts() {
     if (e.target.value === "default") { d.options.report_kinds = []; document.querySelectorAll(".je-k").forEach(c => { c.checked = false; }); } };
   document.getElementById("je-kinds").onchange = () => { d.options.report_kinds = [...document.querySelectorAll(".je-k:checked")].map(c => c.value); };
 }
+function renderJeAutoLoadings(d, el) {
+  const o = d.options;
+  o.distributor_ids = o.distributor_ids || []; o.quantities = o.quantities || "suggested"; o.after = o.after || "ask";
+  const ds = SC.ov.distributors || [];
+  const radio = (name, v, cur, title, hint) => `<label class="je-radio"><input type="radio" name="${name}" value="${v}" ${cur === v ? "checked" : ""}>
+      <span><b>${title}</b><span class="hint">${hint}</span></span></label>`;
+  el.innerHTML = `<div class="section-title">Distributors (territories)</div>
+    ${ds.length ? `<div class="detect-list" id="je-dists">${ds.map(x => `<label><input type="checkbox" class="je-d" value="${x.id}" ${o.distributor_ids.includes(x.id) ? "checked" : ""}>
+      <b>${esc(x.name)}</b><span class="muted">${esc(x.territory || "")}${x.problem ? " · " + esc(x.problem) : ""}</span></label>`).join("")}</div>`
+      : '<p class="error">No distributors yet — update the distributor list in Distributor Loadings first.</p>'}
+    <div class="section-title" style="margin-top:14px;">Quantities</div>
+    <div id="je-qty">${radio("je-qty", "suggested", o.quantities, "SFA's suggested quantities",
+        "What SFA fills in by itself. A territory SFA suggests nothing for is paused — you're asked once at the end whether to load its whole stock.")}
+      ${radio("je-qty", "stock", o.quantities, "The whole stock", "Everything the distributor has available (SFA's STOCK column), every product.")}</div>
+    <div class="section-title" style="margin-top:14px;">After adding</div>
+    <div id="je-after">${radio("je-after", "auto", o.after, "Confirm automatically", "Confirms each loading Chimera just added (View Loadings → Confirm → Yes, Confirm it).")}
+      ${radio("je-after", "ask", o.after, "Ask me before confirming", "They wait in Distributor Loadings for your approval — skipped if you don't answer that day.")}
+      ${radio("je-after", "none", o.after, "Don't confirm", "Only adds them; you confirm yourself.")}</div>
+    <p class="hint" style="margin-top:8px;">Follows Add loading's <b>dry-run</b> switch (fills everything, saves nothing) — try it on the test distributor first.
+      SFA refuses a new loading until the rep has confirmed the last one in the SFA mobile app; that territory is reported and the rest go on.</p>`;
+  const ids = () => { o.distributor_ids = [...document.querySelectorAll(".je-d:checked")].map(c => Number(c.value)); };
+  const box = document.getElementById("je-dists"); if (box) box.onchange = ids;
+  document.getElementById("je-qty").onchange = (e) => { o.quantities = e.target.value; };
+  document.getElementById("je-after").onchange = (e) => { o.after = e.target.value; };
+}
 const JE_KINDS = [["early", "Early Bills (before 9 AM)", "Invoices + Sales Orders"], ["sku", "SKU Report", "both Outlet Wise SKU"],
   ["pivot", "Pivot Report", "Invoices + Sales Orders"], ["hourly", "Hourly BC &amp; SV", "Invoices + Sales Orders + Unproductive Visits"]];
 function jeError(msg) {   // shown at the TOP of the pop-up so it can't be missed below the fold
@@ -295,6 +322,9 @@ async function saveJobDraft() {
   jeError("");
   if (document.getElementById("je-pmode") && document.getElementById("je-pmode").value === "pick" && !d.options.profile_ids.length) {
     jeError("Choose at least one report, or pick “All enabled report profiles”."); return;
+  }
+  if (d.job_type === "auto_loadings" && !(d.options.distributor_ids || []).length) {
+    jeError("Choose at least one distributor (territory) to add loadings for."); return;
   }
   if (document.getElementById("je-kmode") && document.getElementById("je-kmode").value === "pick" && !(d.options.report_kinds || []).length) {
     jeError("Choose at least one report to build, or pick “The usual ones”."); return;

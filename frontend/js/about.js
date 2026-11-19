@@ -59,6 +59,7 @@ const ABOUT_SERVICES = [
   ]],
   ["Distribution", [
     ["truck", "Distributor Loadings", "beta", "Suggested quantities, Add loading (answers SFA's confirmation), then Prepare → View Loadings by territory and date → Confirm, which always waits for you."],
+    ["truck", "Auto add loadings", "beta", "On schedule, adds loadings for the territories you choose — SFA's suggested quantities or the whole stock. Territories SFA suggests nothing for are paused and asked about once; then confirm automatically, ask first, or leave them."],
     ["users", "Distributor list update", "beta", "Keeps the Loadings distributor list in step with SFA's Users page, on schedule or by button."],
   ]],
   ["Outlets & routes", [
@@ -97,6 +98,7 @@ const ABOUT_FLOWS = [
     ["users", "Distributors", "Synced from SFA", "The distributor list comes from SFA's Users page, with each one's territory."],
     ["table", "Suggest", "Quantities", "Chimera suggests quantities for each distributor's loading for you to adjust."],
     ["truck", "Add loading", "Saved in SFA", "Fills SFA's Add Loading, answers its Confirmation Alert with Yes and checks SFA said Saved."],
+    ["clock", "Auto add", "Scheduled, weekly", "An Auto add loadings job adds them by itself — suggested quantities or the whole stock; nothing suggested = paused and asked once at the end."],
     ["phone", "Rep confirms", "SFA mobile app", "SFA refuses a new loading until the rep confirms the previous one in the mobile app — an SFA rule, shown clearly."],
     ["list", "Prepare", "Pending loadings", "View Loadings with the distributor's Territory and Date From / To, and the pending loadings are read."],
     ["check", "Confirm", "Always waits for you", "After your OK: the tick under Confirm, then Confirm, then Yes, Confirm it — and Chimera checks it was confirmed."],

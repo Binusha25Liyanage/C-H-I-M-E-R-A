@@ -27,7 +27,7 @@ LABELS = {"reports": "a report download", "loadings": "a loadings job", "attenda
 def job_lane(job_type):
     if job_type == "sfa_downloads" or job_type.startswith("report_"):
         return "reports"
-    if job_type in ("loadings", "distributors"):
+    if job_type in ("loadings", "distributors", "auto_loadings"):
         return "loadings"
     if job_type == "rep_attendance":
         return "attendance"

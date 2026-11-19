@@ -98,6 +98,27 @@ class Api:
                 pass
         return {"ok": ok, "message": message, "look": automation_store.get_appearance()}
 
+    def _distributors_brief(self):
+        try:
+            import loading_store as LS
+            return [{"id": d["id"], "name": d["name"], "territory": LS.territory_of(d) or "",
+                     "problem": (d.get("problems") or [""])[0]} for d in LS.list_distributors()]
+        except Exception:
+            return []
+
+    # ----- Auto add loadings: territories SFA suggested nothing for
+    def list_loading_holds(self):
+        import loading_store as LS
+        return LS.list_holds()
+
+    def approve_loading_holds(self, ids):
+        import loading_auto
+        return loading_auto.approve_holds(ids or [])
+
+    def skip_loading_holds(self, ids):
+        import loading_auto
+        return loading_auto.skip_holds(ids or [])
+
     def try_desktop_icon(self):
         """Customize Appearance › Desktop icon › Try it now: one glitch on the Chimera desktop shortcut."""
         import desktop_icon
@@ -648,11 +669,12 @@ class Api:
                     if nxt else None,
             "controls": {k: settings[k] for k in ("paused", "skip_date", "use_task_scheduler", "side_by_side")},
             "switches": {k: settings.get(k, "1") for k in ("auto_sfa_downloads", "auto_build_reports", "wa_auto_send",
-                                                           "auto_loadings", "auto_outlet_updates", "auto_distributor_sync",
+                                                           "auto_loadings", "auto_add_loadings", "auto_outlet_updates", "auto_distributor_sync",
                                                            "auto_master_sync")},
             "clock": scheduler.clock_status(settings),
             "task_times": scheduler.wanted_task_times(),
             "is_windows": os.name == "nt",
+            "distributors": self._distributors_brief(),
             "profiles": [{"id": p["id"], "name": p["name"], "enabled": p["enabled"]}
                          for p in automation_store.list_profiles()],
             "fires": fires[:30],
@@ -698,6 +720,12 @@ class Api:
             import distributor_sync
             return {**distributor_sync.start_background(trigger="manual"), "open": "loadings",
                     "title": "Updating the distributor list from SFA"}
+        if job["job_type"] == "auto_loadings":
+            import loading_auto
+            o = job["options"]
+            return {**loading_auto.start_background(o.get("distributor_ids") or [], o.get("quantities", "suggested"),
+                                                    o.get("after", "ask"), trigger="manual", job_name=job["name"]),
+                    "open": "loadings", "title": "Adding loadings automatically"}
         if job["job_type"] == "loadings":
             import loading_automation as LA
             return {**LA.start_background(LA.run_prepare, trigger="manual"), "open": "loadings",

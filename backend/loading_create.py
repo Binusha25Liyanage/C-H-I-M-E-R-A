@@ -426,7 +426,9 @@ def _run(fn):
     if not AS.acquire_lock(lane=LOCK_LANE, owner=f"add loading ({datetime.now():%H:%M})"):
         holder = AS.lock_holder(LOCK_LANE) or {}
         return {"ok": False, "status": "busy",
-                "message": f"Another SFA run is already in progress ({holder.get('owner', 'unknown')})."}
+                "message": (f"Another loadings job is still running ({holder.get('owner', 'unknown')}) — add this one "
+                            "when it finishes." if AS.side_by_side() else
+                            f"Another SFA run is already in progress ({holder.get('owner', 'unknown')}).")}
     try:
         return fn()
     finally:

@@ -29,7 +29,8 @@ PROCESSES = [
 ]
 KIND_WORDS = {
     "loadings": {"prepare": "Reading loadings for approval", "confirm": "Confirming loadings in SFA",
-                 "sync": "Updating the distributor list", "add": "Adding a loading"},
+                 "sync": "Updating the distributor list", "add": "Adding a loading",
+                 "auto_add": "Adding loadings automatically"},
     "itinerary": {"itinerary": "Reading itineraries", "detect": "Finding territories"},
     "outlets": {"routes": "Reading SFA's route list", "sequence": "Rep sheets — reading / saving in SFA"},
     "attendance": {"attendance": "Rep attendance — download, images, WhatsApp",

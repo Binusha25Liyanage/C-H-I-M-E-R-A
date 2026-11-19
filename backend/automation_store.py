@@ -45,7 +45,8 @@ DEFAULT_AUTOMATION = {
     "run_times": "10:00,12:00,15:00,17:30",
     "weekdays": "1111110",               # Mon..Sun
     "skip_date": "",                     # 'YYYY-MM-DD' = skip scheduled runs that day
-    "side_by_side": "1",                 # SFA jobs of different kinds (reports, loadings, attendance, outlets) run together
+    "side_by_side": "1",
+    "auto_add_loadings": "1",            # Schedules switch for "Auto add loadings" jobs                 # SFA jobs of different kinds (reports, loadings, attendance, outlets) run together
     "parallel_tabs": "5",
     "retries": "2",
     "headless": "1",                     # hide the browser during scheduled runs
@@ -476,7 +477,7 @@ def save_automation_settings(values):
                 return False, "WhatsApp style must be classic or professional."
         elif k in ("wa_chats_cache", "notif_seen_at", "clock_source", "clock_checked_at"):
             pass
-        elif k in ("paused", "side_by_side", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
+        elif k in ("paused", "side_by_side", "auto_add_loadings", "headless", "use_task_scheduler", "wa_auto_send", "wa_show_browser", "data_saver",
                    "auto_sfa_downloads", "auto_build_reports", "auto_master_sync", "auto_visit_state", "auto_sequence",
                    "auto_loadings", "auto_outlet_updates", "auto_distributor_sync", "add_loading_dry_run",
                    "seq_need_approval", "seq_dry_run", "notify_desktop", "notify_started", "notify_approval",

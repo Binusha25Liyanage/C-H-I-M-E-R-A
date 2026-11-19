@@ -52,6 +52,25 @@ SEL_CAPTION = ("div[contenteditable='true'][aria-label*='caption' i], "
 SEL_SEND = ("[aria-label='Send'], span[data-icon='send'], span[data-icon='wds-ic-send-filled'], "
             "div[role='button'][aria-label='Send']")
 SEL_PENDING = "#main span[data-icon='msg-time']"
+SEL_PENDING_ANY = "span[data-icon='msg-time']"            # the clock in the open chat OR in the chat list
+SEL_FAILED = "#main span[data-icon='msg-error'], #main span[data-icon='error'], #main span[data-icon='failed']"
+
+
+def _reloaded(e):
+    """WhatsApp Web reloaded / navigated by itself while Chimera was working in it."""
+    t = str(e)
+    return "Execution context was destroyed" in t or "because of a navigation" in t or "frame was detached" in t
+
+
+async def _after_reload(page, why=""):
+    """WhatsApp Web reloaded itself: wait until it shows the chats again."""
+    WA.log("WhatsApp Web reloaded itself" + (f" {why}" if why else "") + " — waiting for it to come back…", "warn")
+    try:
+        await page.wait_for_load_state("domcontentloaded", timeout=60000)
+    except Exception:
+        pass
+    if await _state(page, 150) != "ready":
+        raise WAError("WhatsApp Web reloaded itself and didn't come back.")
 
 
 class WAError(Exception):
@@ -277,7 +296,8 @@ def plan_delivery(run, rules=None):
                      "pre_message": fill_message(rule.get("pre_message", ""), run["report_date"]),
                      "files": [f for b in batches for f in b["files"]], "pdfs": pdfs, "send_as": send_as,
                      "orientation": "landscape" if landscape else "portrait",
-                     "pages": [pg for b in batches for pg in b["pages"]], "caption": _caption(rule, run, labels)})
+                     "pages": [pg for b in batches for pg in b["pages"]], "caption": _caption(rule, run, labels),
+                     "rule_kinds": list(rule["kinds"]), "rule_groups": list(rule.get("groups") or [])})
     return plan
 
 
@@ -477,6 +497,8 @@ async def _open(p, headless):
         headless = True
     kw = dict(user_data_dir=PROFILE_DIR, headless=headless, viewport={"width": 1280, "height": 860},
               args=["--disable-blink-features=AutomationControlled"])
+    if os.name == "nt":
+        kw["chromium_sandbox"] = True        # no "--no-sandbox" flag: no warning bar, Chrome's normal protection
     try:
         return await _launch(p, kw)
     except Exception as e:
@@ -578,28 +600,77 @@ async def _click(loc, what, js_ok=True, escape=True):
     raise WAError(f"Couldn't click {what} — something on WhatsApp's screen was in the way.")
 
 
-async def _open_chat(page, name):
+async def _chat_in_list(page, name):
+    """The chat's row if it's already visible in the chat list (recent chats) — no search needed."""
+    cands = page.locator("#pane-side span[title]")
+    for i in range(await cands.count()):
+        t = (await cands.nth(i).get_attribute("title") or "").strip()
+        if t.lower() == name.strip().lower() and await cands.nth(i).is_visible():
+            return cands.nth(i)
+    return None
+
+
+async def _search_for(page, name):
+    """Put the name in WhatsApp's search box. Types into whatever has the focus (no waiting on one particular
+    element, which WhatsApp keeps redrawing — that's what timed out), then checks the text really landed."""
+    for attempt in (1, 2, 3):
+        if attempt == 1:
+            box = await _first(page, SEL_SEARCH, 15000)
+            if box is not None:
+                try:
+                    await box.click(timeout=5000)
+                except Exception:
+                    box = None
+            if box is None:
+                await page.keyboard.press("Control+Alt+/")      # WhatsApp's own "search" shortcut
+        else:
+            await page.keyboard.press("Escape")
+            await page.keyboard.press("Control+Alt+/")
+            box = await _first(page, SEL_SEARCH, 5000)
+            if box is not None:
+                try:
+                    await box.click(timeout=5000)
+                except Exception:
+                    pass
+        await page.wait_for_timeout(300)
+        await page.keyboard.press("Control+A")
+        await page.keyboard.press("Backspace")
+        await page.keyboard.insert_text(name)                   # in one go, into the focused search box
+        await page.wait_for_timeout(500)
+        typed = await page.evaluate("() => { const e = document.activeElement; return e ? (e.value || e.innerText || '') : ''; }")
+        if name.strip().lower() in (typed or "").strip().lower():
+            return True
+        WA.log(f"The search box didn't take the name (try {attempt}) — trying again.", "warn")
+    return False
+
+
+async def _open_chat(page, name, _retry=True):
     _at(f"opening the chat '{name}'")
     await page.keyboard.press("Escape")
-    box = await _first(page, SEL_SEARCH, 25000)
-    if box is None:
-        raise WAError("Couldn't find WhatsApp's search box.")
-    await _click(box, "the search box")
-    await page.keyboard.press("Control+A")
-    await page.keyboard.press("Backspace")
-    await box.type(name, delay=25)
-    await page.wait_for_timeout(1200)
-    hit = None
-    deadline = time.time() + 20                       # search results can be slow on a big account / slow PC
-    while time.time() < deadline and hit is None:
-        cands = page.locator("#pane-side span[title], div[aria-label*='Search results' i] span[title]")
-        for i in range(await cands.count()):
-            t = (await cands.nth(i).get_attribute("title") or "").strip()
-            if t.lower() == name.strip().lower() and await cands.nth(i).is_visible():
-                hit = cands.nth(i)
-                break
-        if hit is None:
-            await page.wait_for_timeout(400)
+    hit = await _chat_in_list(page, name)           # a recent chat: just click it
+    searched = False
+    if hit is None:
+        if not await _search_for(page, name):
+            if _retry and await page.locator("#pane-side").count() == 0:
+                # WhatsApp shows a blank page (it happens): reload it once and try again
+                WA.log("WhatsApp Web looks blank — reloading it once.", "warn")
+                await page.reload(wait_until="domcontentloaded")
+                if await _state(page, 150) != "ready":
+                    raise WAError("WhatsApp Web didn't come back after reloading.")
+                return await _open_chat(page, name, _retry=False)
+            raise WAError("Couldn't type in WhatsApp's search box (it kept changing). Try again.")
+        searched = True
+        await page.wait_for_timeout(1200)
+        deadline = time.time() + 20                   # search results can be slow on a big account / slow PC
+        while time.time() < deadline and hit is None:
+            cands = page.locator("#pane-side span[title], div[aria-label*='Search results' i] span[title]")
+            for i in range(await cands.count()):
+                t = (await cands.nth(i).get_attribute("title") or "").strip()
+                if t.lower() == name.strip().lower() and await cands.nth(i).is_visible():
+                    hit = cands.nth(i)
+                    break
+            if hit is None:
+                await page.wait_for_timeout(400)
     if hit is None:
         raise WAError(f"No chat called '{name}' found. Check the exact name (it must match WhatsApp).")
     await _click(hit, f"the chat '{name}'")
@@ -610,13 +681,15 @@ async def _open_chat(page, name):
         raise WAError(f"Clicked '{name}' but the chat didn't open.")
     if name.strip().lower() not in (await header.inner_text()).lower():
         raise WAError(f"The open chat isn't '{name}' — stopped to avoid sending to the wrong chat.")
-    # clear the search so the next chat search starts clean
-    try:
-        await box.click(timeout=4000)
-        await page.keyboard.press("Control+A")
-        await page.keyboard.press("Backspace")
-    except Exception:
-        pass
+    if searched:                                       # clear the search so the next one starts clean
+        try:
+            box = await _first(page, SEL_SEARCH, 3000)
+            if box is not None:
+                await box.click(timeout=4000)
+                await page.keyboard.press("Control+A")
+                await page.keyboard.press("Backspace")
+        except Exception:
+            pass
 
 
 async def _wait_sent(page, timeout_s=150):
@@ -624,9 +697,26 @@ async def _wait_sent(page, timeout_s=150):
     WhatsApp can take a while; Chimera says so in the log instead of giving up early."""
     await page.wait_for_timeout(1200)
     start = time.time(); deadline = start + timeout_s; told = False
+    sel = SEL_PENDING
+    try:
+        failed_before = await page.locator(SEL_FAILED).count()
+    except Exception:
+        failed_before = 0
     while time.time() < deadline:
-        if await page.locator(SEL_PENDING).count() == 0:
-            return True
+        try:
+            if await page.locator(sel).count() == 0:
+                return True
+            if sel == SEL_PENDING and await page.locator(SEL_FAILED).count() > failed_before:
+                raise WAError("WhatsApp shows the message as failed (red ! in the chat) — it couldn't upload it. "
+                              "Check the internet on this PC; nothing was sent twice.")
+        except WAError:
+            raise
+        except Exception as e:
+            if not _reloaded(e):
+                raise
+            await _after_reload(page, "while the message was going out")
+            sel = SEL_PENDING_ANY          # the chat isn't open any more: watch the clock in the chat list
+            continue
         if not told and time.time() - start > 20:
             WA.log("Still waiting for WhatsApp to send (clock icon) — slow connection? Waiting up to "
                    f"{timeout_s // 60} min.", "warn")
@@ -917,53 +1007,75 @@ async def _send_files(page, files, caption, which="photos"):
     i, first = 0, True
     what = "images" if which == "photos" else "PDF(s)"
     while i < len(files):
-        n = await _attach(page, files[i:], which)
-        if n < len(files) - i and first:
-            WA.log(f"WhatsApp took one file at a time here — sending {len(files)} {what} one by one.")
-        send, box, how = await _preview(page)
-        if send is None and box is None:
-            shot = await _shot(page, "no_preview")
-            dump = await _dump_page(page, "no_preview")
-            raise WAError("WhatsApp didn't open the send preview." + (f" Screenshot: {shot}" if shot else "")
-                          + (f" Page details: {dump}" if dump else ""))
-        _at("sending from WhatsApp's preview")
-        await page.wait_for_timeout(600)               # let the preview settle
-        if caption and first:
-            send, box, how = await _preview(page, 3000)
-            if box is not None:
-                await _tap(page, box)
-                await page.keyboard.insert_text(caption)   # in one go (WhatsApp redraws while typing)
-                await page.wait_for_timeout(300)
-        send, box, how = await _preview(page, 3000)   # positions fresh, right before sending
-        if send is not None:
-            WA.log(f"Pressing Send ({how}).")
-            await _tap(page, send)                     # the green Send button
-        elif box is not None:
+        st = {"pressed": False, "n": 1}
+        try:
+            await _send_batch(page, files, i, caption, which, first, what, st)
+        except WAError:
+            raise
+        except Exception as e:
+            if not _reloaded(e):
+                raise
+            if not st["pressed"]:          # nothing was handed to WhatsApp yet
+                await _after_reload(page, "before Send")
+                raise WAError(f"WhatsApp Web reloaded itself before Chimera could press Send — these {what} were not "
+                              "sent. Send again.") from e
+            await _after_reload(page, "right after Send")     # they're in WhatsApp's queue: let them go
+            if not await _wait_sent(page, 240):
+                raise WAPending(f"WhatsApp Web reloaded itself after Send and the {what} are still uploading — WhatsApp "
+                                "finishes them when it can. Chimera won't send them again. Check the chat.")
+        i += st["n"]
+        first = False
+
+
+async def _send_batch(page, files, i, caption, which, first, what, st):
+    """One message's worth of files: attach, caption, Send, wait until it went. st gets pressed / n."""
+    n = await _attach(page, files[i:], which)
+    st["n"] = n
+    if n < len(files) - i and first:
+        WA.log(f"WhatsApp took one file at a time here — sending {len(files)} {what} one by one.")
+    send, box, how = await _preview(page)
+    if send is None and box is None:
+        shot = await _shot(page, "no_preview")
+        dump = await _dump_page(page, "no_preview")
+        raise WAError("WhatsApp didn't open the send preview." + (f" Screenshot: {shot}" if shot else "")
+                      + (f" Page details: {dump}" if dump else ""))
+    _at("sending from WhatsApp's preview")
+    await page.wait_for_timeout(600)               # let the preview settle
+    if caption and first:
+        send, box, how = await _preview(page, 3000)
+        if box is not None:
             await _tap(page, box)
-            await page.keyboard.press("Enter")
+            await page.keyboard.insert_text(caption)   # in one go (WhatsApp redraws while typing)
+            await page.wait_for_timeout(300)
+    send, box, how = await _preview(page, 3000)   # positions fresh, right before sending
+    st["pressed"] = True
+    if send is not None:
+        WA.log(f"Pressing Send ({how}).")
+        await _tap(page, send)                     # the green Send button
+    elif box is not None:
+        await _tap(page, box)
+        await page.keyboard.press("Enter")
+    await page.wait_for_timeout(1500)
+    still_send, box2, _h = await _preview(page, 1500)
+    if still_send is not None or box2 is not None:     # preview still open: try the other way once
+        await page.evaluate(_PREVIEW_JS, ["click-send"])
         await page.wait_for_timeout(1500)
         still_send, box2, _h = await _preview(page, 1500)
-        if still_send is not None or box2 is not None:     # preview still open: try the other way once
-            await page.evaluate(_PREVIEW_JS, ["click-send"])
+        if box2 is not None:
+            await _tap(page, box2)
+            await page.keyboard.press("Enter")
             await page.wait_for_timeout(1500)
-            still_send, box2, _h = await _preview(page, 1500)
-            if box2 is not None:
-                await _tap(page, box2)
-                await page.keyboard.press("Enter")
-                await page.wait_for_timeout(1500)
-            still_send, box2, _h = await _preview(page, 1500)
-            if still_send is not None or box2 is not None:
-                await _cancel_recording(page)
-                shot = await _shot(page, "send_button")
-                dump = await _dump_page(page, "send_button")
-                raise WAError(f"The preview opened but pressing Send didn't send it (found Send by {how})."
-                              + (f" Screenshot: {shot}" if shot else "") + (f" Page details: {dump}" if dump else ""))
-        await _cancel_recording(page)
-        if not await _wait_sent(page, 240):              # images upload first — give them longer
-            raise WAPending("The images were handed to WhatsApp but are still uploading after 4 minutes (slow connection?). "
-                            "WhatsApp finishes them when it can — Chimera won't send them again. Check the chat.")
-        i += n
-        first = False
+        still_send, box2, _h = await _preview(page, 1500)
+        if still_send is not None or box2 is not None:
+            await _cancel_recording(page)
+            shot = await _shot(page, "send_button")
+            dump = await _dump_page(page, "send_button")
+            raise WAError(f"The preview opened but pressing Send didn't send it (found Send by {how})."
+                          + (f" Screenshot: {shot}" if shot else "") + (f" Page details: {dump}" if dump else ""))
+    await _cancel_recording(page)
+    if not await _wait_sent(page, 240):              # images upload first — give them longer
+        raise WAPending("The images were handed to WhatsApp but are still uploading after 4 minutes (slow connection?). "
+                        "WhatsApp finishes them when it can — Chimera won't send them again. Check the chat.")
 
 
 async def _send_images(page, files, caption):
@@ -1027,6 +1139,9 @@ async def _session_locked(action, headless, fn, link_timeout):
                 await _let_queue_finish(page)
                 return res
             except Exception as e:
+                # Something went wrong mid-send: don't close the browser on top of a message that's still going
+                if opened and not _closed_error(e) and not _ACTIVE.get("stopped"):
+                    await _let_queue_finish(page, 120)
                 # The WhatsApp window closed by itself while it was still loading (nothing sent yet): open it
                 # once more instead of failing the whole send. Not when the user pressed Stop.
                 if attempt == 1 and not opened and _closed_error(e) and not _ACTIVE.get("stopped"):
@@ -1050,9 +1165,14 @@ async def _let_queue_finish(page, max_s=90):
     """Before closing the browser: if a message in the open chat still shows the clock, give it time to go —
     closing now would leave it stuck until WhatsApp Web is next opened (that is what made messages arrive late)."""
     try:
-        if await page.locator(SEL_PENDING).count():
-            WA.log("A message is still waiting to go — keeping WhatsApp open a little longer.", "warn")
-            await _wait_sent(page, max_s)
+        if await page.locator(SEL_PENDING_ANY).count():
+            WA.log("A message is still waiting to go (clock icon) — keeping WhatsApp open a little longer so it "
+                   "isn't left stuck.", "warn")
+            deadline = time.time() + max_s
+            while time.time() < deadline and await page.locator(SEL_PENDING_ANY).count():
+                await page.wait_for_timeout(1000)
+            if await page.locator(SEL_PENDING_ANY).count():
+                WA.log("Still waiting after a while — WhatsApp sends it the next time it's open.", "warn")
     except Exception:
         pass
 
@@ -1257,7 +1377,13 @@ def deliver_run(report_run_id, rule_ids=None, wait=False):
                 pdfs = item.get("pdfs") or []
                 if not item["files"] and not pdfs:
                     _log_delivery(report_run_id, item["chat_name"], 0, "skipped", "No matching report pages.")
-                    WA.log(f"{item['chat_name']}: nothing to send for this rule.", "warn")
+                    in_run = {r["kind"] for r in run["summary"].get("reports", []) if r.get("ok")}
+                    want = [k for k in item.get("rule_kinds", []) if k in KIND_ORDER]
+                    lbl = lambda ks: ", ".join(report_pipeline.REPORT_LABELS.get(k, k) for k in ks) or "none"
+                    WA.log(f"{item['chat_name']}: skipped — this chat gets {lbl(want)}; this run has "
+                           f"{lbl(sorted(in_run, key=lambda k: KIND_ORDER.index(k) if k in KIND_ORDER else 9))}"
+                           + ("" if set(want) & in_run else " (normal — nothing for it in this run).")
+                           + ("" if not (set(want) & in_run) else " — but none of its manager groups' pages matched."))
                     continue
                 missing = [f for f in item["files"] + pdfs if not os.path.exists(f)]
                 if missing:

@@ -53,6 +53,10 @@ JOB_TYPES = {
     "loadings": {"label": "Distributor loadings (prepare)", "available": True,
                  "hint": "Reads the pending loading of every Daily distributor and asks for your approval — "
                          "it never confirms a loading on its own."},
+    "auto_loadings": {"label": "Auto add loadings", "available": True,
+                      "hint": "Adds a loading in SFA for each chosen distributor — SFA's suggested quantities or the whole "
+                              "stock. Territories SFA suggests nothing for are paused and you're asked once at the end. "
+                              "Then confirms them, asks you first, or leaves them — your choice."},
     "rep_attendance": {"label": "Rep attendance", "available": True,
                        "hint": "Downloads SFA's Rep Attendance Report for today, builds the two images (not logged out "
                                "yet / logged out) and sends them to the WhatsApp chats set on the Rep Attendance screen — "
@@ -66,7 +70,10 @@ REPORT_DAYS = ("today", "yesterday")
 TYPE_SWITCH = {"sfa_downloads": "auto_sfa_downloads", "report_early": "auto_sfa_downloads",
                "report_sku": "auto_sfa_downloads", "report_pivot": "auto_sfa_downloads", "report_hourly": "auto_sfa_downloads", "master_sync": "auto_master_sync",
                "visit_state": "auto_visit_state", "sequence": "auto_sequence", "loadings": "auto_loadings",
-               "distributors": "auto_distributor_sync", "rep_attendance": "auto_rep_attendance"}
+               "distributors": "auto_distributor_sync", "rep_attendance": "auto_rep_attendance",
+               "auto_loadings": "auto_add_loadings"}
+AUTO_QTY = ("suggested", "stock")            # SFA's suggested quantities | the whole available stock
+AUTO_AFTER = ("auto", "ask", "none")         # after adding: confirm automatically | ask me first | don't confirm
 
 
 def report_job_plan(job):
@@ -271,6 +278,26 @@ def _clean_job(j):
         times = out["times"].split(",")
         review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})
         opts = {"report_day": rd, "review_times": review}
+    elif jt == "auto_loadings":
+        import loading_store as LS
+        ids = []
+        for x in opts.get("distributor_ids") or []:
+            try:
+                ids.append(int(x))
+            except (TypeError, ValueError):
+                pass
+        if not ids:
+            raise ValueError("Choose the distributors (territories) this job adds loadings for.")
+        known = {d["id"] for d in LS.list_distributors()}
+        if [i for i in ids if i not in known]:
+            raise ValueError("Some chosen distributors no longer exist — reopen the job and choose again.")
+        qty = opts.get("quantities") or "suggested"
+        after = opts.get("after") or "ask"
+        if qty not in AUTO_QTY:
+            raise ValueError("Quantities must be SFA's suggested quantities or the whole stock.")
+        if after not in AUTO_AFTER:
+            raise ValueError("After adding must be: confirm automatically, ask me first, or don't confirm.")
+        opts = {"distributor_ids": sorted(set(ids)), "quantities": qty, "after": after}
     elif jt == "rep_attendance":
         times = out["times"].split(",")
         review = sorted({str(t).strip() for t in (opts.get("review_times") or []) if str(t).strip() in times})

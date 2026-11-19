@@ -35,7 +35,7 @@ import sfa_automation as SA
 PREPARE_STEPS = ["login", "open", "filters", "search", "find", "read"]
 CONFIRM_STEPS = ["login", "open", "check", "confirm", "verify"]
 STEP_LABELS = {"login": "Log in", "open": "Open", "filters": "Filters", "search": "Search", "find": "Find pending",
-               "read": "Read loading", "check": "Check", "confirm": "Confirm", "verify": "Verify"}
+               "read": "Read loading", "check": "Check", "add": "Add loading", "confirm": "Confirm", "verify": "Verify"}
 SHOT_ROOT = os.path.join(os.path.expanduser("~"), "Chimera", "screenshots", "loadings")
 
 LIVE = SA.LiveState("loadings")
